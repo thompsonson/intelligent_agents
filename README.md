@@ -1,5 +1,7 @@
 # Maze Solving Agents System Documentation
 
+This project implements a comprehensive system for exploring, visualizing, and comparing different search algorithms in maze environments, with a focus on providing educational insights into algorithm behavior.
+
 ## Environment Setup Details
 
 ```bash
@@ -15,45 +17,66 @@ uv pip install ipykernel jupyter notebook
 uv pip install networkx matplotlib pandas mazelib imageio
 ```
 
+## System Architecture
+
+The system is designed with a modular, extensible architecture that separates concerns into distinct components:
+
+1. **Environment Generation** - Creates and manages maze environments
+2. **Search Algorithms** - Implements various path-finding strategies
+3. **Results Analysis** - Tracks and analyzes algorithm performance
+4. **Visualization** - Renders maze states and algorithm execution
+5. **Experimentation** - Provides tools for systematic algorithm comparison
+
+This architecture allows easy addition of new search algorithms and experimental metrics.
+
 ## Class Overview
+
+UML class diagram showing the relationships between all classes [class_diagram.md](class_diagram.md)
 
 ### Config
 
 ```python
 @dataclass
 class Config:
-    """Configuration parameters for maze generation and search"""
-    # Maze parameters
-    maze_size: int = 5  # Grid dimensions (nxn)
-    maze_id: Optional[int] = None  # Seed for reproducible maze generation
-    
-    # Visualization parameters
-    visualization_delay: float = 0.5  # Delay between search steps
-    show_exploration: bool = True  # Whether to visualize exploration
-    
-    # Search parameters
-    max_steps: Optional[int] = None  # Maximum steps for search (None for unlimited)
+    """Configuration parameters for maze generation and search algorithms.
+
+    This class centralizes all configuration options for maze environments and search
+    algorithms to ensure consistent parameter usage throughout the system.
+
+    Attributes:
+        maze_size (int): Grid dimensions (nxn) of the maze. Default is 5x5.
+        maze_id (Optional[int]): Seed for reproducible maze generation. If None, a random seed is used.
+        visualization_delay (float): Delay in seconds between search algorithm steps for visualization.
+        show_exploration (bool): Whether to visualize the exploration process.
+        max_steps (Optional[int]): Maximum steps for search algorithm execution before termination.
+    """
 ```
 
 ### MazeEnvironment
 
 ```python
 class MazeEnvironment:
-    """Handles maze generation, state management and visualization"""
-    
-    Properties:
-    - grid: np.array  # Binary maze representation (0=path, 1=wall)
-    - start: tuple  # Starting position (typically (1,1))
-    - end: tuple  # Goal position (typically (height-2, width-2))
-    - optimal_path: List[Tuple]  # Shortest solution path
-    - optimal_path_length: int  # Length of shortest path
-    - graph: Dict  # Graph representation for search algorithms
-    
+    """Handles maze generation, state management and visualization.
+
+    This class encapsulates all maze-related functionality, including generating mazes,
+    managing maze state, creating graph representations for search algorithms, and
+    providing visualization capabilities.
+
+    Attributes:
+        config (Config): Configuration parameters for the maze.
+        grid (numpy.ndarray): Binary maze representation (0=path, 1=wall).
+        start (Tuple[int, int]): Starting position, typically (1,1).
+        end (Tuple[int, int]): Goal position, typically at the bottom-right corner.
+        optimal_path (List[Tuple[int, int]]): Shortest solution path from start to end.
+        optimal_path_length (int): Length of the shortest solution path.
+        graph (Dict): Graph representation of maze for search algorithms.
+
     Methods:
-    - generate()  # Creates new maze using Sidewinder algorithm
-    - is_valid_move(state)  # Checks if move is legal
-    - visualize(path, visited, show_optimal, save_path)  # Displays/saves maze visualization
-    - get_minimum_steps()  # Returns optimal path length
+        generate(): Creates new maze using Sidewinder algorithm.
+        is_valid_move(state): Checks if move is legal.
+        visualize(path, visited, show_optimal, save_path): Displays/saves maze visualization.
+        get_minimum_steps(): Returns optimal path length.
+    """
 ```
 
 ### SearchResult
@@ -61,88 +84,145 @@ class MazeEnvironment:
 ```python
 @dataclass
 class SearchResult:
-    """Enhanced container for search algorithm results with educational metrics"""
-    
-    Properties:
-    - path: List[Tuple]  # Solution path from start to goal
-    - visited: List[Tuple]  # List of visited nodes 
-    - success: bool  # Whether the search found a path
-    - steps: int  # Number of algorithm steps executed
-    - execution_time: float  # Time taken for the search
-    - exploration_history: List  # History of algorithm state (for visualization)
-    - node_discovery: Dict  # When each node was discovered
-    - node_expansion: Dict  # When each node was expanded
-    
+    """Enhanced container for search algorithm results with educational metrics.
+
+    This class stores and analyzes the results of search algorithm execution, providing
+    not only basic path information but also educational metrics and insights about
+    algorithm performance. It includes capabilities for generating reports and
+    visualizations of search results.
+
+    Attributes:
+        path (List[Tuple[int, int]]): Solution path from start to goal, if found.
+        visited (List[Tuple[int, int]]): List of nodes visited during search, in order.
+        success (bool): Whether the search found a valid path to the goal.
+        steps (int): Number of algorithm steps executed during search.
+        execution_time (float): Time taken for the search execution in seconds.
+        exploration_history (List): History of algorithm state for visualization/analysis.
+        node_discovery (Dict): Maps each node to the step when it was first discovered.
+        node_expansion (Dict): Maps each node to the step when it was expanded.
+
     Methods:
-    - to_dict()  # Convert results to dictionary for analysis
-    - generate_educational_report()  # Generate educational report about the search
+        to_dict(): Convert results to dictionary for analysis.
+        generate_educational_report(): Generate educational report about the search.
+    """
 ```
 
 ### SearchAlgorithmBase
 
 ```python
 class SearchAlgorithmBase(ABC):
-    """Abstract base class for search algorithms"""
-    
-    Properties:
-    - env: MazeEnvironment  # Reference to maze environment
-    - config: Config  # Configuration parameters
-    - name: str  # Algorithm name
-    
+    """Abstract base class for search algorithms.
+
+    This class provides a common interface and shared functionality for all search
+    algorithms. It handles common tasks such as error handling, timing, and basic
+    visualization capabilities. Specific search algorithms should inherit from this
+    class and implement the abstract search method.
+
+    Attributes:
+        env (MazeEnvironment): Reference to maze environment being searched.
+        config (Config): Configuration parameters for the search algorithm.
+        name (str): Algorithm name, derived from class name.
+
     Methods:
-    - search(start, goal)  # Search for path (to be implemented by subclasses)
-    - run(start, goal)  # Run with timing and error handling
-    - visualize_search(result, delay)  # Visualize the search process
+        search(start, goal): Search for path (to be implemented by subclasses).
+        run(start, goal): Run with timing and error handling.
+        visualize_search(result, delay): Visualize the search process.
+    """
 ```
 
 ### BreadthFirstSearch
 
 ```python
 class BreadthFirstSearch(SearchAlgorithmBase):
-    """Breadth-First Search implementation with enhanced educational output"""
-    
+    """Breadth-First Search implementation with enhanced educational output.
+
+    This class implements the BFS algorithm for maze solving with detailed tracking
+    of algorithm execution for educational purposes. BFS guarantees the shortest
+    path in unweighted graphs by exploring nodes in order of their distance from
+    the start node using a FIFO queue.
+
+    The implementation provides comprehensive visualization and educational
+    features to illustrate how BFS works step-by-step.
+
     Methods:
-    - search(start, goal)  # Perform BFS with educational tracking
-    - _reconstruct_path(parent, start, goal)  # Reconstruct path from parent data
-    - visualize_search(result, delay)  # Enhanced visualization with educational commentary
+        search(start, goal): Perform BFS with educational tracking.
+        _reconstruct_path(parent, start, goal): Reconstruct path from parent data.
+        visualize_search(result, delay): Enhanced visualization with educational commentary.
+    """
 ```
 
 ### MazeSearchVisualizer
 
 ```python
 class MazeSearchVisualizer:
-    """Handles visualization of search algorithms in mazes"""
-    
+    """Handles visualization of search algorithms in mazes.
+
+    This class provides tools for visualizing and comparing different search
+    algorithms running in the same maze environment. It supports animated
+    step-by-step visualization of individual algorithms and comparative
+    performance analysis of multiple algorithms.
+
+    Attributes:
+        env (MazeEnvironment): The maze environment to visualize.
+        algorithms (Dict[str, SearchAlgorithmBase]): Dictionary mapping algorithm
+                                                    names to their instances.
+
     Methods:
-    - visualize_search_step_by_step(algorithm_name, delay)  # Animated visualization
-    - compare_algorithms(algorithm_names)  # Runs and compares multiple algorithms
-    - visualize_comparison(comparison_df)  # Creates comparison charts
+        visualize_search_step_by_step(algorithm_name, delay): Animated visualization.
+        compare_algorithms(algorithm_names): Runs and compares multiple algorithms.
+        visualize_comparison(comparison_df): Creates comparison charts.
+    """
 ```
 
 ### MazeExperiments
 
 ```python
 class MazeExperiments:
-    """Manages experiments with maze search algorithms"""
-    
+    """Manages experiments with maze search algorithms.
+
+    This class provides tools for running systematic experiments on search
+    algorithms across different maze configurations. It supports batch testing
+    with multiple algorithms, maze sizes, and iterations to generate statistically
+    meaningful performance data.
+
+    Attributes:
+        base_path (Path): Directory where experiment results are stored.
+        experiment_id (str): Unique identifier for the current experiment run.
+
     Methods:
-    - run_maze_size_experiment(algorithm_classes, maze_sizes, iterations)  # Tests performance across maze sizes
-    - visualize_maze_size_experiment(df)  # Creates visualizations of experiment results
+        run_maze_size_experiment(algorithm_classes, maze_sizes, iterations): Tests performance across maze sizes.
+        visualize_maze_size_experiment(df): Creates visualizations of experiment results.
+    """
 ```
 
 ### BFSEducationalDashboard
 
 ```python
 class BFSEducationalDashboard:
-    """Interactive dashboard for teaching BFS algorithm concepts"""
-    
+    """Interactive dashboard for teaching BFS algorithm concepts.
+
+    This class provides a comprehensive educational tool for visualizing and
+    understanding the Breadth-First Search algorithm. It includes capabilities
+    for step-by-step visualization, animated GIF creation, graph visualization,
+    and interactive explanations of BFS concepts.
+
+    The dashboard is designed for educational purposes, helping students and
+    learners understand how BFS works by visualizing its execution in both
+    maze grid and graph representations.
+
+    Attributes:
+        env (MazeEnvironment): The maze environment being searched.
+        result (SearchResult): The results from running the BFS algorithm.
+        steps_data (List): Processed exploration history data for visualization.
+
     Methods:
-    - visualize_step(step_idx)  # Display a single step of the BFS algorithm
-    - create_gif(filename, fps, dpi)  # Create a GIF animation from BFS steps
-    - animate_bfs_on_graph(output_file, fps, size)  # Animate BFS algorithm on graph representation
-    - visualize_maze_graph(highlight_path)  # Visualize maze as a graph
-    - run_animation(delay)  # Run the full BFS animation with explanations
-    - create_interactive_widget()  # Create an interactive widget to step through BFS
+        visualize_step(step_idx): Display a single step of the BFS algorithm.
+        create_gif(filename, fps, dpi): Create a GIF animation from BFS steps.
+        animate_bfs_on_graph(output_file, fps, size): Animate BFS algorithm on graph representation.
+        visualize_maze_graph(highlight_path): Visualize maze as a graph.
+        run_animation(delay): Run the full BFS animation with explanations.
+        create_interactive_widget(): Create an interactive widget to step through BFS.
+    """
 ```
 
 ## Example Usage
@@ -213,8 +293,8 @@ algorithm_classes = [BreadthFirstSearch]
 
 # Run experiments
 results = experiments.run_maze_size_experiment(
-    algorithm_classes, 
-    maze_sizes, 
+    algorithm_classes,
+    maze_sizes,
     iterations=3
 )
 
@@ -300,3 +380,13 @@ Experiment results are visualized with multiple charts:
 4. Avg. Path Optimality by Maze Size
 
 These visualizations help understand how BFS performance scales with different maze sizes.
+
+## Implementation Deep Dive
+
+For a more detailed understanding of the inner workings of the system, explore the deep_dive.md file. This document provides:
+
+- Sequence diagram illustrating the flow of method calls during execution
+- Detailed explanation of algorithm implementation details
+- Discussion of design choices and tradeoffs
+
+The [deep_dive.md](deep_dive.md) file is particularly useful for developers looking to extend the system with new algorithms or to understand the educational aspects of the implementation.
