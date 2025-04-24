@@ -581,6 +581,20 @@ As shown in the table, all algorithms found the optimal path length (37), but wi
 - **GreedyBestFirstSearch** dramatically reduces steps (61) with excellent path efficiency (56.92%) and fastest execution time
 - **AStarSearch** achieves the highest path efficiency (57.81%) with the fewest steps (59)
 
+
+#### Feature Comparison of the Search Algorithms
+
+| Feature | BFS | DFS | Greedy | A* |
+|---------|-----|-----|--------|-----|
+| **Uses Heuristic** | No | No | Yes | Yes |
+| **Data Structure** | Queue | Stack | Priority Queue (h) | Priority Queue (g+h) |
+| **Optimality** | Yes (unweighted) | No | No | Yes (admissible h) |
+| **Completeness** | Yes | Yes (finite) | No | Yes |
+| **Memory Usage** | High | Low | High | High |
+| **Path Quality** | Shortest (unweighted) | Often suboptimal | Sometimes good | Optimal |
+| **Speed vs. Quality** | Good balance | Fast but poor quality | Fast with reasonable quality | Best quality with good speed |
+
+
 ### Algorithm Visualization
 
 Each algorithm's exploration process can be visualized as animated graphs, highlighting their distinctive search patterns:
