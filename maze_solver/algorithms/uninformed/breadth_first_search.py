@@ -14,17 +14,13 @@ class BreadthFirstSearch(UninformedSearch):
         """Get the next node from the queue (FIFO)."""
         return frontier.popleft()
 
-    def _add_to_frontier(self, frontier, node):
-        """Add a node to the end of the queue."""
-        frontier.append(node)
-
-    def _frontier_representation(self, frontier):
-        """Convert queue to list for visualization."""
-        return list(frontier)
-
-    def _create_step_info(self, current_node, steps, neighbors_added, frontier_before, frontier_after):
+    def _create_step_info(
+        self, current_node, steps, neighbors_added, frontier_before, frontier_after
+    ):
         """Create step info with queue terminology."""
-        info = super()._create_step_info(current_node, steps, neighbors_added, frontier_before, frontier_after)
+        info = super()._create_step_info(
+            current_node, steps, neighbors_added, frontier_before, frontier_after
+        )
         info["queue_before"] = frontier_before
         info["queue_after"] = frontier_after
         return info

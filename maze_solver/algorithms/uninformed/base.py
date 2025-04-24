@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from ..base import SearchAlgorithmBase
 from ...core.results import SearchResult
 
+
 class UninformedSearch(SearchAlgorithmBase):
     """Base class for uninformed search algorithms (BFS, DFS).
 
@@ -23,15 +24,13 @@ class UninformedSearch(SearchAlgorithmBase):
         """Get the next node from frontier based on search strategy (FIFO, LIFO, etc.)."""
         raise NotImplementedError("Subclasses must implement _get_next_node")
 
-    @abstractmethod
     def _add_to_frontier(self, frontier, node):
         """Add a node to frontier according to search strategy."""
-        raise NotImplementedError("Subclasses must implement _add_to_frontier")
+        frontier.append(node)
 
-    @abstractmethod
     def _frontier_representation(self, frontier):
         """Return a representation of frontier suitable for visualization."""
-        raise NotImplementedError("Subclasses must implement _frontier_representation")
+        return list(frontier)
 
     def search(self, start: Tuple[int, int], goal: Tuple[int, int]) -> SearchResult:
         """Generic uninformed search implementation."""
@@ -45,13 +44,17 @@ class UninformedSearch(SearchAlgorithmBase):
         node_expansion = {}
 
         steps = 0
-        max_steps = self.config.max_steps or float('inf')
+        max_steps = self.config.max_steps or float("inf")
 
         while frontier and steps < max_steps:
             steps += 1
 
             # Save frontier state for visualization if needed
-            frontier_before = self._frontier_representation(frontier) if self.config.show_exploration else None
+            frontier_before = (
+                self._frontier_representation(frontier)
+                if self.config.show_exploration
+                else None
+            )
 
             # Get next node to explore (algorithm-specific)
             current_node = self._get_next_node(frontier)
@@ -67,7 +70,7 @@ class UninformedSearch(SearchAlgorithmBase):
                     steps=steps,
                     exploration_history=exploration_history,
                     node_discovery=node_discovery,
-                    node_expansion=node_expansion
+                    node_expansion=node_expansion,
                 )
 
             # Process neighbors
@@ -83,20 +86,29 @@ class UninformedSearch(SearchAlgorithmBase):
 
             # Record exploration history
             if self.config.show_exploration:
-                current_partial_path = self._reconstruct_path(parent, start, current_node) if current_node != start else [start]
+                current_partial_path = (
+                    self._reconstruct_path(parent, start, current_node)
+                    if current_node != start
+                    else [start]
+                )
 
                 # Create step info dictionary (using algorithm-specific names)
                 step_info = self._create_step_info(
-                    current_node, steps, neighbors_added,
-                    frontier_before, self._frontier_representation(frontier)
+                    current_node,
+                    steps,
+                    neighbors_added,
+                    frontier_before,
+                    self._frontier_representation(frontier),
                 )
 
-                exploration_history.append((
-                    visited.copy(),
-                    self._frontier_representation(frontier),
-                    current_partial_path,
-                    step_info
-                ))
+                exploration_history.append(
+                    (
+                        visited.copy(),
+                        self._frontier_representation(frontier),
+                        current_partial_path,
+                        step_info,
+                    )
+                )
 
         # No path found
         return self.create_search_result(
@@ -106,10 +118,12 @@ class UninformedSearch(SearchAlgorithmBase):
             steps=steps,
             exploration_history=exploration_history,
             node_discovery=node_discovery,
-            node_expansion=node_expansion
+            node_expansion=node_expansion,
         )
 
-    def _create_step_info(self, current_node, steps, neighbors_added, frontier_before, frontier_after):
+    def _create_step_info(
+        self, current_node, steps, neighbors_added, frontier_before, frontier_after
+    ):
         """Create step info dictionary for visualization."""
         # Subclasses can override to add algorithm-specific fields
         return {
@@ -117,7 +131,7 @@ class UninformedSearch(SearchAlgorithmBase):
             "expanded_node": current_node,
             "neighbors_added": neighbors_added,
             "frontier_before": frontier_before,
-            "frontier_after": frontier_after
+            "frontier_after": frontier_after,
         }
 
     def visualize_search(self, result: SearchResult, delay: float = None) -> None:
@@ -150,7 +164,9 @@ class UninformedSearch(SearchAlgorithmBase):
                 return f"({node[0]},{node[1]})"
 
             # Display educational commentary
-            print(f"Step {step_info['step']}: Expanding node {format_node(step_info['expanded_node'])}")
+            print(
+                f"Step {step_info['step']}: Expanding node {format_node(step_info['expanded_node'])}"
+            )
 
             # Display frontier information (generic terms)
             print(f"Frontier size: {len(frontier)}")
@@ -167,6 +183,8 @@ class UninformedSearch(SearchAlgorithmBase):
             else:
                 title = f"{self.name} - No path found. ({result.steps} steps, {result.execution_time:.3f}s)"
 
-            self.env.visualize(path=result.path, visited=set(result.visited), title=title)
+            self.env.visualize(
+                path=result.path, visited=set(result.visited), title=title
+            )
 
         print(result)
