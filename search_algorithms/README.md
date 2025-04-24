@@ -1,14 +1,58 @@
-# Search Algorithms
+# Search Algorithms and Intelligent Agents
 
+## Introduction
+
+Search Algorithms are a key part of how Intelligent Agents learn and navigate their environment. In these examples, I'm using Search to find a route through a maze - the agent will determine a sequence of actions to achieve its goal of reaching the end point.
+
+The purpose of this document is to dive into the details of four search algorithms and show their tradeoffs in a simple environment. I've implemented two categories: Uninformed and Informed Search. For the Informed Algorithms, I've included heuristics and cost calculations to guide the search process.
+
+These are purely Symbolic agents - but what does "Symbolic" actually mean?
+
+In this context, Symbolic means that the agent uses explicit rules and symbols to represent knowledge and perform reasoning. Reasoning in this context is the ability to take rational actions, to act as a [rational agent](https://en.wikipedia.org/wiki/Rational_agent).
+
+The agents here use clear, human-readable representations (like coordinates in a grid) and follow well-defined logical steps to find the end of the maze. The algorithms manipulate these symbols according to formal rules - there's no statistical learning or pattern recognition involved. Everything is explicit, transparent, and based on logical operations.
+
+The key characteristics of my symbolic implementations:
+- They use explicit representations of the maze as a graph
+- They follow clear, deterministic rules for exploration
+- The decision-making process can be traced step-by-step
+- The solutions are guaranteed (when they exist) rather than probabilistic
+
+In contrast, neural approaches might learn to navigate mazes through experience, without explicit programming of the navigation rules.
+
+See [here](https://github.com/thompsonson/q-learning) for a Basic Q-Learning Statistical/Reinforcement Learning Agent.
+
+<!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
+## Table of contents
+
+<!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
+
+- [Uninformed Search Algorithms](#uninformed-search-algorithms)
+   * [Available Uninformed Search Algorithms](#available-uninformed-search-algorithms)
+   * [Algorithm Comparison](#algorithm-comparison)
+   * [Implementation Notes](#implementation-notes)
+- [Informed Search Algorithms](#informed-search-algorithms)
+   * [Available Informed Search Algorithms](#available-informed-search-algorithms)
+   * [Maze Solver Heuristics](#maze-solver-heuristics)
+   * [Step Cost Calculation](#step-cost-calculation)
+   * [Algorithm Comparison](#algorithm-comparison-1)
+- [Other Search Algorithms (not (yet 🤞) implemented in the current codebase)](#other-search-algorithms-not-yet-implemented-in-the-current-codebase)
+
+<!-- TOC end -->
+
+
+<!-- TOC --><a name="uninformed-search-algorithms"></a>
 ## Uninformed Search Algorithms
 
 Uninformed search algorithms (also called blind search algorithms) operate without using domain-specific knowledge about the problem beyond what is provided in the problem definition. They systematically explore the search space without any information about how close they are to the goal.
 
-### Available Algorithms
+<!-- TOC --><a name="available-uninformed-search-algorithms"></a>
+### Available Uninformed Search Algorithms
 
 - [Breadth-First Search (BFS)](breadth_first_search.md)
 - [Depth-First Search (DFS)](depth_first_search.md)
 
+<!-- TOC --><a name="algorithm-comparison"></a>
 ### Algorithm Comparison
 
 | Feature | Breadth-First Search | Depth-First Search |
@@ -22,6 +66,7 @@ Uninformed search algorithms (also called blind search algorithms) operate witho
 | **Memory Usage** | Higher (stores all nodes at current level) | Lower (stores only nodes on current path) |
 | **Best Use Cases** | Finding shortest paths, exploring graphs with shallow solutions | Memory-constrained environments, graphs with deep solutions |
 
+<!-- TOC --><a name="implementation-notes"></a>
 ### Implementation Notes
 
 There is an abstract base class for uninformed searches.
@@ -38,6 +83,7 @@ Each algorithm implements the following key methods to accommodate the differenc
 - `_get_next_node`: Retrieves the next node based on strategy (FIFO/LIFO)
 
 
+<!-- TOC --><a name="informed-search-algorithms"></a>
 ## Informed Search Algorithms
 
 Informed search algorithms use domain-specific knowledge (heuristics) to guide exploration toward the goal more efficiently. They leverage additional information about how close a state might be to the goal.
@@ -46,12 +92,21 @@ One way to frame the difference is that an uninformed search is like being blind
 
 Clearly this is a metaphor, in practice agents work on numbers and need measurements rather than visual cues, so we need to measure the distiances. For Greedy Best First Search we need the estimated distance to the goal and for A* we also need the cost of the distance we have travelled.
 
+<!-- TOC --><a name="available-informed-search-algorithms"></a>
+### Available Informed Search Algorithms
+
+- [Greedy Best-First Search](greedy_best_first_search.md)
+- [A* Search](a_star_search.md)
+
+
+<!-- TOC --><a name="maze-solver-heuristics"></a>
 ### Maze Solver Heuristics
 
 So this information needs to be available to the agent and the best place for it is in the Maze Environment. This is not complex for the simple two dimensional mazes generated by the Maze Environment class.
 
 The `maze_solver/core/environment.py` file has been edited to include the following distance metrics as heuristics:
 
+<!-- TOC --><a name="manhattan-distance"></a>
 #### Manhattan Distance
 
 The [Manhattan Distance (also known as Taxicab Geometry)](https://en.wikipedia.org/wiki/Taxicab_geometry) measures the sum of the absolute differences between two points' coordinates. In a grid-based maze, this represents the minimum number of horizontal and vertical moves needed to reach the goal, assuming no walls.
@@ -62,6 +117,7 @@ def calculate_manhattan_distance(self, state: Tuple[int, int], goal: Tuple[int, 
     return abs(state[0] - goal[0]) + abs(state[1] - goal[1])
 ```
 
+<!-- TOC --><a name="euclidean-distance"></a>
 #### Euclidean Distance
 
 The Euclidean distance measures the straight-line or "as the crow flies" distance between two points.
@@ -72,6 +128,7 @@ def calculate_euclidean_distance(self, state: Tuple[int, int], goal: Tuple[int, 
     return ((state[0] - goal[0]) ** 2 + (state[1] - goal[1]) ** 2) ** 0.5
 ```
 
+<!-- TOC --><a name="why-manhattan-is-often-preferred"></a>
 #### Why Manhattan is Often Preferred
 
 While both heuristics can work, Manhattan distance is generally preferred for grid-based pathfinding because:
@@ -83,6 +140,7 @@ While both heuristics can work, Manhattan distance is generally preferred for gr
 
 For A* search in particular, using Manhattan distance as the heuristic ensures that the algorithm remains consistent when it adds the path cost (also measured in grid steps) to the estimated distance to the goal.
 
+<!-- TOC --><a name="step-cost-calculation"></a>
 ### Step Cost Calculation
 
 The cost of moving between adjacent cells is defined as follows:
@@ -96,6 +154,7 @@ def get_step_cost(self, state1: Tuple[int, int], state2: Tuple[int, int]) -> int
 
 This unified cost model means each step has the same weight, which aligns perfectly with Manhattan distance calculations in a grid-based environment.
 
+<!-- TOC --><a name="making-the-maze-fun-and-costly"></a>
 #### Making the Maze fun and costly
 
 This implmentation uses a uniform cost of 1, which doesn't really add value whilst adding more code. To highlight why I think it's worthwhile keeping in mind, imagine the maze as an obstacle course, especially valuable if there are more than one route to the end goal. If there is an obstacle at a particular point it would cost more to traverse.
@@ -112,14 +171,11 @@ def get_step_cost(self, state1: Tuple[int, int], state2: Tuple[int, int]) -> int
 
 Note: this would only impact the A* Search, the Greedy Best First Search is unaware of costs.
 
-### Available Algorithms
 
-- [Greedy Best-First Search](greedy_best_first_search.md)
-- [A* Search](a_star_search.md)
-
-
+<!-- TOC --><a name="algorithm-comparison-1"></a>
 ### Algorithm Comparison
 
+<!-- TOC --><a name="algorithmic-complexity-variables"></a>
 #### Algorithmic Complexity Variables
 
 First the notation used:
@@ -136,6 +192,7 @@ The ratio **C*/ε** represents the maximum number of steps in any optimal soluti
 
 These variables help quantify the tradeoffs between different search algorithms in terms of time efficiency, space requirements, completeness, and optimality guarantees.
 
+<!-- TOC --><a name="table-of-comparison"></a>
 #### Table of comparison
 
 | Feature | Greedy Best-First Search | A* Search |
@@ -151,7 +208,8 @@ These variables help quantify the tradeoffs between different search algorithms 
 | **Key Advantage** | Often finds decent solutions quickly | Guaranteed to find shortest path with admissible heuristic |
 | **Key Weakness** | Can make poor choices with misleading heuristics | Requires more memory than Greedy |
 
-## Other Search Algorithms (not (yet) implemented in the current codebase)
+<!-- TOC --><a name="other-search-algorithms-not-yet-implemented-in-the-current-codebase"></a>
+## Other Search Algorithms (not (yet 🤞) implemented in the current codebase)
 
 This is the "if I had more time chapter" :)
 
@@ -170,6 +228,7 @@ We've covered four fundamental search algorithms (BFS, DFS, Greedy Best-First, a
 - **Jump Point Search**: An optimization of A* for uniform-cost grid maps that skips over "obvious" paths, dramatically improving performance in many scenarios.
 
 
+<!-- TOC --><a name="full-table-of-comparison"></a>
 ### Full table of comparison
 
 The table below summarizes the key properties of several search algorithms (see above for the notation):
