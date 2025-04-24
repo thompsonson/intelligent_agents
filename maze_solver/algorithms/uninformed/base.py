@@ -14,6 +14,10 @@ class UninformedSearch(SearchAlgorithmBase):
     They differ primarily in their frontier data structure and expansion strategy.
     """
 
+    def __init__(self, *args, frontier_name="frontier", **kwargs):
+        super().__init__(*args, **kwargs)
+        self.frontier_name = frontier_name
+
     @abstractmethod
     def _initialize_frontier(self, start):
         """Initialize frontier data structure with start node."""
@@ -125,14 +129,16 @@ class UninformedSearch(SearchAlgorithmBase):
         self, current_node, steps, neighbors_added, frontier_before, frontier_after
     ):
         """Create step info dictionary for visualization."""
-        # Subclasses can override to add algorithm-specific fields
-        return {
+        info = {
             "step": steps,
             "expanded_node": current_node,
             "neighbors_added": neighbors_added,
             "frontier_before": frontier_before,
             "frontier_after": frontier_after,
+            f"{self.frontier_name}_before": frontier_before,
+            f"{self.frontier_name}_after": frontier_after,
         }
+        return info
 
     def visualize_search(self, result: SearchResult, delay: float = None) -> None:
         """Visualize the search process step by step."""
