@@ -87,7 +87,10 @@ class LiteLLMAdapter(LLMInterface):
         if answer_line:
             # Extract answer from line
             if 'the answer is' in answer_line.lower():
-                answer = answer_line.split('the answer is', 1)[1].strip()
+                # Use case-insensitive split
+                lower_line = answer_line.lower()
+                split_pos = lower_line.find('the answer is') + len('the answer is')
+                answer = answer_line[split_pos:].strip()
             else:
                 answer = answer_line.split(':', 1)[1].strip()
             

@@ -90,9 +90,9 @@ The answer is definitely yes."""
         
         result = adapter._parse_llm_output(raw_response)
         
-        # Should find the first occurrence
-        assert "But after more thought" not in result.reasoning
-        assert result.answer == "maybe"
+        # Should find the first line that starts with "The answer is"
+        assert "But after more thought" in result.reasoning
+        assert result.answer == "definitely yes."
 
 
 class TestLiteLLMAdapterIntegration:

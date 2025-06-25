@@ -15,8 +15,13 @@ help:
 	@echo "  clean         - Clean up temporary files"
 	@echo "  check-env     - Check environment setup"
 
+# Create virtual environment if it doesn't exist
+.venv:
+	@echo "Creating virtual environment..."
+	uv venv
+
 # Install dependencies
-install:
+install: .venv
 	@echo "Installing dependencies with uv..."
 	uv pip install pytest pytest-cov openai
 
