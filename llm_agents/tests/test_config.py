@@ -57,7 +57,7 @@ class TestLiteLLMAdapterEnvironment:
         """Test fallback to hardcoded defaults when env vars not set."""
         adapter = LiteLLMAdapter()
         
-        assert adapter.model == 'gpt-3.5-turbo'
+        assert adapter.model == 'claude-3-haiku'
         assert adapter.temperature == 0.7
         assert adapter.base_url == 'http://localhost:4000'
         assert adapter.api_key == 'sk-1234'
