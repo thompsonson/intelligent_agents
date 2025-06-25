@@ -60,14 +60,14 @@ class TestLiteLLMAdapterEnvironment:
         assert adapter.model == 'gpt-3.5-turbo'
         assert adapter.temperature == 0.7
         assert adapter.base_url == 'http://localhost:4000'
-        assert adapter.api_key == 'sk-dummy'
+        assert adapter.api_key == 'sk-1234'
     
     def test_code_parameters_override_environment(self):
         """Test that code parameters override environment variables."""
         with patch.dict(os.environ, {
             'LLM_MODEL': 'gpt-4',
             'LLM_TEMPERATURE': '0.3'
-        }):
+        }, clear=True):
             adapter = LiteLLMAdapter(
                 model='claude-3',
                 temperature=0.9
@@ -77,7 +77,7 @@ class TestLiteLLMAdapterEnvironment:
             assert adapter.temperature == 0.9   # Code override
             # Env vars still used for others
             assert adapter.base_url == 'http://localhost:4000'  # Default
-            assert adapter.api_key == 'sk-dummy'                # Default
+            assert adapter.api_key == 'sk-1234'                # Default
     
     @patch.dict(os.environ, {'LLM_TEMPERATURE': 'invalid'})
     def test_invalid_environment_temperature(self):

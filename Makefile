@@ -7,7 +7,7 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test setup-all setup-env test-integration test-agent-live
+.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live
 
 # Default target
 help:
@@ -30,6 +30,7 @@ help:
 	@echo "  litellm-logs    - Show LiteLLM container logs"
 	@echo "  litellm-status  - Check LiteLLM container status"
 	@echo "  litellm-test    - Test LiteLLM connection"
+	@echo "  litellm-models  - List available models"
 	@echo "  litellm-clean   - Remove LiteLLM container"
 	@echo "  setup-all       - Install dependencies + LiteLLM"
 	@echo ""
@@ -45,6 +46,10 @@ help:
 install: .venv
 	@echo "Installing dependencies with uv..."
 	uv pip install pytest pytest-cov openai
+	@echo "Installing Jupyter notebook packages..."
+	uv pip install ipykernel jupyter notebook
+	@echo "Installing data science and visualization packages..."
+	uv pip install networkx matplotlib pandas mazelib imageio seaborn
 
 # Run tests
 test:
@@ -113,7 +118,7 @@ clean:
 check-env:
 	@echo "Checking environment setup..."
 	@echo "Python version:"
-	@python --version
+	@uv run python --version
 	@echo "uv version:"
 	@uv --version
 	@echo "Virtual environment:"
@@ -131,6 +136,23 @@ check-env:
 	@echo "  LLM_TEMPERATURE: ${LLM_TEMPERATURE:-not set}"
 	@echo "  LLM_BASE_URL: ${LLM_BASE_URL:-not set}"
 	@echo "  LLM_API_KEY: ${LLM_API_KEY:-not set (will use default)}"
+	@echo ""
+	@echo "API Key Status:"
+	@if [ -n "$${OPENAI_API_KEY}" ]; then \
+		echo "  ✅ OpenAI API key configured"; \
+	else \
+		echo "  ❌ OpenAI API key not set"; \
+	fi
+	@if [ -n "$${GOOGLE_API_KEY}" ] || [ -n "$${GEMINI_API_KEY}" ]; then \
+		echo "  ✅ Google/Gemini API key configured"; \
+	else \
+		echo "  ❌ Google/Gemini API key not set"; \
+	fi
+	@if [ -n "$${ANTHROPIC_API_KEY}" ]; then \
+		echo "  ✅ Anthropic API key configured"; \
+	else \
+		echo "  ❌ Anthropic API key not set"; \
+	fi
 	@echo ""
 	@echo "💡 Load .env with: source .env (or use make targets which auto-load)"
 
@@ -206,15 +228,21 @@ litellm-install:
 	@echo "Installing and running LiteLLM in Docker..."
 	@echo "Pulling LiteLLM Docker image..."
 	docker pull $(DOCKER_IMAGE)
-	@echo "Starting LiteLLM container..."
+	@echo "Starting LiteLLM container with configuration..."
 	docker run -d \
 		--name $(CONTAINER_NAME) \
 		-p $(HOST_PORT):$(LITELLM_PORT) \
+		-v $(PWD)/litellm_config.yaml:/app/config.yaml \
 		-e LITELLM_LOG=INFO \
+		-e OPENAI_API_KEY=$${OPENAI_API_KEY:-dummy} \
+		-e ANTHROPIC_API_KEY=$${ANTHROPIC_API_KEY:-dummy} \
 		$(DOCKER_IMAGE) \
+		--config /app/config.yaml \
 		--host 0.0.0.0 \
 		--port $(LITELLM_PORT)
 	@echo "LiteLLM server starting at http://localhost:$(HOST_PORT)"
+	@echo "📋 Available models: gpt-4o, gpt-4o-mini, gpt-3.5-turbo, claude-3-5-sonnet"
+	@echo "🔑 Set OPENAI_API_KEY or ANTHROPIC_API_KEY environment variables"
 	@echo "Use 'make litellm-logs' to see startup logs"
 	@echo "Use 'make litellm-status' to check if ready"
 
@@ -281,11 +309,24 @@ litellm-test:
 	@echo "Testing LiteLLM connection..."
 	@if curl -s http://localhost:$(HOST_PORT)/health > /dev/null; then \
 		echo "✅ LiteLLM is responding at http://localhost:$(HOST_PORT)"; \
-		echo "Health check:"; \
-		curl -s http://localhost:$(HOST_PORT)/health | head -3; \
+		echo ""; \
+		echo "📋 Available models:"; \
+		curl -s -H "Authorization: Bearer sk-1234" http://localhost:$(HOST_PORT)/v1/models | uv run python -m json.tool 2>/dev/null || echo "Could not fetch models"; \
+		echo ""; \
+		echo "🔗 Endpoints:"; \
+		echo "  Health: http://localhost:$(HOST_PORT)/health"; \
+		echo "  Models: http://localhost:$(HOST_PORT)/v1/models"; \
+		echo "  Chat: http://localhost:$(HOST_PORT)/v1/chat/completions"; \
+		echo ""; \
+		echo "🔑 Use master key 'sk-1234' for authentication"; \
 	else \
 		echo "❌ LiteLLM is not responding. Check if container is running with 'make litellm-status'"; \
 	fi
+
+# List available models
+litellm-models:
+	@echo "📋 Available LiteLLM models:"
+	@curl -s -H "Authorization: Bearer sk-1234" http://localhost:$(HOST_PORT)/v1/models | uv run python -m json.tool || echo "❌ Could not fetch models - check if LiteLLM is running"
 
 # Create .env file from template
 setup-env:
