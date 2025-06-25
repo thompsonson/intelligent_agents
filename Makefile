@@ -30,6 +30,7 @@ help:
 	@echo "  litellm-logs    - Show LiteLLM container logs"
 	@echo "  litellm-status  - Check LiteLLM container status"
 	@echo "  litellm-test    - Test LiteLLM connection"
+	@echo "  litellm-test-chat - Test LiteLLM chat completions"
 	@echo "  litellm-models  - List available models"
 	@echo "  litellm-clean   - Remove LiteLLM container"
 	@echo "  setup-all       - Install dependencies + LiteLLM"
@@ -322,6 +323,11 @@ litellm-test:
 	else \
 		echo "❌ LiteLLM is not responding. Check if container is running with 'make litellm-status'"; \
 	fi
+
+# Test LiteLLM chat completions (like the notebook does)
+litellm-test-chat:
+	@echo "Testing LiteLLM chat completions..."
+	@uv run python -c "import json, requests; response = requests.post('http://localhost:$(HOST_PORT)/v1/chat/completions', headers={'Authorization': 'Bearer sk-1234', 'Content-Type': 'application/json'}, json={'model': 'claude-3-haiku', 'messages': [{'role': 'user', 'content': 'Say hello'}], 'max_tokens': 10}); print('✅ Chat completion successful!' if response.status_code == 200 else f'❌ Chat completion failed: {response.status_code} - {response.text}'); data = response.json() if response.status_code == 200 else None; print(f'Response: {data[\"choices\"][0][\"message\"][\"content\"]}') if data else None"
 
 # List available models
 litellm-models:

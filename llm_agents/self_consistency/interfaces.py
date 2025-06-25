@@ -32,13 +32,13 @@ class LiteLLMAdapter(LLMInterface):
         """Initialize LiteLLM adapter with environment variable defaults.
         
         Args:
-            model: LLM model name (defaults to LLM_MODEL env var or "gpt-3.5-turbo")
+            model: LLM model name (defaults to LLM_MODEL env var or "claude-3-haiku")
             temperature: Sampling temperature (defaults to LLM_TEMPERATURE env var or 0.7)
             base_url: Base URL for LLM API (defaults to LLM_BASE_URL env var or "http://localhost:4000")
             api_key: API key (defaults to LLM_API_KEY env var or "sk-1234")
             **kwargs: Additional parameters
         """
-        self.model = model or os.getenv("LLM_MODEL", "gpt-3.5-turbo")
+        self.model = model or os.getenv("LLM_MODEL", "claude-3-haiku")
         self.temperature = temperature if temperature is not None else float(os.getenv("LLM_TEMPERATURE", "0.7"))
         self.base_url = base_url or os.getenv("LLM_BASE_URL", "http://localhost:4000")
         self.api_key = api_key or os.getenv("LLM_API_KEY", "sk-1234")
