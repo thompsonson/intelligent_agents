@@ -27,43 +27,36 @@ Following the Agent Design Process for creating an agent that demonstrates **ref
 
 ### Agent Function
 
-**Percept Sequence → Action mapping:**
+**Simple evaluation flow:**
 
-| Percept Sequence | Action |
-|------------------|--------|
-| [Question, Options] | EVALUATE-OPTIONS |
-| [Question, Options, Analysis] | SELECT-VALID / REFUSE-INVALID |
-| [Question, Options, No-Valid-Found] | PROVIDE-ALTERNATIVE |
+| Step | Action |
+|------|--------|
+| 1. Input | [Question, Options] |
+| 2. Evaluate | LLM evaluates each option |
+| 3. Judge | Select best or refuse all |
+| 4. Output | Selection/refusal + reasoning |
 
 ### Ideal Agent Function
 
 ```python
-function REFLECTIVE-JUDGMENT-AGENT(percept) returns action
-persistent: question, options, analysis_complete, validity_scores
+function REFLECTIVE-JUDGMENT-AGENT(question, options) returns result
+evaluations ← []
 
-if percept contains new question:
-    question ← percept.question
-    options ← percept.options
-    analysis_complete ← false
-    
-if not analysis_complete:
-    action ← EVALUATE-OPTION-VALIDITY(question, options)
-    analysis_complete ← true
+# Evaluate each option using LLM
+for each option in options:
+    evaluation ← LLM-EVALUATE-OPTION(question, option)
+    evaluations.append(evaluation)
+
+# Apply reflective judgment
+if any_option_valid(evaluations):
+    return SELECT-BEST-OPTION(evaluations)
 else:
-    if any_option_valid():
-        action ← SELECT-BEST-OPTION()
-    else:
-        action ← REFUSE-AND-EXPLAIN() or PROVIDE-CORRECT-ANSWER()
-        
-return action
+    return REFUSE-AND-PROVIDE-ALTERNATIVE(question)
 ```
 
 ### Agent Type Selection
 
-**Model-Based Reflex Agent** - requires internal state to:
-- Track question analysis progress
-- Maintain validity assessments for each option
-- Store confidence levels for decisions
+**Model-Based Reflex Agent** - maintains evaluation state for single question processing.
 
 ## Architecture Overview
 
@@ -73,92 +66,56 @@ return action
 classDiagram
     class ReflectiveJudgmentAgent {
         -ReflectiveAgentConfig config
-        -str current_question
-        -List[str] current_options
+        -str question
+        -List[str] options
         -List[OptionEvaluation] evaluations
-        -bool analysis_complete
-        +process_question(question, options, condition) ReflectiveResponse
-        -evaluate_all_options() void
+        +process_question() JudgmentResult
         -has_valid_options() bool
-        -select_best_option() ReflectiveResponse
-        -refuse_and_explain() ReflectiveResponse
-        -reset_state(question, options) void
+        -select_best_option() JudgmentResult
+        -refuse_and_explain() JudgmentResult
     }
 
     class ReflectiveLLMInterface {
         <<interface>>
+        +generate_llm_response(prompt, question) LLMResponse
         +evaluate_option_validity(question, option) OptionEvaluation
         +generate_alternative_answer(question) str
-        +explain_refusal(question, options) str
     }
 
     class ReflectiveLiteLLMAdapter {
         -OpenAI client
-        -List[OptionValidator] validators
         -str model
         -float temperature
         +evaluate_option_validity(question, option) OptionEvaluation
         +generate_alternative_answer(question) str
-        +explain_refusal(question, options) str
-    }
-
-    class OptionValidator {
-        <<interface>>
-        +validate_option(question, option) OptionEvaluation
-    }
-
-    class ArithmeticValidator {
-        +validate_option(question, option) OptionEvaluation
-        -extract_numbers(text) List[float]
-        -compute_answer(question) float
-    }
-
-    class LogicalValidator {
-        +validate_option(question, option) OptionEvaluation
-        -check_logical_consistency(question, option) bool
-    }
-
-    class SafetyValidator {
-        +validate_option(question, option) OptionEvaluation
-        -detect_harmful_content(option) bool
+        +_parse_evaluation(raw_response) OptionEvaluation
     }
 
     class OptionEvaluation {
         +str option_text
         +bool is_valid
-        +float confidence
         +str reasoning
-        +str validation_type
     }
 
-    class ReflectiveResponse {
-        +str action_type
+    class JudgmentResult {
+        +str question
+        +List[str] options
+        +List[OptionEvaluation] evaluations
+        +str action_taken
         +Optional[str] selected_option
-        +str explanation
-        +float confidence
         +Optional[str] alternative_answer
     }
 
     class ReflectiveAgentConfig {
         +ReflectiveLLMInterface llm_interface
-        +float validity_threshold
         +bool enable_alternative_answers
-        +bool enable_explanation
-        +List[str] reflection_conditions
-        +Dict[str, str] prompt_templates
     }
 
     ReflectiveJudgmentAgent --> ReflectiveAgentConfig
-    ReflectiveJudgmentAgent --> ReflectiveResponse
+    ReflectiveJudgmentAgent --> JudgmentResult
     ReflectiveJudgmentAgent --> OptionEvaluation
     ReflectiveAgentConfig --> ReflectiveLLMInterface
     ReflectiveLiteLLMAdapter --|> ReflectiveLLMInterface
-    ReflectiveLiteLLMAdapter --> OptionValidator
-    ArithmeticValidator --|> OptionValidator
-    LogicalValidator --|> OptionValidator
-    SafetyValidator --|> OptionValidator
-    OptionValidator --> OptionEvaluation
-    ReflectiveLLMInterface --> OptionEvaluation
 ```
 
 ### Sequence Diagram
@@ -168,43 +125,33 @@ sequenceDiagram
     participant User
     participant Agent as ReflectiveJudgmentAgent  
     participant LLM as ReflectiveLLMInterface
-    participant Validator as OptionValidator
-    participant Config as ReflectiveAgentConfig
 
-    User->>Agent: process_question(question, options, condition)
-    Agent->>Agent: reset_state(question, options)
+    User->>Agent: new Agent(config, question, options)
+    User->>Agent: process_question()
     
     Note over Agent: Evaluation Phase
-    Agent->>Agent: evaluate_all_options()
-    
     loop For each option
         Agent->>LLM: evaluate_option_validity(question, option)
-        LLM->>Validator: validate_option(question, option)
-        Validator-->>LLM: OptionEvaluation
+        LLM->>LLM: _parse_evaluation(raw_llm_response)
         LLM-->>Agent: OptionEvaluation
         Agent->>Agent: store evaluation
     end
     
     Note over Agent: Judgment Phase
     Agent->>Agent: has_valid_options()
-    Agent->>Config: validity_threshold
-    Config-->>Agent: threshold value
     
     alt Valid options exist
         Agent->>Agent: select_best_option()
-        Agent->>Agent: find highest confidence valid option
-        Agent-->>User: ReflectiveResponse(action="select")
+        Agent-->>User: JudgmentResult(action="select")
     else No valid options
         Agent->>Agent: refuse_and_explain()
-        Agent->>LLM: explain_refusal(question, options)
-        LLM-->>Agent: refusal explanation
         
         alt Alternative answers enabled
             Agent->>LLM: generate_alternative_answer(question)
             LLM-->>Agent: correct answer
-            Agent-->>User: ReflectiveResponse(action="alternative")
+            Agent-->>User: JudgmentResult(action="alternative")
         else Simple refusal
-            Agent-->>User: ReflectiveResponse(action="refuse")
+            Agent-->>User: JudgmentResult(action="refuse")
         end
     end
 ```
@@ -213,52 +160,56 @@ sequenceDiagram
 
 ### Core Components
 
-**1. Option Validator**
+**1. Simple LLM Evaluation**
 ```python
-class OptionValidator:
-    def evaluate_validity(self, question: str, options: List[str]) -> Dict[str, float]:
-        # Returns validity scores for each option
-        pass
-    
-    def has_valid_option(self, scores: Dict[str, float]) -> bool:
-        return any(score > self.validity_threshold for score in scores.values())
+class ReflectiveLiteLLMAdapter:
+    def evaluate_option_validity(self, question: str, option: str) -> OptionEvaluation:
+        prompt = f"Question: {question}\nOption: {option}\nIs this option correct? Explain."
+        response = self.client.chat.completions.create(...)
+        return self._parse_evaluation(response.choices[0].message.content)
 ```
 
-**2. Reflective Judgment Engine**
+**2. Straightforward Agent Logic**
 ```python
-class ReflectiveAgent:
-    def __init__(self, validator: OptionValidator, llm_interface: LLMInterface):
-        self.validator = validator
-        self.llm = llm_interface
-        self.confidence_threshold = 0.8
-    
-    def process_question(self, question: str, options: List[str]) -> Response:
-        # 1. Evaluate option validity
-        validity_scores = self.validator.evaluate_validity(question, options)
+class ReflectiveJudgmentAgent:
+    def process_question(self) -> JudgmentResult:
+        # Evaluate each option
+        for option in self._options:
+            evaluation = self._config.llm_interface.evaluate_option_validity(
+                self._question, option
+            )
+            self._evaluations.append(evaluation)
         
-        # 2. Apply reflective judgment
-        if self.validator.has_valid_option(validity_scores):
-            return self._select_best_option(validity_scores)
+        # Select or refuse
+        if any(eval.is_valid for eval in self._evaluations):
+            return self._select_best_option()
         else:
-            return self._refuse_and_explain(question, options)
+            return self._refuse_and_explain()
 ```
 
-**3. Response Types**
+**3. Clean Domain Objects**
 ```python
 @dataclass(frozen=True)
-class ReflectiveResponse:
-    action_type: str  # "select", "refuse", "alternative"
+class OptionEvaluation:
+    option_text: str
+    is_valid: bool
+    reasoning: str
+
+@dataclass(frozen=True)
+class JudgmentResult:
+    question: str
+    options: List[str]
+    evaluations: List[OptionEvaluation]
+    action_taken: str  # "select", "refuse", "alternative"
     selected_option: Optional[str]
-    explanation: str
-    confidence: float
     alternative_answer: Optional[str]
 ```
 
 ### Key Differences from Self-Consistency Agent
 
-- **Focus**: Critical evaluation vs. multiple sampling
-- **State**: Validity analysis vs. response collection  
+- **Focus**: Critical evaluation vs. consensus building
+- **Method**: Single LLM evaluation vs. multiple sampling  
 - **Decision**: Refusal capability vs. majority voting
-- **Output**: Explanation of reasoning vs. consensus answer
+- **Output**: Reasoning about validity vs. most frequent answer
 
-This agent prioritizes **critical thinking over instruction compliance**, implementing the core insight from the paper that alignment should preserve reflective judgment capabilities.
+This agent prioritizes **critical thinking over instruction compliance**, implementing the paper's core insight through simple prompting.
