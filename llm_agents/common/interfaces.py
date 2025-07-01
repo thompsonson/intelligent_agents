@@ -6,7 +6,7 @@ concrete implementations for different LLM providers.
 
 import os
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Any, Dict
 from openai import OpenAI
 from .domain import LLMResponse
 
@@ -28,7 +28,7 @@ class LiteLLMAdapter(LLMInterface):
                  temperature: Optional[float] = None,
                  base_url: Optional[str] = None,
                  api_key: Optional[str] = None,
-                 **kwargs):
+                 **kwargs: Any):
         """Initialize LiteLLM adapter with environment variable defaults.
         
         Args:
@@ -42,7 +42,7 @@ class LiteLLMAdapter(LLMInterface):
         self.temperature = temperature if temperature is not None else float(os.getenv("LLM_TEMPERATURE", "0.7"))
         self.base_url = base_url or os.getenv("LLM_BASE_URL", "http://localhost:4000")
         self.api_key = api_key or os.getenv("LLM_API_KEY", "sk-1234")
-        self.kwargs = kwargs
+        self.kwargs: Dict[str, Any] = kwargs
         
         # Initialize OpenAI client pointing to LiteLLM Docker container
         self.client = OpenAI(
@@ -52,6 +52,7 @@ class LiteLLMAdapter(LLMInterface):
     
     def generate_llm_response(self, prompt: str, question: str) -> LLMResponse:
         """Generate LLM response using LiteLLM via OpenAI client."""
+        
         # Combine prompt and question
         full_prompt = f"{prompt}\n\nQuestion: {question}"
         
@@ -71,6 +72,7 @@ class LiteLLMAdapter(LLMInterface):
     
     def _parse_llm_output(self, raw_response: str) -> LLMResponse:
         """Parse raw LLM output into structured LLMResponse."""
+        
         # Simple parsing logic - look for "The answer is X" pattern
         lines = raw_response.split('\n')
         answer_line = None

@@ -6,9 +6,10 @@ from unittest.mock import Mock, MagicMock
 from collections import Counter
 
 from llm_agents.self_consistency.agent import SelfConsistencyAgent
-from llm_agents.self_consistency.domain import LLMResponse, ConsensusResult
+from llm_agents.self_consistency.domain import ConsensusResult
+from llm_agents.common.domain import LLMResponse
 from llm_agents.self_consistency.config import AgentConfig
-from llm_agents.self_consistency.interfaces import LLMInterface
+from llm_agents.common.interfaces import LLMInterface
 
 
 class MockLLMInterface(LLMInterface):

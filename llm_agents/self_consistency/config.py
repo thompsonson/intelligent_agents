@@ -5,7 +5,7 @@ following the established patterns from the maze solver configuration.
 """
 
 from dataclasses import dataclass
-from .interfaces import LLMInterface
+from ..common.interfaces import LLMInterface
 
 
 @dataclass

@@ -5,8 +5,8 @@ from unittest.mock import Mock, patch
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 from openai.types.chat.chat_completion import Choice
 
-from llm_agents.self_consistency.interfaces import LiteLLMAdapter
-from llm_agents.self_consistency.domain import LLMResponse
+from llm_agents.common.interfaces import LiteLLMAdapter
+from llm_agents.common.domain import LLMResponse
 
 
 class TestLLMResponseParsing:
@@ -98,7 +98,7 @@ The answer is definitely yes."""
 class TestLiteLLMAdapterIntegration:
     """Integration test with mocked OpenAI client."""
     
-    @patch('llm_agents.self_consistency.interfaces.OpenAI')
+    @patch('llm_agents.common.interfaces.OpenAI')
     def test_generate_llm_response_success(self, mock_openai_class):
         """Test successful LLM response generation."""
         # Setup mock OpenAI client
@@ -140,7 +140,7 @@ class TestLiteLLMAdapterIntegration:
         assert result.reasoning == "I need to think about this."
         assert result.answer == "42"
     
-    @patch('llm_agents.self_consistency.interfaces.OpenAI')
+    @patch('llm_agents.common.interfaces.OpenAI')
     def test_generate_llm_response_with_kwargs(self, mock_openai_class):
         """Test LLM response generation with additional kwargs."""
         mock_client = Mock()
