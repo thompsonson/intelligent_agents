@@ -23,6 +23,11 @@ help:
 	@echo "  clean         - Clean up temporary files"
 	@echo "  check-env     - Check environment setup"
 	@echo ""
+	@echo "Gradio interface:"
+	@echo "  gradio-dev    - Launch Gradio interface in development mode"
+	@echo "  gradio-serve  - Launch Gradio interface for production"
+	@echo "  gradio-test   - Test Gradio interface components"
+	@echo ""
 	@echo "LiteLLM targets:"
 	@echo "  litellm-install - Install and run LiteLLM in Docker"
 	@echo "  litellm-start   - Start LiteLLM Docker container"
@@ -51,6 +56,8 @@ install: .venv
 	uv pip install ipykernel jupyter notebook
 	@echo "Installing data science and visualization packages..."
 	uv pip install networkx matplotlib pandas mazelib imageio seaborn
+	@echo "Installing web interface packages..."
+	uv pip install gradio
 
 # Run tests
 test:
@@ -358,3 +365,77 @@ setup-all: install setup-env litellm-install
 	@echo "1. Edit .env file with your LLM configuration"
 	@echo "2. Run 'make test' to verify everything works"
 	@echo "3. Check 'make litellm-status' to confirm LiteLLM is ready"
+	@echo "4. Run 'make gradio-dev' to launch the web interface"
+
+# Gradio interface targets
+gradio-dev:
+	@echo "🚀 Launching Gradio interface in development mode..."
+	@if [ -z "$(LLM_MODEL)" ]; then \
+		echo "⚠️  LLM_MODEL not set. Using default configuration."; \
+		echo "💡 Run 'make setup-env' and edit .env for custom settings"; \
+	fi
+	@echo "📍 Interface will be available at: http://localhost:7860"
+	@echo "🔗 Make sure LiteLLM is running: make litellm-status"
+	@echo ""
+	uv run python -m llm_agents.gradio_interface.app
+
+gradio-serve:
+	@echo "🌐 Launching Gradio interface for production..."
+	@if [ -z "$(LLM_MODEL)" ]; then \
+		echo "❌ LLM_MODEL not set. Run 'make setup-env' first"; \
+		exit 1; \
+	fi
+	@echo "📍 Interface will be available at: http://0.0.0.0:7860"
+	@echo "🔗 Make sure LiteLLM is running: make litellm-status"
+	@echo ""
+	uv run python -c "\
+from llm_agents.gradio_interface import launch_interface; \
+launch_interface(share=False, server_name='0.0.0.0', server_port=7860, debug=False)"
+
+gradio-test:
+	@echo "🧪 Testing Gradio interface components..."
+	@uv run python -c "import sys; sys.path.insert(0, '.'); exec(open('llm_agents/gradio_interface/test_components.py').read())" 2>/dev/null || \
+	uv run python -c "\
+from llm_agents.gradio_interface.agent_wrapper import AgentWrapper; \
+from llm_agents.gradio_interface.config_manager import ConfigManager; \
+from llm_agents.gradio_interface.examples import Examples; \
+print('✅ All Gradio components imported successfully'); \
+config_manager = ConfigManager(); \
+examples = Examples(); \
+print('✅ Core components initialized'); \
+print('📋 Available models:', list(config_manager.get_available_models().keys())); \
+print('📝 Example questions available:', len(examples.get_sample_questions()), 'categories'); \
+print('✅ Gradio interface components are working correctly')"
+
+# Test Gradio with live LLM connection
+gradio-test-live:
+	@echo "🔗 Testing Gradio interface with live LLM connection..."
+	@if [ -z "$(LLM_MODEL)" ]; then \
+		echo "❌ LLM_MODEL not set. Run 'make setup-env' first"; \
+		exit 1; \
+	fi
+	@echo "Using model: $(LLM_MODEL) at $(or $(LLM_BASE_URL),http://localhost:4000)"
+	@echo "⚠️  This will make real API calls to your LLM provider"
+	@echo "Press Ctrl+C within 5 seconds to cancel..."
+	@sleep 5
+	@uv run python -c "\
+from llm_agents.gradio_interface.agent_wrapper import AgentWrapper, AgentType;\
+from llm_agents.gradio_interface.config_manager import ConfigManager;\
+print('🔧 Initializing components...');\
+config_manager = ConfigManager();\
+llm_adapter = config_manager.create_llm_adapter();\
+agent_wrapper = AgentWrapper(llm_adapter);\
+print('✅ Components initialized');\
+print('🔗 Testing LLM connection...');\
+if agent_wrapper.validate_llm_connection():\
+    print('✅ LLM connection successful');\
+    print('🧪 Testing single agent processing...');\
+    result = agent_wrapper.process_question('What is 2+2?', AgentType.SELF_REFLECTION, 3, 0.8, 2, 'Answer directly:');\
+    print(f'✅ Single agent test: {result.final_answer} (confidence: {result.confidence:.3f})');\
+    print('🧪 Testing agent comparison...');\
+    comparison = agent_wrapper.compare_agents('What is 3+3?', 3, 0.8, 2, 'Answer directly:');\
+    print(f'✅ Comparison test completed with {len(comparison)} results');\
+    print('🎉 All Gradio interface tests passed!');\
+else:\
+    print('❌ LLM connection failed. Check LiteLLM status with: make litellm-status');\
+    exit(1)"

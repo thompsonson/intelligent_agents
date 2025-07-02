@@ -72,41 +72,168 @@ class LiteLLMAdapter(LLMInterface):
     
     def _parse_llm_output(self, raw_response: str) -> LLMResponse:
         """Parse raw LLM output into structured LLMResponse."""
+        import re
         
-        # Simple parsing logic - look for "The answer is X" pattern
-        lines = raw_response.split('\n')
+        # Clean up the response
+        raw_response = raw_response.strip()
+        
+        # Look for answer patterns in order of preference
+        answer_patterns = [
+            r'Answer:\s*(.+?)(?:\n|$)',  # Answer: <answer>
+            r'The answer is\s*(.+?)(?:\n|$)',  # The answer is <answer>
+            r'Final answer:\s*(.+?)(?:\n|$)',  # Final answer: <answer>
+            r'Answer\s*=\s*(.+?)(?:\n|$)',  # Answer = <answer>
+        ]
+        
+        answer = None
         answer_line = None
+        answer_index = -1
         
-        for line in lines:
-            line = line.strip()
-            if line.lower().startswith('the answer is'):
-                answer_line = line
-                break
-            elif line.lower().startswith('answer:'):
-                answer_line = line
+        for pattern in answer_patterns:
+            match = re.search(pattern, raw_response, re.IGNORECASE | re.MULTILINE)
+            if match:
+                answer = match.group(1).strip()
+                answer_line = match.group(0).strip()
+                answer_index = match.start()
                 break
         
-        if answer_line:
-            # Extract answer from line
-            if 'the answer is' in answer_line.lower():
-                # Use case-insensitive split
-                lower_line = answer_line.lower()
-                split_pos = lower_line.find('the answer is') + len('the answer is')
-                answer = answer_line[split_pos:].strip()
-            else:
-                answer = answer_line.split(':', 1)[1].strip()
+        if answer:
+            # Clean up the answer - remove common leading and trailing phrases
+            answer = answer.strip()
+            
+            # Remove common leading phrases that might be included
+            leading_phrases = [
+                r'^(?:So,?\s*)?(?:the\s+)?(?:next\s+)?(?:number|term|value|answer)\s+(?:in\s+the\s+sequence\s+)?(?:is|would\s+be)\s*',
+                r'^(?:Therefore,?\s*)?(?:the\s+)?(?:next\s+)?(?:number|term|value|answer)\s+(?:in\s+the\s+sequence\s+)?(?:is|would\s+be)\s*',
+                r'^(?:Thus,?\s*)?(?:the\s+)?(?:next\s+)?(?:number|term|value|answer)\s+(?:in\s+the\s+sequence\s+)?(?:is|would\s+be)\s*',
+                r'^(?:Hence,?\s*)?(?:the\s+)?(?:next\s+)?(?:number|term|value|answer)\s+(?:in\s+the\s+sequence\s+)?(?:is|would\s+be)\s*',
+                r'^(?:So,?\s*)?(?:I\s+think\s+)?(?:the\s+)?(?:answer|result|solution)\s+(?:is|would\s+be)\s*',
+                r'^(?:Therefore,?\s*)?(?:I\s+think\s+)?(?:the\s+)?(?:answer|result|solution)\s+(?:is|would\s+be)\s*',
+                r'^(?:The\s+)?(?:correct\s+)?(?:answer|result|solution)\s+(?:is|would\s+be)\s*',
+                r'^(?:It\s+(?:is|would\s+be))\s*',
+            ]
+            
+            for phrase_pattern in leading_phrases:
+                answer = re.sub(phrase_pattern, '', answer, flags=re.IGNORECASE)
+                answer = answer.strip()
+            
+            # Remove trailing punctuation and phrases
+            answer = re.sub(r'[.!?]*$', '', answer)  # Remove trailing punctuation
+            
+            # Remove common trailing phrases
+            trailing_phrases = [
+                r'\s*(?:is\s+the|are\s+the)\s*(?:answer|solution|result).*$',
+                r'\s*(?:is|are)\s*(?:correct|right|the\s+answer).*$',
+                r'\s*(?:therefore|thus|hence|so).*$',
+                r'\s*(?:in\s+the\s+sequence).*$',
+                r'\s*(?:would\s+be\s+the\s+next).*$',
+            ]
+            
+            for phrase_pattern in trailing_phrases:
+                answer = re.sub(phrase_pattern, '', answer, flags=re.IGNORECASE)
+                answer = answer.strip()
+            
+            # Additional cleanup for numeric answers - extract just the number/value
+            if answer:
+                # If the answer contains multiple words, try to extract just the key value
+                words = answer.split()
+                if len(words) > 1:
+                    # Look for numeric values first
+                    for word in words:
+                        # Check if word is a number (integer, decimal, fraction, etc.)
+                        if re.match(r'^-?\d+(?:\.\d+)?(?:/\d+)?$', word):
+                            answer = word
+                            break
+                    else:
+                        # If no clear number found, look for mathematical expressions
+                        for word in words:
+                            if re.match(r'^-?\d+(?:\.\d+)?(?:[+\-*/]\d+(?:\.\d+)?)*$', word):
+                                answer = word
+                                break
+                        else:
+                            # If still no match, try to find the most relevant word
+                            # Keep the last word that looks like a value/answer
+                            for word in reversed(words):
+                                if not re.match(r'^(?:the|a|an|is|are|be|in|of|to|for|and|or|but)$', word, re.IGNORECASE):
+                                    answer = word
+                                    break
             
             # Everything before the answer line is reasoning
-            answer_index = raw_response.find(answer_line)
-            reasoning = raw_response[:answer_index].strip()
+            if answer_index >= 0:
+                reasoning = raw_response[:answer_index].strip()
+            elif answer_line:
+                reasoning = raw_response.replace(answer_line, '').strip()
+            else:
+                reasoning = raw_response
         else:
-            # Fallback: use last line as answer, everything else as reasoning
-            lines = [l.strip() for l in lines if l.strip()]
+            # Enhanced fallback: try to find the most likely answer
+            lines = [l.strip() for l in raw_response.split('\n') if l.strip()]
+            
             if lines:
-                answer = lines[-1]
-                reasoning = '\n'.join(lines[:-1])
+                # Look for lines that might contain the answer
+                answer_candidates = []
+                
+                for line in lines:
+                    # Skip very long lines (likely reasoning)
+                    if len(line) > 100:
+                        continue
+                    
+                    # Skip lines that are clearly questions
+                    if line.endswith('?'):
+                        continue
+                    
+                    # Skip lines that are clearly explanatory
+                    if any(phrase in line.lower() for phrase in ['because', 'since', 'this is', 'we can see', 'looking at']):
+                        continue
+                    
+                    # Apply same cleanup as above
+                    cleaned_line = line
+                    for phrase_pattern in [
+                        r'^(?:So,?\s*)?(?:the\s+)?(?:next\s+)?(?:number|term|value|answer)\s+(?:in\s+the\s+sequence\s+)?(?:is|would\s+be)\s*',
+                        r'^(?:Therefore,?\s*)?(?:the\s+)?(?:next\s+)?(?:number|term|value|answer)\s+(?:in\s+the\s+sequence\s+)?(?:is|would\s+be)\s*',
+                        r'^(?:Thus,?\s*)?(?:the\s+)?(?:next\s+)?(?:number|term|value|answer)\s+(?:in\s+the\s+sequence\s+)?(?:is|would\s+be)\s*',
+                        r'^(?:Hence,?\s*)?(?:the\s+)?(?:next\s+)?(?:number|term|value|answer)\s+(?:in\s+the\s+sequence\s+)?(?:is|would\s+be)\s*',
+                    ]:
+                        cleaned_line = re.sub(phrase_pattern, '', cleaned_line, flags=re.IGNORECASE).strip()
+                    
+                    # Remove trailing punctuation
+                    cleaned_line = re.sub(r'[.!?]*$', '', cleaned_line).strip()
+                    
+                    # Extract just numbers/values if possible
+                    words = cleaned_line.split()
+                    for word in words:
+                        if re.match(r'^-?\d+(?:\.\d+)?(?:/\d+)?$', word):
+                            answer_candidates.append(word)
+                            break
+                    else:
+                        # If no number found, keep the cleaned line if it's short
+                        if len(cleaned_line) < 50 and cleaned_line:
+                            answer_candidates.append(cleaned_line)
+                
+                # Take the last suitable candidate or the last line
+                if answer_candidates:
+                    answer = answer_candidates[-1]
+                else:
+                    answer = lines[-1]
+                
+                # Find where this answer appears and use everything before as reasoning
+                answer_index = raw_response.rfind(answer)
+                if answer_index >= 0:
+                    reasoning = raw_response[:answer_index].strip()
+                else:
+                    reasoning = '\n'.join(lines[:-1])
             else:
                 reasoning = raw_response
                 answer = "No clear answer found"
+        
+        # Final cleanup of answer
+        if answer and answer != "No clear answer found":
+            # Remove quotes if the entire answer is quoted
+            if ((answer.startswith('"') and answer.endswith('"')) or 
+                (answer.startswith("'") and answer.endswith("'"))):
+                answer = answer[1:-1]
+            
+            # Clean up whitespace
+            answer = ' '.join(answer.split())
         
         return LLMResponse(reasoning=reasoning, answer=answer)
