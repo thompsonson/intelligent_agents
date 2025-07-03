@@ -3,8 +3,8 @@
 import pytest
 from unittest.mock import Mock
 
-from llm_agents.self_consistency.interfaces import LLMInterface
-from llm_agents.self_consistency.domain import LLMResponse
+from llm_agents.common.interfaces import LLMInterface
+from llm_agents.common.domain import LLMResponse
 from llm_agents.self_consistency.config import AgentConfig
 
 

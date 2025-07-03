@@ -7,7 +7,7 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live
+.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live benchmark-gsm8k benchmark-gsm8k-reflection
 
 # Default target
 help:
@@ -18,10 +18,19 @@ help:
 	@echo "  test-coverage - Run tests with coverage report"
 	@echo "  test-integration - Run integration tests with env vars"
 	@echo "  test-agent-live - Test agent with real LLM (requires setup)"
+	@echo "  benchmark-gsm8k - Run GSM8K mathematical reasoning benchmark"
+	@echo "                    Usage: make benchmark-gsm8k [MODEL=model-name] [ATTEMPTS='1 3 5']"
+	@echo "  benchmark-gsm8k-reflection - Run GSM8K benchmark with SelfReflectionAgent"
+	@echo "                               Usage: make benchmark-gsm8k-reflection [MODEL=model-name] [CONFIDENCE=0.8]"
 	@echo "  lint          - Run linting checks"
 	@echo "  format        - Format code"
 	@echo "  clean         - Clean up temporary files"
 	@echo "  check-env     - Check environment setup"
+	@echo ""
+	@echo "Gradio interface:"
+	@echo "  gradio-dev    - Launch Gradio interface in development mode"
+	@echo "  gradio-serve  - Launch Gradio interface for production"
+	@echo "  gradio-test   - Test Gradio interface components"
 	@echo ""
 	@echo "LiteLLM targets:"
 	@echo "  litellm-install - Install and run LiteLLM in Docker"
@@ -51,6 +60,8 @@ install: .venv
 	uv pip install ipykernel jupyter notebook
 	@echo "Installing data science and visualization packages..."
 	uv pip install networkx matplotlib pandas mazelib imageio seaborn
+	@echo "Installing web interface packages..."
+	uv pip install gradio
 
 # Run tests
 test:
@@ -358,3 +369,153 @@ setup-all: install setup-env litellm-install
 	@echo "1. Edit .env file with your LLM configuration"
 	@echo "2. Run 'make test' to verify everything works"
 	@echo "3. Check 'make litellm-status' to confirm LiteLLM is ready"
+	@echo "4. Run 'make gradio-dev' to launch the web interface"
+
+# Gradio interface targets
+gradio-dev:
+	@echo "🚀 Launching Gradio interface in development mode..."
+	@if [ -z "$(LLM_MODEL)" ]; then \
+		echo "⚠️  LLM_MODEL not set. Using default configuration."; \
+		echo "💡 Run 'make setup-env' and edit .env for custom settings"; \
+	fi
+	@echo "📍 Interface will be available at: http://localhost:7860"
+	@echo "🔗 Make sure LiteLLM is running: make litellm-status"
+	@echo ""
+	uv run python -m llm_agents.gradio_interface.app
+
+gradio-serve:
+	@echo "🌐 Launching Gradio interface for production..."
+	@if [ -z "$(LLM_MODEL)" ]; then \
+		echo "❌ LLM_MODEL not set. Run 'make setup-env' first"; \
+		exit 1; \
+	fi
+	@echo "📍 Interface will be available at: http://0.0.0.0:7860"
+	@echo "🔗 Make sure LiteLLM is running: make litellm-status"
+	@echo ""
+	uv run python -c "\
+from llm_agents.gradio_interface import launch_interface; \
+launch_interface(share=False, server_name='0.0.0.0', server_port=7860, debug=False)"
+
+gradio-test:
+	@echo "🧪 Testing Gradio interface components..."
+	@uv run python -c "import sys; sys.path.insert(0, '.'); exec(open('llm_agents/gradio_interface/test_components.py').read())" 2>/dev/null || \
+	uv run python -c "\
+from llm_agents.gradio_interface.agent_wrapper import AgentWrapper; \
+from llm_agents.gradio_interface.config_manager import ConfigManager; \
+from llm_agents.gradio_interface.examples import Examples; \
+print('✅ All Gradio components imported successfully'); \
+config_manager = ConfigManager(); \
+examples = Examples(); \
+print('✅ Core components initialized'); \
+print('📋 Available models:', list(config_manager.get_available_models().keys())); \
+print('📝 Example questions available:', len(examples.get_sample_questions()), 'categories'); \
+print('✅ Gradio interface components are working correctly')"
+
+# Test Gradio with live LLM connection
+gradio-test-live:
+	@echo "🔗 Testing Gradio interface with live LLM connection..."
+	@if [ -z "$(LLM_MODEL)" ]; then \
+		echo "❌ LLM_MODEL not set. Run 'make setup-env' first"; \
+		exit 1; \
+	fi
+	@echo "Using model: $(LLM_MODEL) at $(or $(LLM_BASE_URL),http://localhost:4000)"
+	@echo "⚠️  This will make real API calls to your LLM provider"
+	@echo "Press Ctrl+C within 5 seconds to cancel..."
+	@sleep 5
+	@uv run python -c "\
+from llm_agents.gradio_interface.agent_wrapper import AgentWrapper, AgentType;\
+from llm_agents.gradio_interface.config_manager import ConfigManager;\
+print('🔧 Initializing components...');\
+config_manager = ConfigManager();\
+llm_adapter = config_manager.create_llm_adapter();\
+agent_wrapper = AgentWrapper(llm_adapter);\
+print('✅ Components initialized');\
+print('🔗 Testing LLM connection...');\
+if agent_wrapper.validate_llm_connection():\
+    print('✅ LLM connection successful');\
+    print('🧪 Testing single agent processing...');\
+    result = agent_wrapper.process_question('What is 2+2?', AgentType.SELF_REFLECTION, 3, 0.8, 2, 'Answer directly:');\
+    print(f'✅ Single agent test: {result.final_answer} (confidence: {result.confidence:.3f})');\
+    print('🧪 Testing agent comparison...');\
+    comparison = agent_wrapper.compare_agents('What is 3+3?', 3, 0.8, 2, 'Answer directly:');\
+    print(f'✅ Comparison test completed with {len(comparison)} results');\
+    print('🎉 All Gradio interface tests passed!');\
+else:\
+    print('❌ LLM connection failed. Check LiteLLM status with: make litellm-status');\
+    exit(1)"
+
+# Run GSM8K mathematical reasoning benchmark
+# Usage: make benchmark-gsm8k [MODEL=model-name] [ATTEMPTS="1 3 5 10"]
+benchmark-gsm8k:
+	@echo "🧮 Running GSM8K Mathematical Reasoning Benchmark"
+	@echo "=" * 60
+	@echo "Testing self-consistency agent effectiveness with mathematical reasoning"
+	@echo "Following Tyler Burleigh's methodology: https://tylerburleigh.com/blog/2023/12/04/"
+	@echo ""
+	@if [ -n "$(MODEL)" ]; then \
+		echo "📝 Using specified model: $(MODEL)"; \
+	else \
+		echo "📝 Using default model from .env file"; \
+	fi
+	@echo "🌐 LiteLLM endpoint: $(or $(LLM_BASE_URL),http://localhost:4000)"
+	@echo "⚠️  This will make real API calls to your LLM provider"
+	@if [ -n "$(ATTEMPTS)" ]; then \
+		echo "📊 Testing with custom attempts: $(ATTEMPTS)"; \
+	else \
+		echo "📊 Testing with default attempts: [1, 3, 5, 10]"; \
+	fi
+	@echo "Press Ctrl+C within 5 seconds to cancel..."
+	@sleep 5
+	@echo ""
+	@echo "🚀 Starting benchmark..."
+	@if [ -n "$(MODEL)" ] && [ -n "$(ATTEMPTS)" ]; then \
+		uv run python llm_agents/benchmark/run_gsm8k.py --model $(MODEL) --attempts $(ATTEMPTS); \
+	elif [ -n "$(MODEL)" ]; then \
+		uv run python llm_agents/benchmark/run_gsm8k.py --model $(MODEL); \
+	elif [ -n "$(ATTEMPTS)" ]; then \
+		uv run python llm_agents/benchmark/run_gsm8k.py --attempts $(ATTEMPTS); \
+	else \
+		uv run python llm_agents/benchmark/run_gsm8k.py; \
+	fi
+
+# Run GSM8K mathematical reasoning benchmark with SelfReflectionAgent
+# Usage: make benchmark-gsm8k-reflection [MODEL=model-name] [CONFIDENCE=0.8] [ENTROPY_MODE=combined]
+benchmark-gsm8k-reflection:
+	@echo "🔍 Running GSM8K SelfReflectionAgent Benchmark with Entropy Tracking"
+	@echo "=" * 70
+	@echo "Testing confidence-aware early stopping with mathematical reasoning"
+	@echo "Enhanced with entropy evolution tracking and SQLite database storage"
+	@echo ""
+	@if [ -n "$(MODEL)" ]; then \
+		echo "📝 Using specified model: $(MODEL)"; \
+	else \
+		echo "📝 Using default model from .env file"; \
+	fi
+	@echo "🌐 LiteLLM endpoint: $(or $(LLM_BASE_URL),http://localhost:4000)"
+	@echo "⚠️  This will make real API calls to your LLM provider"
+	@if [ -n "$(CONFIDENCE)" ]; then \
+		echo "🎯 Using confidence threshold: $(CONFIDENCE)"; \
+	else \
+		echo "🎯 Using default confidence threshold: 0.8"; \
+	fi
+	@if [ -n "$(ENTROPY_MODE)" ]; then \
+		echo "🌀 Using entropy mode: $(ENTROPY_MODE)"; \
+	else \
+		echo "🌀 Using default entropy mode: combined"; \
+	fi
+	@echo "💾 Results will be stored in SQLite database"
+	@echo "Press Ctrl+C within 5 seconds to cancel..."
+	@sleep 5
+	@echo ""
+	@echo "🚀 Starting reflection benchmark..."
+	@if [ -n "$(MODEL)" ] && [ -n "$(CONFIDENCE)" ] && [ -n "$(ENTROPY_MODE)" ]; then \
+		uv run python llm_agents/benchmark/run_gsm8k_reflection.py --model $(MODEL) --confidence-threshold $(CONFIDENCE) --entropy-mode $(ENTROPY_MODE) --verbose; \
+	elif [ -n "$(MODEL)" ] && [ -n "$(CONFIDENCE)" ]; then \
+		uv run python llm_agents/benchmark/run_gsm8k_reflection.py --model $(MODEL) --confidence-threshold $(CONFIDENCE) --verbose; \
+	elif [ -n "$(MODEL)" ]; then \
+		uv run python llm_agents/benchmark/run_gsm8k_reflection.py --model $(MODEL) --verbose; \
+	elif [ -n "$(CONFIDENCE)" ]; then \
+		uv run python llm_agents/benchmark/run_gsm8k_reflection.py --confidence-threshold $(CONFIDENCE) --verbose; \
+	else \
+		uv run python llm_agents/benchmark/run_gsm8k_reflection.py --verbose; \
+	fi

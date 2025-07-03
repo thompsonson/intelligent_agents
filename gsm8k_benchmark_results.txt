@@ -1,0 +1,55 @@
+GSM8K Benchmark Results
+==================================================
+
+🎯 GSM8K Benchmark Results Summary
+========================================
+
+ 1 attempt(s): 100.0% accuracy
+
+🔬 This demonstrates the self-consistency approach where
+   multiple independent reasoning paths improve accuracy
+   through majority voting aggregation.
+
+
+1 ATTEMPTS CONFIGURATION
+------------------------------
+
+Question: easy_arithmetic
+Text: Sarah has 12 apples. She gives away 3 apples to her friend. How many apples does Sarah have left?
+Expected: 9
+Predicted: 9
+Correct: True
+Confidence: 1.000
+Responses: ['9']
+
+Question: multi_step_calculation
+Text: A store sells books for $8 each. If Tom buys 5 books and pays with a $50 bill, how much change does he get?
+Expected: 10
+Predicted: 10
+Correct: True
+Confidence: 1.000
+Responses: ['10']
+
+Question: percentage_problem
+Text: In a class of 30 students, 60% are girls. How many boys are in the class?
+Expected: 12
+Predicted: 12
+Correct: True
+Confidence: 1.000
+Responses: ['12']
+
+Question: rate_time_distance
+Text: A car travels at 60 mph for 2.5 hours, then 40 mph for 1.5 hours. What is the total distance traveled?
+Expected: 210
+Predicted: 210
+Correct: True
+Confidence: 1.000
+Responses: ['210']
+
+Question: complex_word_problem
+Text: A bakery made 145 cupcakes. They sold 80% of them. The remaining cupcakes are packed into boxes of 6. How many full boxes can they fill with the remaining cupcakes?
+Expected: 4
+Predicted: 4
+Correct: True
+Confidence: 1.000
+Responses: ['4']

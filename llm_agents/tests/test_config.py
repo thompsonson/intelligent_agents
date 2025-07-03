@@ -5,8 +5,8 @@ import os
 from unittest.mock import patch, Mock
 
 from llm_agents.self_consistency.config import AgentConfig
-from llm_agents.self_consistency.interfaces import LiteLLMAdapter, LLMInterface
-from llm_agents.self_consistency.domain import LLMResponse
+from llm_agents.common.interfaces import LiteLLMAdapter, LLMInterface
+from llm_agents.common.domain import LLMResponse
 
 
 class TestAgentConfig:

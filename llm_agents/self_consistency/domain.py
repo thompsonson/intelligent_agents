@@ -6,13 +6,7 @@ Chain-of-Thought agent following the updated signatures specification.
 
 from dataclasses import dataclass
 from typing import Dict
-
-
-@dataclass(frozen=True)
-class LLMResponse:
-    """Immutable Domain entity representing a single LLM response."""
-    reasoning: str
-    answer: str
+from ..common.domain import LLMResponse
 
 
 @dataclass(frozen=True)

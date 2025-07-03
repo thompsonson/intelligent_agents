@@ -24,12 +24,48 @@ model_list:
       model: anthropic/claude-3-haiku-20240307
       api_key: os.environ/ANTHROPIC_API_KEY
   
-  # Local/Open Source models (no API key required)
-  # Uncomment if you have Ollama running locally
-  # - model_name: llama2
-  #   litellm_params:
-  #     model: ollama/llama2
-  #     api_base: http://localhost:11434
+  # Ollama models (no API key required)
+  # Remote Ollama instance at http://100.93.83.103:11434
+  - model_name: codegeex4
+    litellm_params:
+      model: ollama/codegeex4:latest
+      api_base: http://100.93.83.103:11434
+  
+  - model_name: gemma2-2b
+    litellm_params:
+      model: ollama/gemma2:2b
+      api_base: http://100.93.83.103:11434
+  
+  - model_name: gemma-2b
+    litellm_params:
+      model: ollama/gemma:2b
+      api_base: http://100.93.83.103:11434
+  
+  - model_name: gemma
+    litellm_params:
+      model: ollama/gemma:latest
+      api_base: http://100.93.83.103:11434
+  
+  - model_name: mistral-7b
+    litellm_params:
+      model: ollama/mistral:7b
+      api_base: http://100.93.83.103:11434
+  
+  - model_name: phi4
+    litellm_params:
+      model: ollama/phi4:latest
+      api_base: http://100.93.83.103:11434
+  
+  # Mathematical reasoning specialized models
+  - model_name: qwen2-math-7b
+    litellm_params:
+      model: ollama/qwen2-math:7b-instruct
+      api_base: http://100.93.83.103:11434
+  
+  - model_name: deepseek-math-7b
+    litellm_params:
+      model: ollama/t1c/deepseek-math-7b-rl
+      api_base: http://100.93.83.103:11434
 
 # General settings
 general_settings:
