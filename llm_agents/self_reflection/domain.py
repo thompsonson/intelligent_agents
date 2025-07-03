@@ -19,3 +19,9 @@ class ReflectionResult:
     early_stopping: bool  # Stopped early due to confidence?
     total_responses: int
     convergence_analysis: Dict[str, Any]  # Convergence metrics
+    
+    # Entropy-based intelligence fields
+    distribution_entropy: float  # Raw Shannon entropy value
+    normalized_entropy: float  # Entropy normalized by max possible (0.0-1.0)
+    entropy_level: str  # "concentrated", "scattered", "uniform"
+    consensus_type: str  # "strong", "emerging", "divided", "binary"

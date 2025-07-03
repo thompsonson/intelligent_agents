@@ -50,7 +50,12 @@ class GradioInterface:
         min_responses: int,
         prompt_template: str,
         model_name: str,
-        temperature: float
+        temperature: float,
+        # Entropy parameters
+        entropy_mode: str,
+        entropy_threshold: float,
+        entropy_weight: float,
+        min_entropy_samples: int
     ) -> Tuple[str, str, str, Optional[plt.Figure], Optional[plt.Figure], str]:
         """Process question with single agent and return results.
         
@@ -83,7 +88,11 @@ class GradioInterface:
                 target_responses=target_responses,
                 confidence_threshold=confidence_threshold,
                 min_responses=min_responses,
-                prompt_template=prompt_template
+                prompt_template=prompt_template,
+                entropy_mode=entropy_mode,
+                entropy_threshold=entropy_threshold,
+                entropy_weight=entropy_weight,
+                min_entropy_samples=min_entropy_samples
             )
             
             # Format result text
@@ -116,7 +125,12 @@ class GradioInterface:
         min_responses: int,
         prompt_template: str,
         model_name: str,
-        temperature: float
+        temperature: float,
+        # Entropy parameters for self-reflection
+        entropy_mode: str,
+        entropy_threshold: float,
+        entropy_weight: float,
+        min_entropy_samples: int
     ) -> Tuple[str, str, Optional[plt.Figure], Optional[plt.Figure], str]:
         """Compare both agents on the same question.
         
@@ -145,7 +159,11 @@ class GradioInterface:
                 target_responses=target_responses,
                 confidence_threshold=confidence_threshold,
                 min_responses=min_responses,
-                prompt_template=prompt_template
+                prompt_template=prompt_template,
+                entropy_mode=entropy_mode,
+                entropy_threshold=entropy_threshold,
+                entropy_weight=entropy_weight,
+                min_entropy_samples=min_entropy_samples
             )
             
             # Format comparison text
@@ -197,6 +215,16 @@ class GradioInterface:
         for answer, prob in result.answer_distribution.items():
             lines.append(f"- **{answer}:** {prob:.3f} ({prob*100:.1f}%)")
         
+        # Add entropy information for self-reflection
+        if result.distribution_entropy is not None:
+            lines.extend([
+                f"",
+                f"### Entropy Analysis",
+                f"- **Raw Entropy:** {result.distribution_entropy:.3f}",
+                f"- **Normalized Entropy:** {result.normalized_entropy:.3f} ({result.entropy_level})",
+                f"- **Consensus Type:** {result.consensus_type}"
+            ])
+        
         if result.convergence_analysis:
             lines.extend([
                 f"",
@@ -228,9 +256,21 @@ class GradioInterface:
             f"| **Processing Time** | {sc_result.processing_time:.2f}s | {sr_result.processing_time:.2f}s |",
             f"| **Early Stopping** | {'Yes' if sc_result.early_stopping else 'No'} | {'Yes' if sr_result.early_stopping else 'No'} |",
             f"| **Uncertainty Level** | {sc_result.uncertainty_level} | {sr_result.uncertainty_level} |",
+        ]
+        
+        # Add entropy metrics for self-reflection
+        if sr_result.distribution_entropy is not None:
+            lines.extend([
+                f"| **Entropy (Raw)** | N/A | {sr_result.distribution_entropy:.3f} |",
+                f"| **Entropy (Normalized)** | N/A | {sr_result.normalized_entropy:.3f} |",
+                f"| **Entropy Level** | N/A | {sr_result.entropy_level} |",
+                f"| **Consensus Type** | N/A | {sr_result.consensus_type} |",
+            ])
+        
+        lines.extend([
             f"",
             f"## Efficiency Analysis",
-        ]
+        ])
         
         if sr_result.total_responses < sc_result.total_responses:
             savings = (sc_result.total_responses - sr_result.total_responses) / sc_result.total_responses * 100
@@ -285,6 +325,7 @@ class GradioInterface:
                 <strong>Responses Used:</strong> {result.total_responses} | 
                 <strong>Confidence:</strong> {result.confidence:.3f} | 
                 <strong>Uncertainty:</strong> {result.uncertainty_level}
+                {f'<br><strong>Entropy:</strong> {result.normalized_entropy:.3f} ({result.entropy_level}) | <strong>Consensus:</strong> {result.consensus_type}' if result.distribution_entropy is not None else ''}
             </p>
         </div>
         '''
@@ -469,6 +510,35 @@ class GradioInterface:
                                     label="🔢 Minimum Responses (Self-Reflection only)",
                                     info="Don't stop before generating at least this many responses"
                                 )
+                                
+                                # Entropy-based intelligence controls
+                                gr.Markdown("### 🧠 Entropy Intelligence (Self-Reflection only)")
+                                
+                                entropy_mode = gr.Dropdown(
+                                    choices=["off", "confidence_only", "entropy_only", "combined"],
+                                    value="combined",
+                                    label="🎛️ Entropy Mode",
+                                    info="How to use entropy in early stopping decisions"
+                                )
+                                
+                                entropy_threshold = gr.Slider(
+                                    minimum=0.0, maximum=1.0, value=0.3, step=0.05,
+                                    label="🎚️ Entropy Threshold",
+                                    info="Stop when normalized entropy drops below this value (lower = more concentrated)"
+                                )
+                                
+                                entropy_weight = gr.Slider(
+                                    minimum=0.0, maximum=1.0, value=0.3, step=0.05,
+                                    label="⚖️ Entropy Weight",
+                                    info="Weight of entropy in combined scoring (0.0 = ignore entropy, 1.0 = entropy only)"
+                                )
+                                
+                                min_entropy_samples = gr.Slider(
+                                    minimum=2, maximum=10, value=4, step=1,
+                                    label="📊 Min Entropy Samples",
+                                    info="Minimum responses before entropy influences stopping decisions"
+                                )
+                                
                                 prompt_template = gr.Dropdown(
                                     choices=list(self.examples.get_prompt_templates().keys()),
                                     value="Standard",
@@ -542,6 +612,35 @@ class GradioInterface:
                                     label="🔢 Minimum Responses",
                                     info="Minimum responses before Self-Reflection can stop early"
                                 )
+                                
+                                # Entropy-based intelligence controls for comparison
+                                gr.Markdown("### 🧠 Entropy Intelligence (Self-Reflection)")
+                                
+                                comp_entropy_mode = gr.Dropdown(
+                                    choices=["off", "confidence_only", "entropy_only", "combined"],
+                                    value="combined",
+                                    label="🎛️ Entropy Mode",
+                                    info="How to use entropy in early stopping decisions"
+                                )
+                                
+                                comp_entropy_threshold = gr.Slider(
+                                    minimum=0.0, maximum=1.0, value=0.3, step=0.05,
+                                    label="🎚️ Entropy Threshold",
+                                    info="Stop when normalized entropy drops below this value"
+                                )
+                                
+                                comp_entropy_weight = gr.Slider(
+                                    minimum=0.0, maximum=1.0, value=0.3, step=0.05,
+                                    label="⚖️ Entropy Weight",
+                                    info="Weight of entropy in combined scoring"
+                                )
+                                
+                                comp_min_entropy_samples = gr.Slider(
+                                    minimum=2, maximum=10, value=4, step=1,
+                                    label="📊 Min Entropy Samples",
+                                    info="Minimum responses before entropy influences stopping"
+                                )
+                                
                                 comp_prompt_template = gr.Dropdown(
                                     choices=list(self.examples.get_prompt_templates().keys()),
                                     value="Standard",
@@ -596,7 +695,8 @@ class GradioInterface:
                 fn=self.process_single_agent,
                 inputs=[
                     question_input, agent_type, target_responses, confidence_threshold,
-                    min_responses, prompt_template, model_name, temperature
+                    min_responses, prompt_template, model_name, temperature,
+                    entropy_mode, entropy_threshold, entropy_weight, min_entropy_samples
                 ],
                 outputs=[result_display, prob_table, debug_panel, dist_chart, evolution_chart, status_display]
             )
@@ -605,7 +705,8 @@ class GradioInterface:
                 fn=self.compare_agents,
                 inputs=[
                     comp_question, comp_target_responses, comp_confidence_threshold,
-                    comp_min_responses, comp_prompt_template, comp_model_name, comp_temperature
+                    comp_min_responses, comp_prompt_template, comp_model_name, comp_temperature,
+                    comp_entropy_mode, comp_entropy_threshold, comp_entropy_weight, comp_min_entropy_samples
                 ],
                 outputs=[comparison_display, comparison_table, comparison_chart, cost_chart, status_display]
             )

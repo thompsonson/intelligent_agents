@@ -45,6 +45,12 @@ class UnifiedResult:
     convergence_analysis: Optional[Dict[str, Any]] = None
     processing_time: Optional[float] = None
     debug_info: Optional[DebugInfo] = None
+    
+    # Entropy-based intelligence fields (self-reflection only)
+    distribution_entropy: Optional[float] = None  # Raw Shannon entropy value
+    normalized_entropy: Optional[float] = None  # Entropy normalized by max possible (0.0-1.0)
+    entropy_level: Optional[str] = None  # "concentrated", "scattered", "uniform"
+    consensus_type: Optional[str] = None  # "strong", "emerging", "divided", "binary"
 
 
 class AgentWrapper:
@@ -66,7 +72,12 @@ class AgentWrapper:
         confidence_threshold: float = 0.8,
         min_responses: int = 3,
         prompt_template: str = "Think step by step:",
-        debug_mode: bool = True
+        debug_mode: bool = True,
+        # Entropy-specific parameters (reflection only)
+        entropy_threshold: float = 0.3,
+        entropy_weight: float = 0.3,
+        min_entropy_samples: int = 4,
+        entropy_mode: str = "combined"
     ) -> UnifiedResult:
         """Process question with specified agent type and parameters.
         
@@ -103,7 +114,8 @@ class AgentWrapper:
         elif agent_type == AgentType.SELF_REFLECTION:
             result = self._process_with_self_reflection(
                 question, target_responses, confidence_threshold, 
-                min_responses, prompt_template, debug_adapter
+                min_responses, prompt_template, debug_adapter,
+                entropy_threshold, entropy_weight, min_entropy_samples, entropy_mode
             )
         else:
             raise ValueError(f"Unknown agent type: {agent_type}")
@@ -161,7 +173,11 @@ class AgentWrapper:
         confidence_threshold: float,
         min_responses: int,
         prompt_template: str,
-        debug_adapter: Optional[DebugLiteLLMAdapter] = None
+        debug_adapter: Optional[DebugLiteLLMAdapter] = None,
+        entropy_threshold: float = 0.3,
+        entropy_weight: float = 0.3,
+        min_entropy_samples: int = 4,
+        entropy_mode: str = "combined"
     ) -> UnifiedResult:
         """Process with self-reflection agent."""
         config = ReflectionConfig(
@@ -169,7 +185,11 @@ class AgentWrapper:
             target_responses=target_responses,
             confidence_threshold=confidence_threshold,
             min_responses=min_responses,
-            prompt_template=prompt_template
+            prompt_template=prompt_template,
+            entropy_threshold=entropy_threshold,
+            entropy_weight=entropy_weight,
+            min_entropy_samples=min_entropy_samples,
+            entropy_mode=entropy_mode
         )
         
         agent = SelfReflectionAgent(config, question)
@@ -183,7 +203,11 @@ class AgentWrapper:
             early_stopping=result.early_stopping,
             answer_distribution=result.answer_distribution,
             uncertainty_level=result.uncertainty_level,
-            convergence_analysis=result.convergence_analysis
+            convergence_analysis=result.convergence_analysis,
+            distribution_entropy=result.distribution_entropy,
+            normalized_entropy=result.normalized_entropy,
+            entropy_level=result.entropy_level,
+            consensus_type=result.consensus_type
         )
     
     def compare_agents(
@@ -192,7 +216,12 @@ class AgentWrapper:
         target_responses: int = 10,
         confidence_threshold: float = 0.8,
         min_responses: int = 3,
-        prompt_template: str = "Think step by step:"
+        prompt_template: str = "Think step by step:",
+        # Entropy parameters for self-reflection
+        entropy_threshold: float = 0.3,
+        entropy_weight: float = 0.3,
+        min_entropy_samples: int = 4,
+        entropy_mode: str = "combined"
     ) -> Dict[str, UnifiedResult]:
         """Compare both agents on the same question.
         
@@ -223,7 +252,11 @@ class AgentWrapper:
             target_responses=target_responses,
             confidence_threshold=confidence_threshold,
             min_responses=min_responses,
-            prompt_template=prompt_template
+            prompt_template=prompt_template,
+            entropy_threshold=entropy_threshold,
+            entropy_weight=entropy_weight,
+            min_entropy_samples=min_entropy_samples,
+            entropy_mode=entropy_mode
         )
         
         return results
