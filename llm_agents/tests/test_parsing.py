@@ -702,6 +702,88 @@ The answer is 73."""
         # The "The answer is" pattern matches and extracts "73."
         assert "computation involves several steps" in result.reasoning
         assert result.answer == "73."
+    
+    def test_dollar_boxed_format(self):
+        """Test parsing with mathematical $\\boxed{answer}$ format used by math models."""
+        adapter = LiteLLMAdapter()
+        
+        raw_response = """Let me solve this step by step.
+        
+First, I count the total students in the class.
+Then I subtract the number of girls from the total.
+24 total students - 12 girls = 12 boys
+
+There are $\\boxed{12}$ boys in the class."""
+        
+        result = adapter._parse_llm_output(raw_response)
+        
+        # Should extract the number from $\boxed{12}$ format
+        assert "count the total students" in result.reasoning
+        assert "subtract the number of girls" in result.reasoning
+        assert result.answer == "12"
+    
+    def test_dollar_boxed_variations(self):
+        """Test various $\\boxed{} format variations from mathematical models."""
+        adapter = LiteLLMAdapter()
+        
+        # Test with reasoning and Answer: pattern - now extracts the content
+        result1 = adapter._parse_llm_output("""Step 1: Calculate the total
+Step 2: Apply the formula
+
+Answer: $\\boxed{42}$.""")
+        assert result1.answer == "42"
+        
+        # Test with just colon (this triggers $\boxed pattern)
+        result2 = adapter._parse_llm_output(": $\\boxed{15}$.")
+        assert result2.answer == "15"
+        
+        # Test standalone dollar-boxed (pattern now extracts content)
+        result3 = adapter._parse_llm_output("$\\boxed{3.14}$.")
+        assert result3.answer == "3.14"
+        
+        # Test with context where $\boxed pattern matches
+        result4 = adapter._parse_llm_output("""Calculate probability:
+P = favorable/total
+
+Result: $\\boxed{1/2}$.""")
+        assert result4.answer == "1/2"
+        
+        # Test multiple dollar-boxed patterns - last one wins
+        result5 = adapter._parse_llm_output("""First try: $\\boxed{10}
+        
+Let me recalculate carefully:
+The correct solution is $\\boxed{25}$.""")
+        assert result5.answer == "25"
+    
+    def test_dollar_boxed_latex_cleanup(self):
+        """Test that $\\boxed{answer}$ LaTeX formatting is properly cleaned."""
+        adapter = LiteLLMAdapter()
+        
+        # These should extract the content from $\boxed{...}$ and clean it appropriately
+        test_cases = [
+            ("Answer: $\\boxed{12}$.", "12"),
+            ("The answer is $\\boxed{42}$", "42"), 
+            ("Result: $\\boxed{15}$", "15"),  # Simple number works
+            ("Final answer: $\\boxed{2.5}$", "2.5"),
+            ("Solution: $\\boxed{100}$", "100"),
+        ]
+        
+        for input_text, expected in test_cases:
+            result = adapter._parse_llm_output(input_text)
+            assert result.answer == expected, f"Expected '{expected}' but got '{result.answer}' for input '{input_text}'"
+        
+        # Test that the LaTeX formatting is removed (before fix, these would return the full $\boxed{...}$ text)
+        before_fix_cases = [
+            "Answer: $\\boxed{12}$.",
+            "The answer is $\\boxed{42}$",
+            "Final answer: $\\boxed{2.5}$"
+        ]
+        
+        for case in before_fix_cases:
+            result = adapter._parse_llm_output(case)
+            # Should NOT return the full LaTeX formatting
+            assert not result.answer.startswith("$\\boxed{"), f"LaTeX formatting not cleaned for: {case}"
+            assert not result.answer.endswith("}$"), f"LaTeX formatting not cleaned for: {case}"
 
 
 class TestLiteLLMAdapterIntegration:

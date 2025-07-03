@@ -117,11 +117,19 @@ class LiteLLMAdapter(LLMInterface):
         
         # Look for answer patterns in order of preference
         answer_patterns = [
+            # Text patterns with LaTeX handling - specific patterns first
+            r'Answer:\s*\$\\boxed\{([^}]+)\}\$',  # Answer: $\boxed{answer}$
+            r'The answer is\s*\$\\boxed\{([^}]+)\}\$',  # The answer is $\boxed{answer}$
+            r'Final answer:\s*\$\\boxed\{([^}]+)\}\$',  # Final answer: $\boxed{answer}$
+            r'Result:\s*\$\\boxed\{([^}]+)\}\$',  # Result: $\boxed{answer}$
+            r'Solution:\s*\$\\boxed\{([^}]+)\}\$',  # Solution: $\boxed{answer}$
+            # General text patterns
             r'Answer:\s*(.+?)(?:\n|$)',  # Answer: <answer>
             r'The answer is\s*(.+?)(?:\n|$)',  # The answer is <answer>
             r'Final answer:\s*(.+?)(?:\n|$)',  # Final answer: <answer>
             r'Answer\s*=\s*(.+?)(?:\n|$)',  # Answer = <answer>
             # LaTeX patterns
+            r'\$\\boxed\{([^}]+)\}\$',  # $\boxed{answer}$
             r'\\boxed\{([^}]+)\}',  # \boxed{answer}
             r'\\boxed\s*\{([^}]+)\}',  # \boxed {answer}
             r'\\\[\s*\\boxed\{([^}]+)\}\s*\\\]',  # \[ \boxed{answer} \]
