@@ -7,7 +7,7 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live benchmark-gsm8k
+.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live benchmark-gsm8k benchmark-gsm8k-reflection
 
 # Default target
 help:
@@ -20,6 +20,8 @@ help:
 	@echo "  test-agent-live - Test agent with real LLM (requires setup)"
 	@echo "  benchmark-gsm8k - Run GSM8K mathematical reasoning benchmark"
 	@echo "                    Usage: make benchmark-gsm8k [MODEL=model-name] [ATTEMPTS='1 3 5']"
+	@echo "  benchmark-gsm8k-reflection - Run GSM8K benchmark with SelfReflectionAgent"
+	@echo "                               Usage: make benchmark-gsm8k-reflection [MODEL=model-name] [CONFIDENCE=0.8]"
 	@echo "  lint          - Run linting checks"
 	@echo "  format        - Format code"
 	@echo "  clean         - Clean up temporary files"
@@ -474,4 +476,46 @@ benchmark-gsm8k:
 		uv run python llm_agents/benchmark/run_gsm8k.py --attempts $(ATTEMPTS); \
 	else \
 		uv run python llm_agents/benchmark/run_gsm8k.py; \
+	fi
+
+# Run GSM8K mathematical reasoning benchmark with SelfReflectionAgent
+# Usage: make benchmark-gsm8k-reflection [MODEL=model-name] [CONFIDENCE=0.8] [ENTROPY_MODE=combined]
+benchmark-gsm8k-reflection:
+	@echo "🔍 Running GSM8K SelfReflectionAgent Benchmark with Entropy Tracking"
+	@echo "=" * 70
+	@echo "Testing confidence-aware early stopping with mathematical reasoning"
+	@echo "Enhanced with entropy evolution tracking and SQLite database storage"
+	@echo ""
+	@if [ -n "$(MODEL)" ]; then \
+		echo "📝 Using specified model: $(MODEL)"; \
+	else \
+		echo "📝 Using default model from .env file"; \
+	fi
+	@echo "🌐 LiteLLM endpoint: $(or $(LLM_BASE_URL),http://localhost:4000)"
+	@echo "⚠️  This will make real API calls to your LLM provider"
+	@if [ -n "$(CONFIDENCE)" ]; then \
+		echo "🎯 Using confidence threshold: $(CONFIDENCE)"; \
+	else \
+		echo "🎯 Using default confidence threshold: 0.8"; \
+	fi
+	@if [ -n "$(ENTROPY_MODE)" ]; then \
+		echo "🌀 Using entropy mode: $(ENTROPY_MODE)"; \
+	else \
+		echo "🌀 Using default entropy mode: combined"; \
+	fi
+	@echo "💾 Results will be stored in SQLite database"
+	@echo "Press Ctrl+C within 5 seconds to cancel..."
+	@sleep 5
+	@echo ""
+	@echo "🚀 Starting reflection benchmark..."
+	@if [ -n "$(MODEL)" ] && [ -n "$(CONFIDENCE)" ] && [ -n "$(ENTROPY_MODE)" ]; then \
+		uv run python llm_agents/benchmark/run_gsm8k_reflection.py --model $(MODEL) --confidence-threshold $(CONFIDENCE) --entropy-mode $(ENTROPY_MODE) --verbose; \
+	elif [ -n "$(MODEL)" ] && [ -n "$(CONFIDENCE)" ]; then \
+		uv run python llm_agents/benchmark/run_gsm8k_reflection.py --model $(MODEL) --confidence-threshold $(CONFIDENCE) --verbose; \
+	elif [ -n "$(MODEL)" ]; then \
+		uv run python llm_agents/benchmark/run_gsm8k_reflection.py --model $(MODEL) --verbose; \
+	elif [ -n "$(CONFIDENCE)" ]; then \
+		uv run python llm_agents/benchmark/run_gsm8k_reflection.py --confidence-threshold $(CONFIDENCE) --verbose; \
+	else \
+		uv run python llm_agents/benchmark/run_gsm8k_reflection.py --verbose; \
 	fi
