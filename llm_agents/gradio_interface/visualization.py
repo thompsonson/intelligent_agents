@@ -10,6 +10,7 @@ from typing import Dict, List, Any, Optional, Tuple
 import numpy as np
 from io import BytesIO
 import base64
+import sqlite3
 
 from .agent_wrapper import UnifiedResult
 
@@ -295,6 +296,146 @@ def create_cost_analysis_chart(
         height = bar.get_height()
         ax2.text(bar.get_x() + bar.get_width()/2., height + height*0.01,
                 f'{resp}', ha='center', va='bottom')
+    
+    plt.tight_layout()
+    return fig
+
+
+def create_entropy_evolution_benchmark_chart(db_path: str, run_id: int) -> plt.Figure:
+    """Create entropy evolution chart from benchmark database."""
+    setup_plot_style()
+    
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
+    
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.cursor()
+        
+        # Get entropy evolution data
+        cursor.execute('''
+            SELECT 
+                response_num,
+                AVG(normalized_entropy) as avg_entropy,
+                AVG(confidence) as avg_confidence
+            FROM entropy_evolution ee
+            JOIN question_results qr ON ee.result_id = qr.id
+            WHERE qr.run_id = ?
+            GROUP BY response_num
+            ORDER BY response_num
+        ''', (run_id,))
+        
+        evolution_data = cursor.fetchall()
+    
+    if not evolution_data:
+        ax1.text(0.5, 0.5, 'No entropy data available', 
+                ha='center', va='center', transform=ax1.transAxes)
+        ax2.text(0.5, 0.5, 'No confidence data available',
+                ha='center', va='center', transform=ax2.transAxes)
+        return fig
+    
+    response_nums = [d[0] for d in evolution_data]
+    avg_entropy = [d[1] for d in evolution_data]
+    avg_confidence = [d[2] for d in evolution_data]
+    
+    # Plot entropy evolution
+    ax1.plot(response_nums, avg_entropy, 'o-', color='red', label='Normalized Entropy', linewidth=2, markersize=6)
+    ax1.set_title('Average Entropy Evolution Across All Questions')
+    ax1.set_xlabel('Response Number')
+    ax1.set_ylabel('Normalized Entropy')
+    ax1.grid(True, alpha=0.3)
+    ax1.legend()
+    ax1.set_ylim(0, 1.0)
+    
+    # Plot confidence evolution
+    ax2.plot(response_nums, avg_confidence, 'o-', color='blue', label='Confidence', linewidth=2, markersize=6)
+    ax2.set_title('Average Confidence Evolution Across All Questions')
+    ax2.set_xlabel('Response Number')
+    ax2.set_ylabel('Confidence Score')
+    ax2.grid(True, alpha=0.3)
+    ax2.legend()
+    ax2.set_ylim(0, 1.0)
+    
+    plt.tight_layout()
+    return fig
+
+
+def create_early_stopping_analysis_chart(db_path: str, run_id: int) -> plt.Figure:
+    """Create early stopping analysis chart."""
+    setup_plot_style()
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+    
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.cursor()
+        
+        # Early stopping distribution
+        cursor.execute('''
+            SELECT total_responses, COUNT(*) as count, 
+                   SUM(CASE WHEN early_stopping THEN 1 ELSE 0 END) as early_stops
+            FROM question_results 
+            WHERE run_id = ?
+            GROUP BY total_responses
+            ORDER BY total_responses
+        ''', (run_id,))
+        
+        response_data = cursor.fetchall()
+        
+        if response_data:
+            responses = [r[0] for r in response_data]
+            counts = [r[1] for r in response_data]
+            early_stops = [r[2] for r in response_data]
+            
+            # Stacked bar chart
+            ax1.bar(responses, early_stops, label='Early Stops', alpha=0.7, color='green')
+            ax1.bar(responses, [c - e for c, e in zip(counts, early_stops)], 
+                   bottom=early_stops, label='Full Runs', alpha=0.7, color='red')
+            
+            ax1.set_title('Response Distribution')
+            ax1.set_xlabel('Number of Responses Used')
+            ax1.set_ylabel('Number of Questions')
+            ax1.legend()
+        else:
+            ax1.text(0.5, 0.5, 'No response data available', 
+                    ha='center', va='center', transform=ax1.transAxes)
+        
+        # Accuracy by early stopping
+        cursor.execute('''
+            SELECT early_stopping, 
+                   COUNT(*) as total,
+                   SUM(CASE WHEN is_correct THEN 1 ELSE 0 END) as correct
+            FROM question_results 
+            WHERE run_id = ?
+            GROUP BY early_stopping
+        ''', (run_id,))
+        
+        accuracy_data = cursor.fetchall()
+        
+        if accuracy_data:
+            categories = []
+            accuracies = []
+            
+            for early_stop, total, correct in accuracy_data:
+                accuracy = correct / total if total > 0 else 0
+                if early_stop:
+                    categories.append('Early Stop')
+                    accuracies.append(accuracy)
+                else:
+                    categories.append('Full Run')
+                    accuracies.append(accuracy)
+            
+            colors = ['green' if 'Early' in cat else 'red' for cat in categories]
+            bars = ax2.bar(categories, accuracies, alpha=0.7, color=colors)
+            ax2.set_title('Accuracy by Stopping Type')
+            ax2.set_ylabel('Accuracy')
+            ax2.set_ylim(0, 1.0)
+            
+            # Add value labels
+            for bar, acc in zip(bars, accuracies):
+                height = bar.get_height()
+                ax2.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                        f'{acc:.2f}', ha='center', va='bottom')
+        else:
+            ax2.text(0.5, 0.5, 'No accuracy data available',
+                    ha='center', va='center', transform=ax2.transAxes)
     
     plt.tight_layout()
     return fig

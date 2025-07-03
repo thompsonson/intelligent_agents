@@ -96,16 +96,13 @@ class AgentWrapper:
         start_time = time.time()
         
         # Create debug adapter if debug mode is enabled
-        if debug_mode:
-            debug_adapter = DebugLiteLLMAdapter(
-                model=self.llm_adapter.model,
-                temperature=self.llm_adapter.temperature,
-                base_url=self.llm_adapter.base_url,
-                api_key=self.llm_adapter.api_key,
-                **self.llm_adapter.kwargs
-            )
-        else:
-            debug_adapter = None
+        debug_adapter = DebugLiteLLMAdapter(
+            model=self.llm_adapter.model,
+            temperature=self.llm_adapter.temperature,
+            base_url=self.llm_adapter.base_url,
+            api_key=self.llm_adapter.api_key,
+            **self.llm_adapter.kwargs
+        ) if debug_mode else None
         
         if agent_type == AgentType.SELF_CONSISTENCY:
             result = self._process_with_self_consistency(
@@ -237,12 +234,13 @@ class AgentWrapper:
         """
         results = {}
         
-        # Process with self-consistency
+        # Process with self-consistency (no entropy parameters needed)
         results["self_consistency"] = self.process_question(
             question=question,
             agent_type=AgentType.SELF_CONSISTENCY,
             target_responses=target_responses,
-            prompt_template=prompt_template
+            prompt_template=prompt_template,
+            debug_mode=False  # Disable debug for comparison to avoid interference
         )
         
         # Process with self-reflection

@@ -18,8 +18,11 @@ llm_agents/
 │   ├── config.py            # Enhanced configuration
 │   └── domain.py            # Rich result objects with entropy
 ├── benchmark/                # Performance evaluation tools
-│   ├── gsm8k_poc.py         # GSM8K mathematical reasoning benchmark
-│   └── run_gsm8k.py         # Standalone benchmark runner
+│   ├── gsm8k_poc.py         # GSM8K mathematical reasoning benchmark  
+│   ├── run_gsm8k.py         # Standalone benchmark runner
+│   ├── gsm8k_reflection.py  # SelfReflectionAgent benchmark with entropy tracking
+│   ├── run_gsm8k_reflection.py # Reflection benchmark runner with CLI
+│   └── database.py          # SQLite storage for benchmark results
 ├── gradio_interface/         # Web-based comparison interface
 │   └── app.py               # Interactive agent comparison tool
 └── tests/                    # Comprehensive test suite
@@ -80,6 +83,9 @@ make test-agent-live
 # Run mathematical reasoning benchmark
 make benchmark-gsm8k
 
+# Run SelfReflectionAgent benchmark with entropy tracking
+make benchmark-gsm8k-reflection
+
 # Launch interactive web interface
 make gradio-dev
 ```
@@ -130,15 +136,29 @@ LLM_MODEL=deepseek-math-7b
 Test agent effectiveness on grade-school math problems:
 
 ```bash
-# Run 5-question proof of concept
+# Run 5-question proof of concept (Self-Consistency)
 make benchmark-gsm8k
+
+# Run SelfReflectionAgent benchmark with entropy tracking  
+make benchmark-gsm8k-reflection
+
+# Custom reflection benchmark with parameters
+make benchmark-gsm8k-reflection MODEL=claude-3-haiku CONFIDENCE=0.7 ENTROPY_MODE=combined
 ```
 
-**Expected Results:** Accuracy improves with more attempts
+**Expected Results:** 
+
+**Self-Consistency Agent (Fixed Attempts):**
 - 1 attempt: ~60-70% accuracy (general models), ~70-80% (math specialists)
-- 3 attempts: ~75-85% accuracy (general models), ~85-90% (math specialists)
+- 3 attempts: ~75-85% accuracy (general models), ~85-90% (math specialists)  
 - 5 attempts: ~80-90% accuracy (general models), ~90-95% (math specialists)
 - 10 attempts: ~85-95% accuracy (general models), ~95-98% (math specialists)
+
+**SelfReflectionAgent (Early Stopping with Entropy):**
+- **Accuracy**: 95-100% (similar to Self-Consistency with 10 attempts)
+- **Efficiency**: 50-70% reduction in LLM calls through early stopping
+- **Average responses**: 3-5 instead of 10 (mathematical specialists)
+- **Entropy tracking**: Full evolution data stored in SQLite database
 
 **Mathematical Reasoning Models Expected Performance:**
 - **Qwen2-Math-7B**: Superior performance on mathematical word problems
@@ -146,16 +166,25 @@ make benchmark-gsm8k
 
 ### Custom Benchmarks
 ```python
-from llm_agents.benchmark import GSM8KBenchmark
+from llm_agents.benchmark.gsm8k_poc import GSM8KBenchmark
+from llm_agents.benchmark.gsm8k_reflection import GSM8KReflectionBenchmark
 from llm_agents.common.interfaces import LiteLLMAdapter
+from llm_agents.self_reflection.config import ReflectionConfig
 
-# Create custom benchmark
+# Self-Consistency benchmark
 llm_interface = LiteLLMAdapter()
 benchmark = GSM8KBenchmark(llm_interface)
-
-# Run with different configurations
 report = benchmark.run_benchmark(attempt_counts=[1, 5, 10])
 benchmark.print_detailed_results(report)
+
+# Self-Reflection benchmark with entropy tracking
+reflection_benchmark = GSM8KReflectionBenchmark(llm_interface, "results.db")
+config = ReflectionConfig(
+    llm_interface=llm_interface,
+    confidence_threshold=0.8,
+    entropy_mode="combined"
+)
+results = reflection_benchmark.run_benchmark(config)
 ```
 
 ## 🎛️ Interactive Interface
@@ -168,12 +197,19 @@ make gradio-dev
 ```
 
 **Features:**
-- Side-by-side agent comparison
-- Real-time parameter adjustment
-- Probability distribution visualizations
-- Confidence evolution tracking
-- Cost and efficiency analysis
-- Pre-loaded example questions
+- **Agent Comparison**: Side-by-side Self-Consistency vs Self-Reflection analysis
+- **Real-time Controls**: Dynamic parameter adjustment with live validation  
+- **Advanced Visualizations**: Probability distributions, confidence evolution, entropy tracking
+- **Benchmark Analysis**: Interactive database exploration with charts and tables
+- **Cost Analysis**: Efficiency comparison and response count optimization
+- **Example Library**: Pre-loaded questions by category with configuration templates
+
+**New: Benchmark Analysis Tab**
+- **Database Integration**: Load and analyze SQLite benchmark results
+- **Interactive Charts**: Entropy evolution, early stopping distribution, accuracy analysis  
+- **Question Breakdown**: Detailed table with question-by-question results
+- **Run Comparison**: Select and analyze different benchmark runs
+- **Export Capabilities**: Visual and tabular data for research analysis
 
 ## 🧪 Agent Comparison Examples
 
@@ -257,16 +293,17 @@ elif result.consensus_type == "divided":
 
 ### Running Tests
 ```bash
-# Unit tests
+# Unit tests (94 tests total)
 make test
 
 # Integration tests with live LLM
 make test-agent-live
 
 # Benchmark tests
-make benchmark-gsm8k
+make benchmark-gsm8k              # Self-Consistency benchmark
+make benchmark-gsm8k-reflection   # Self-Reflection benchmark with entropy
 
-# Web interface tests
+# Web interface tests  
 make gradio-test-live
 ```
 
@@ -327,6 +364,8 @@ This project is part of an educational system for exploring intelligent agents a
 - **API Key Issues**: Verify `.env` configuration
 - **Model Not Found**: Check available models with `make litellm-models`
 - **Performance Issues**: Use smaller models or reduce response counts
+- **Benchmark Database Errors**: Ensure SQLite database path is correct
+- **Gradio Interface Issues**: Check web console for JavaScript errors
 
 ### Documentation
 - [Gradio Interface Guide](gradio_interface/README.md)

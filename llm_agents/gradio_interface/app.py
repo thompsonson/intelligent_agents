@@ -6,9 +6,11 @@ and self-reflection agents with interactive controls and visualizations.
 
 import gradio as gr
 import matplotlib.pyplot as plt
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 import json
 import traceback
+import sqlite3
+from pathlib import Path
 
 from .agent_wrapper import AgentWrapper, AgentType, UnifiedResult
 from .config_manager import ConfigManager, UIConfig
@@ -17,9 +19,23 @@ from .visualization import (
     create_confidence_evolution_chart,
     create_comparison_chart,
     create_uncertainty_analysis_chart,
-    create_cost_analysis_chart
+    create_cost_analysis_chart,
+    create_entropy_evolution_benchmark_chart,
+    create_early_stopping_analysis_chart
 )
 from .examples import Examples
+from ..benchmark.database import BenchmarkDatabase
+
+
+class UIConstants:
+    """Configuration constants for the UI."""
+    MAX_QUESTION_LENGTH = 2000
+    MAX_TARGET_RESPONSES = 20
+    MIN_TARGET_RESPONSES = 1
+    
+    # Confidence threshold bounds
+    MIN_CONFIDENCE_THRESHOLD = 0.5
+    MAX_CONFIDENCE_THRESHOLD = 0.95
 
 
 class GradioInterface:
@@ -30,6 +46,7 @@ class GradioInterface:
         self.config_manager = ConfigManager()
         self.agent_wrapper = None
         self.examples = Examples()
+        self.benchmark_db = None
         self._initialize_agent_wrapper()
     
     def _initialize_agent_wrapper(self):
@@ -64,20 +81,14 @@ class GradioInterface:
         """
         try:
             # Validate inputs
-            if not question.strip():
-                return "Please enter a question.", "", "", None, None, "❌ No question provided"
+            valid, message = self._validate_inputs(question, target_responses, confidence_threshold)
+            if not valid:
+                return message, "", "", None, None, message
             
-            # Create LLM adapter with current settings
-            llm_adapter = self.config_manager.create_llm_adapter(
-                model_name=model_name,
-                temperature=temperature
-            )
-            agent_wrapper = AgentWrapper(llm_adapter)
-            
-            # Test connection
-            if not agent_wrapper.validate_llm_connection():
-                return ("Connection failed", "", "", None, None, 
-                       "❌ Cannot connect to LLM. Check that LiteLLM is running.")
+            # Create adapter and test connection
+            agent_wrapper, status = self._create_and_test_adapter(model_name, temperature)
+            if not agent_wrapper:
+                return "Connection failed", "", "", None, None, status
             
             # Process question
             agent_type_enum = AgentType.SELF_CONSISTENCY if agent_type == "Self-Consistency" else AgentType.SELF_REFLECTION
@@ -138,20 +149,15 @@ class GradioInterface:
             Tuple of (comparison_text, comparison_table, comparison_chart, cost_chart, status_message)
         """
         try:
-            if not question.strip():
-                return "Please enter a question.", "", None, None, "❌ No question provided"
+            # Validate inputs
+            valid, message = self._validate_inputs(question, target_responses, confidence_threshold)
+            if not valid:
+                return message, "", None, None, message
             
-            # Create LLM adapter
-            llm_adapter = self.config_manager.create_llm_adapter(
-                model_name=model_name,
-                temperature=temperature
-            )
-            agent_wrapper = AgentWrapper(llm_adapter)
-            
-            # Test connection
-            if not agent_wrapper.validate_llm_connection():
-                return ("Connection failed", "", None, None,
-                       "❌ Cannot connect to LLM. Check that LiteLLM is running.")
+            # Create adapter and test connection
+            agent_wrapper, status = self._create_and_test_adapter(model_name, temperature)
+            if not agent_wrapper:
+                return "Connection failed", "", None, None, status
             
             # Compare agents
             results = agent_wrapper.compare_agents(
@@ -445,6 +451,382 @@ class GradioInterface:
         """Get a random example question."""
         return self.examples.get_random_question()
     
+    def _validate_inputs(self, question: str, target_responses: int, 
+                        confidence_threshold: float) -> Tuple[bool, str]:
+        """Validate user inputs and return status."""
+        if not question.strip():
+            return False, "❌ No question provided"
+        
+        if len(question.strip()) > UIConstants.MAX_QUESTION_LENGTH:
+            return False, f"❌ Question too long (max {UIConstants.MAX_QUESTION_LENGTH} characters)"
+        
+        if target_responses < UIConstants.MIN_TARGET_RESPONSES or target_responses > UIConstants.MAX_TARGET_RESPONSES:
+            return False, f"❌ Target responses must be {UIConstants.MIN_TARGET_RESPONSES}-{UIConstants.MAX_TARGET_RESPONSES}"
+        
+        if not UIConstants.MIN_CONFIDENCE_THRESHOLD <= confidence_threshold <= UIConstants.MAX_CONFIDENCE_THRESHOLD:
+            return False, f"❌ Confidence threshold must be {UIConstants.MIN_CONFIDENCE_THRESHOLD}-{UIConstants.MAX_CONFIDENCE_THRESHOLD}"
+        
+        return True, "✅ Valid inputs"
+    
+    def _create_and_test_adapter(self, model_name: str, temperature: float) -> Tuple[Optional[AgentWrapper], str]:
+        """Create LLM adapter and test connection."""
+        try:
+            # Create LLM adapter with current settings
+            llm_adapter = self.config_manager.create_llm_adapter(
+                model_name=model_name,
+                temperature=temperature
+            )
+            agent_wrapper = AgentWrapper(llm_adapter)
+            
+            # Test connection
+            if not agent_wrapper.validate_llm_connection():
+                return None, "❌ Cannot connect to LLM. Check that LiteLLM is running."
+            
+            return agent_wrapper, "✅ Connection successful"
+            
+        except Exception as e:
+            return None, f"❌ Error creating adapter: {e}"
+    
+    def refresh_benchmark_database(self, db_path: str) -> Tuple[gr.Dropdown, str]:
+        """Refresh database connection and return updated dropdown."""
+        try:
+            if not db_path.strip():
+                return gr.Dropdown(choices=[], value=None), "❌ Database path cannot be empty"
+            
+            db_path_obj = Path(db_path)
+            if not db_path_obj.exists():
+                return gr.Dropdown(choices=[], value=None), f"❌ Database file not found: {db_path}"
+            
+            self.benchmark_db = BenchmarkDatabase(db_path)
+            runs = self._get_available_runs()
+            return gr.Dropdown(choices=runs, value=None), f"✅ Found {len(runs)} benchmark runs"
+        except Exception as e:
+            return gr.Dropdown(choices=[], value=None), f"❌ Error loading database: {e}"
+    
+    def _get_available_runs(self) -> List[str]:
+        """Get list of available benchmark runs."""
+        if not self.benchmark_db:
+            return []
+        
+        with sqlite3.connect(self.benchmark_db.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id, agent_type, model_name, timestamp, total_questions
+                FROM benchmark_runs
+                ORDER BY timestamp DESC
+            ''')
+            runs = cursor.fetchall()
+            
+            return [
+                f"Run {run[0]}: {run[1]} ({run[2]}) - {run[4]} questions - {run[3][:16]}"
+                for run in runs
+            ]
+    
+    def analyze_benchmark_run(self, run_display: str, show_entropy: bool, 
+                            show_early_stopping: bool, show_breakdown: bool) -> Tuple[str, Optional[plt.Figure], Optional[plt.Figure], str, bool, bool]:
+        """Analyze selected benchmark run."""
+        if not run_display or not self.benchmark_db:
+            return "No run selected", None, None, "", False, False
+        
+        try:
+            # Extract run ID from display string
+            run_id = int(run_display.split(":")[0].replace("Run ", ""))
+            
+            # Get run summary
+            summary = self.benchmark_db.get_run_summary(run_id)
+            summary_text = self._format_benchmark_summary(summary)
+            
+            # Create charts
+            entropy_fig = create_entropy_evolution_benchmark_chart(
+                str(self.benchmark_db.db_path), run_id) if show_entropy else None
+            early_stopping_fig = create_early_stopping_analysis_chart(
+                str(self.benchmark_db.db_path), run_id) if show_early_stopping else None
+            
+            # Get question breakdown
+            breakdown_html = self._create_question_breakdown_table(run_id) if show_breakdown else ""
+            
+            # Show expand buttons only when charts are available
+            show_entropy_btn = show_entropy and entropy_fig is not None
+            show_early_stopping_btn = show_early_stopping and early_stopping_fig is not None
+            
+            return summary_text, entropy_fig, early_stopping_fig, breakdown_html, show_entropy_btn, show_early_stopping_btn
+            
+        except Exception as e:
+            return f"Error analyzing run: {e}", None, None, "", False, False
+    
+    def _format_benchmark_summary(self, summary: Dict[str, Any]) -> str:
+        """Format benchmark summary for display."""
+        if not summary:
+            return "No benchmark data available."
+        
+        return f"""
+# 🎯 Benchmark Run Summary
+
+## Run Information
+- **Run ID**: {summary['run_id']}
+- **Agent Type**: {summary['agent_type']}
+- **Model**: {summary['model_name']}
+- **Started**: {summary['timestamp'][:19].replace('T', ' ')}
+- **Completed**: {summary['completed_at'][:19].replace('T', ' ') if summary['completed_at'] else 'In Progress'}
+
+## Performance Metrics
+- **Accuracy**: {summary['accuracy']:.1%} ({summary['accuracy'] * summary['total_questions']:.0f}/{summary['total_questions']} correct)
+- **Early Stopping Rate**: {summary['early_stopping_rate']:.1%}
+- **Average Responses**: {summary['avg_responses']:.1f}
+- **Average Confidence**: {summary['avg_confidence']:.3f}
+- **Average Processing Time**: {summary['avg_processing_time']:.2f} seconds
+
+## Efficiency Analysis
+- **Potential Responses**: {summary['total_questions'] * 10} (10 per question)
+- **Actual Responses**: {summary['avg_responses'] * summary['total_questions']:.0f}
+- **Response Savings**: {(1 - (summary['avg_responses'] / 10)) * 100:.1f}%
+"""
+    
+    def _create_question_breakdown_table(self, run_id: int) -> str:
+        """Create HTML table with question-by-question results."""
+        if not self.benchmark_db:
+            return "<p>No database connection available.</p>"
+        
+        with sqlite3.connect(self.benchmark_db.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT question_id, question_text, expected_answer, final_answer,
+                       is_correct, early_stopping, total_responses, consensus_confidence,
+                       uncertainty_level, processing_time
+                FROM question_results
+                WHERE run_id = ?
+                ORDER BY question_id
+            ''', (run_id,))
+            
+            results = cursor.fetchall()
+        
+        if not results:
+            return "<p>No question results found.</p>"
+        
+        table_rows = []
+        for result in results:
+            correct_icon = "✅" if result[4] else "❌"
+            early_stop_icon = "⚡" if result[5] else "🔄"
+            
+            table_rows.append(f'''
+                <tr style="{'background-color: #e6ffe6;' if result[4] else 'background-color: #ffe6e6;'}">
+                    <td style="padding: 8px; border: 1px solid #ddd;">{result[0]}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; max-width: 300px; word-wrap: break-word;">{result[1][:100]}{'...' if len(result[1]) > 100 else ''}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd;">{result[2]}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">{result[3]}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{correct_icon}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{early_stop_icon}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{result[6]}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{result[7]:.3f}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{result[8]}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">{result[9]:.2f}s</td>
+                </tr>
+            ''')
+        
+        return f'''
+        <div style="margin: 10px 0;">
+            <h4>📝 Question-by-Question Results</h4>
+            <div style="max-height: 500px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background-color: #f0f0f0; position: sticky; top: 0;">
+                        <tr>
+                            <th style="padding: 8px; border: 1px solid #ddd;">ID</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Question</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Expected</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Actual</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Correct</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Early Stop</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Responses</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Confidence</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Uncertainty</th>
+                            <th style="padding: 8px; border: 1px solid #ddd;">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {''.join(table_rows)}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        '''
+    
+    def show_entropy_modal(self, run_display: str) -> Tuple[gr.Row, Optional[plt.Figure]]:
+        """Show entropy evolution chart in modal dialog."""
+        if not run_display or not self.benchmark_db:
+            return gr.Row(visible=False), None
+        
+        try:
+            run_id = int(run_display.split(":")[0].replace("Run ", ""))
+            # Create larger chart (bigger figure size)
+            large_fig = self._create_large_entropy_chart(run_id)
+            return gr.Row(visible=True), large_fig
+        except Exception as e:
+            return gr.Row(visible=False), None
+    
+    def show_early_stopping_modal(self, run_display: str) -> Tuple[gr.Row, Optional[plt.Figure]]:
+        """Show early stopping analysis chart in modal dialog."""
+        if not run_display or not self.benchmark_db:
+            return gr.Row(visible=False), None
+        
+        try:
+            run_id = int(run_display.split(":")[0].replace("Run ", ""))
+            # Create larger chart (bigger figure size)
+            large_fig = self._create_large_early_stopping_chart(run_id)
+            return gr.Row(visible=True), large_fig
+        except Exception as e:
+            return gr.Row(visible=False), None
+    
+    def hide_entropy_modal(self) -> gr.Row:
+        """Hide entropy modal dialog."""
+        return gr.Row(visible=False)
+    
+    def hide_early_stopping_modal(self) -> gr.Row:
+        """Hide early stopping modal dialog."""
+        return gr.Row(visible=False)
+    
+    def _create_large_entropy_chart(self, run_id: int) -> Optional[plt.Figure]:
+        """Create larger version of entropy evolution chart."""
+        # Create chart with larger figure size
+        import matplotlib.pyplot as plt
+        from .visualization import setup_plot_style
+        
+        setup_plot_style()
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(16, 12))  # Larger size
+        
+        with sqlite3.connect(self.benchmark_db.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT 
+                    response_num,
+                    AVG(normalized_entropy) as avg_entropy,
+                    AVG(confidence) as avg_confidence
+                FROM entropy_evolution ee
+                JOIN question_results qr ON ee.result_id = qr.id
+                WHERE qr.run_id = ?
+                GROUP BY response_num
+                ORDER BY response_num
+            ''', (run_id,))
+            
+            evolution_data = cursor.fetchall()
+        
+        if not evolution_data:
+            ax1.text(0.5, 0.5, 'No entropy data available', 
+                    ha='center', va='center', transform=ax1.transAxes, fontsize=16)
+            ax2.text(0.5, 0.5, 'No confidence data available',
+                    ha='center', va='center', transform=ax2.transAxes, fontsize=16)
+            return fig
+        
+        response_nums = [d[0] for d in evolution_data]
+        avg_entropy = [d[1] for d in evolution_data]
+        avg_confidence = [d[2] for d in evolution_data]
+        
+        # Plot entropy evolution with larger markers and lines
+        ax1.plot(response_nums, avg_entropy, 'o-', color='red', label='Normalized Entropy', linewidth=3, markersize=8)
+        ax1.set_title('Average Entropy Evolution Across All Questions', fontsize=16)
+        ax1.set_xlabel('Response Number', fontsize=14)
+        ax1.set_ylabel('Normalized Entropy', fontsize=14)
+        ax1.grid(True, alpha=0.3)
+        ax1.legend(fontsize=12)
+        ax1.set_ylim(0, 1.0)
+        
+        # Plot confidence evolution with larger markers and lines
+        ax2.plot(response_nums, avg_confidence, 'o-', color='blue', label='Confidence', linewidth=3, markersize=8)
+        ax2.set_title('Average Confidence Evolution Across All Questions', fontsize=16)
+        ax2.set_xlabel('Response Number', fontsize=14)
+        ax2.set_ylabel('Confidence Score', fontsize=14)
+        ax2.grid(True, alpha=0.3)
+        ax2.legend(fontsize=12)
+        ax2.set_ylim(0, 1.0)
+        
+        plt.tight_layout()
+        return fig
+    
+    def _create_large_early_stopping_chart(self, run_id: int) -> Optional[plt.Figure]:
+        """Create larger version of early stopping analysis chart."""
+        import matplotlib.pyplot as plt
+        from .visualization import setup_plot_style
+        
+        setup_plot_style()
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 8))  # Larger size
+        
+        with sqlite3.connect(self.benchmark_db.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Early stopping distribution
+            cursor.execute('''
+                SELECT total_responses, COUNT(*) as count, 
+                       SUM(CASE WHEN early_stopping THEN 1 ELSE 0 END) as early_stops
+                FROM question_results 
+                WHERE run_id = ?
+                GROUP BY total_responses
+                ORDER BY total_responses
+            ''', (run_id,))
+            
+            response_data = cursor.fetchall()
+            
+            if response_data:
+                responses = [r[0] for r in response_data]
+                counts = [r[1] for r in response_data]
+                early_stops = [r[2] for r in response_data]
+                
+                # Stacked bar chart with larger bars
+                ax1.bar(responses, early_stops, label='Early Stops', alpha=0.7, color='green', width=0.6)
+                ax1.bar(responses, [c - e for c, e in zip(counts, early_stops)], 
+                       bottom=early_stops, label='Full Runs', alpha=0.7, color='red', width=0.6)
+                
+                ax1.set_title('Response Distribution', fontsize=16)
+                ax1.set_xlabel('Number of Responses Used', fontsize=14)
+                ax1.set_ylabel('Number of Questions', fontsize=14)
+                ax1.legend(fontsize=12)
+                ax1.tick_params(labelsize=12)
+            else:
+                ax1.text(0.5, 0.5, 'No response data available', 
+                        ha='center', va='center', transform=ax1.transAxes, fontsize=16)
+            
+            # Accuracy by early stopping
+            cursor.execute('''
+                SELECT early_stopping, 
+                       COUNT(*) as total,
+                       SUM(CASE WHEN is_correct THEN 1 ELSE 0 END) as correct
+                FROM question_results 
+                WHERE run_id = ?
+                GROUP BY early_stopping
+            ''', (run_id,))
+            
+            accuracy_data = cursor.fetchall()
+            
+            if accuracy_data:
+                categories = []
+                accuracies = []
+                
+                for early_stop, total, correct in accuracy_data:
+                    accuracy = correct / total if total > 0 else 0
+                    if early_stop:
+                        categories.append('Early Stop')
+                        accuracies.append(accuracy)
+                    else:
+                        categories.append('Full Run')
+                        accuracies.append(accuracy)
+                
+                colors = ['green' if 'Early' in cat else 'red' for cat in categories]
+                bars = ax2.bar(categories, accuracies, alpha=0.7, color=colors, width=0.6)
+                ax2.set_title('Accuracy by Stopping Type', fontsize=16)
+                ax2.set_ylabel('Accuracy', fontsize=14)
+                ax2.set_ylim(0, 1.0)
+                ax2.tick_params(labelsize=12)
+                
+                # Add value labels with larger font
+                for bar, acc in zip(bars, accuracies):
+                    height = bar.get_height()
+                    ax2.text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                            f'{acc:.2f}', ha='center', va='bottom', fontsize=12, fontweight='bold')
+            else:
+                ax2.text(0.5, 0.5, 'No accuracy data available',
+                        ha='center', va='center', transform=ax2.transAxes, fontsize=16)
+        
+        plt.tight_layout()
+        return fig
+    
     def create_interface(self) -> gr.Interface:
         """Create and return the Gradio interface."""
         
@@ -667,6 +1049,55 @@ class GradioInterface:
                                 comparison_chart = gr.Plot(label="Performance Comparison")
                                 cost_chart = gr.Plot(label="Cost Analysis")
                 
+                # Benchmark Analysis Tab
+                with gr.Tab("Benchmark Analysis"):
+                    with gr.Row():
+                        with gr.Column(scale=1):
+                            # Benchmark controls
+                            db_path_input = gr.Textbox(
+                                label="Database Path",
+                                value="gsm8k_reflection_results.db",
+                                placeholder="Path to SQLite database"
+                            )
+                            
+                            refresh_btn = gr.Button("Refresh Database")
+                            
+                            # Run selection
+                            run_selector = gr.Dropdown(
+                                label="Select Benchmark Run",
+                                choices=[],
+                                interactive=True,
+                                allow_custom_value=False
+                            )
+                            
+                            # Analysis options
+                            with gr.Accordion("Analysis Options", open=True):
+                                show_entropy_evolution = gr.Checkbox(
+                                    label="Show Entropy Evolution", value=True
+                                )
+                                show_early_stopping = gr.Checkbox(
+                                    label="Show Early Stopping Analysis", value=True
+                                )
+                                show_question_breakdown = gr.Checkbox(
+                                    label="Show Question-by-Question Results", value=True
+                                )
+                            
+                            analyze_btn = gr.Button("Analyze Run", variant="primary")
+                        
+                        with gr.Column(scale=2):
+                            # Results display
+                            benchmark_summary = gr.Markdown(label="Benchmark Summary")
+                            
+                            with gr.Row():
+                                with gr.Column():
+                                    entropy_chart = gr.Plot(label="Entropy Evolution")
+                                    entropy_expand_btn = gr.Button("🔍 View Larger", size="sm", visible=False)
+                                with gr.Column():
+                                    early_stopping_chart = gr.Plot(label="Early Stopping Analysis")
+                                    early_stopping_expand_btn = gr.Button("🔍 View Larger", size="sm", visible=False)
+                            
+                            question_breakdown = gr.HTML(label="Question Results")
+                
                 # Examples Tab
                 with gr.Tab("Examples"):
                     with gr.Row():
@@ -689,6 +1120,21 @@ class GradioInterface:
                                 with gr.Accordion(category, open=False):
                                     for question in questions:
                                         gr.Markdown(f"- {question}")
+            
+            # Modal dialogs for expanded chart views
+            with gr.Row(visible=False) as entropy_modal:
+                with gr.Column():
+                    gr.Markdown("## 📊 Entropy Evolution Analysis (Expanded View)")
+                    entropy_chart_large = gr.Plot(label="Entropy Evolution - Full Size")
+                    with gr.Row():
+                        entropy_close_btn = gr.Button("❌ Close", variant="secondary")
+            
+            with gr.Row(visible=False) as early_stopping_modal:
+                with gr.Column():
+                    gr.Markdown("## 📊 Early Stopping Analysis (Expanded View)")
+                    early_stopping_chart_large = gr.Plot(label="Early Stopping Analysis - Full Size")
+                    with gr.Row():
+                        early_stopping_close_btn = gr.Button("❌ Close", variant="secondary")
             
             # Event handlers
             process_btn.click(
@@ -731,6 +1177,51 @@ class GradioInterface:
                 fn=update_prompt_text,
                 inputs=[prompt_template],
                 outputs=[prompt_display]
+            )
+            
+            # Benchmark tab event handlers
+            refresh_btn.click(
+                fn=self.refresh_benchmark_database,
+                inputs=[db_path_input],
+                outputs=[run_selector, status_display]
+            )
+            
+            def update_analysis_and_buttons(run_display, show_entropy, show_early_stopping, show_breakdown):
+                summary, entropy_fig, early_stopping_fig, breakdown, show_entropy_btn, show_early_stopping_btn = self.analyze_benchmark_run(
+                    run_display, show_entropy, show_early_stopping, show_breakdown
+                )
+                return (
+                    summary, entropy_fig, early_stopping_fig, breakdown,
+                    gr.Button(visible=show_entropy_btn), gr.Button(visible=show_early_stopping_btn)
+                )
+            
+            analyze_btn.click(
+                fn=update_analysis_and_buttons,
+                inputs=[run_selector, show_entropy_evolution, show_early_stopping, show_question_breakdown],
+                outputs=[benchmark_summary, entropy_chart, early_stopping_chart, question_breakdown, entropy_expand_btn, early_stopping_expand_btn]
+            )
+            
+            # Modal event handlers
+            entropy_expand_btn.click(
+                fn=self.show_entropy_modal,
+                inputs=[run_selector],
+                outputs=[entropy_modal, entropy_chart_large]
+            )
+            
+            early_stopping_expand_btn.click(
+                fn=self.show_early_stopping_modal,
+                inputs=[run_selector],
+                outputs=[early_stopping_modal, early_stopping_chart_large]
+            )
+            
+            entropy_close_btn.click(
+                fn=self.hide_entropy_modal,
+                outputs=[entropy_modal]
+            )
+            
+            early_stopping_close_btn.click(
+                fn=self.hide_early_stopping_modal,
+                outputs=[early_stopping_modal]
             )
         
         return interface
