@@ -19,6 +19,7 @@ help:
 	@echo "  test-integration - Run integration tests with env vars"
 	@echo "  test-agent-live - Test agent with real LLM (requires setup)"
 	@echo "  benchmark-gsm8k - Run GSM8K mathematical reasoning benchmark"
+	@echo "                    Usage: make benchmark-gsm8k [MODEL=model-name] [ATTEMPTS='1 3 5']"
 	@echo "  lint          - Run linting checks"
 	@echo "  format        - Format code"
 	@echo "  clean         - Clean up temporary files"
@@ -442,21 +443,35 @@ else:\
     exit(1)"
 
 # Run GSM8K mathematical reasoning benchmark
+# Usage: make benchmark-gsm8k [MODEL=model-name] [ATTEMPTS="1 3 5 10"]
 benchmark-gsm8k:
 	@echo "🧮 Running GSM8K Mathematical Reasoning Benchmark"
 	@echo "=" * 60
-	@echo "Testing self-consistency agent effectiveness with 5 math problems"
+	@echo "Testing self-consistency agent effectiveness with mathematical reasoning"
 	@echo "Following Tyler Burleigh's methodology: https://tylerburleigh.com/blog/2023/12/04/"
 	@echo ""
-	@if [ -z "$(LLM_MODEL)" ]; then \
-		echo "❌ LLM_MODEL not set. Run 'make setup-env' and configure .env first"; \
-		exit 1; \
+	@if [ -n "$(MODEL)" ]; then \
+		echo "📝 Using specified model: $(MODEL)"; \
+	else \
+		echo "📝 Using default model from .env file"; \
 	fi
-	@echo "Using model: $(LLM_MODEL) at $(or $(LLM_BASE_URL),http://localhost:4000)"
+	@echo "🌐 LiteLLM endpoint: $(or $(LLM_BASE_URL),http://localhost:4000)"
 	@echo "⚠️  This will make real API calls to your LLM provider"
-	@echo "📊 Testing with [1, 3, 5, 10] attempts to show accuracy improvement"
+	@if [ -n "$(ATTEMPTS)" ]; then \
+		echo "📊 Testing with custom attempts: $(ATTEMPTS)"; \
+	else \
+		echo "📊 Testing with default attempts: [1, 3, 5, 10]"; \
+	fi
 	@echo "Press Ctrl+C within 5 seconds to cancel..."
 	@sleep 5
 	@echo ""
 	@echo "🚀 Starting benchmark..."
-	@uv run python llm_agents/benchmark/run_gsm8k.py
+	@if [ -n "$(MODEL)" ] && [ -n "$(ATTEMPTS)" ]; then \
+		uv run python llm_agents/benchmark/run_gsm8k.py --model $(MODEL) --attempts $(ATTEMPTS); \
+	elif [ -n "$(MODEL)" ]; then \
+		uv run python llm_agents/benchmark/run_gsm8k.py --model $(MODEL); \
+	elif [ -n "$(ATTEMPTS)" ]; then \
+		uv run python llm_agents/benchmark/run_gsm8k.py --attempts $(ATTEMPTS); \
+	else \
+		uv run python llm_agents/benchmark/run_gsm8k.py; \
+	fi

@@ -128,13 +128,16 @@ class GSM8KBenchmark:
             print(f"\n🎯 Testing with {attempts} attempt(s)...")
             results = []
             
-            for question in self.questions:
-                print(f"  📝 Question: {question.id} ({question.difficulty})")
+            for i, question in enumerate(self.questions, 1):
+                print(f"  📝 Question {i}/{len(self.questions)}: {question.id} ({question.difficulty})")
+                print(f"     Processing {attempts} attempt(s)... (this may take ~{attempts * 30}s)")
+                
                 result = self._evaluate_question(question, attempts)
                 results.append(result)
                 
                 status = "✅ Correct" if result.is_correct else "❌ Incorrect"
                 print(f"     Expected: {result.expected_answer}, Got: {result.final_answer} - {status}")
+                print(f"     Completed in {result.processing_time:.1f}s")
             
             all_results[attempts] = results
             correct_count = sum(1 for r in results if r.is_correct)
