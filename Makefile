@@ -7,7 +7,7 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live
+.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live benchmark-gsm8k
 
 # Default target
 help:
@@ -18,6 +18,7 @@ help:
 	@echo "  test-coverage - Run tests with coverage report"
 	@echo "  test-integration - Run integration tests with env vars"
 	@echo "  test-agent-live - Test agent with real LLM (requires setup)"
+	@echo "  benchmark-gsm8k - Run GSM8K mathematical reasoning benchmark"
 	@echo "  lint          - Run linting checks"
 	@echo "  format        - Format code"
 	@echo "  clean         - Clean up temporary files"
@@ -439,3 +440,23 @@ if agent_wrapper.validate_llm_connection():\
 else:\
     print('❌ LLM connection failed. Check LiteLLM status with: make litellm-status');\
     exit(1)"
+
+# Run GSM8K mathematical reasoning benchmark
+benchmark-gsm8k:
+	@echo "🧮 Running GSM8K Mathematical Reasoning Benchmark"
+	@echo "=" * 60
+	@echo "Testing self-consistency agent effectiveness with 5 math problems"
+	@echo "Following Tyler Burleigh's methodology: https://tylerburleigh.com/blog/2023/12/04/"
+	@echo ""
+	@if [ -z "$(LLM_MODEL)" ]; then \
+		echo "❌ LLM_MODEL not set. Run 'make setup-env' and configure .env first"; \
+		exit 1; \
+	fi
+	@echo "Using model: $(LLM_MODEL) at $(or $(LLM_BASE_URL),http://localhost:4000)"
+	@echo "⚠️  This will make real API calls to your LLM provider"
+	@echo "📊 Testing with [1, 3, 5, 10] attempts to show accuracy improvement"
+	@echo "Press Ctrl+C within 5 seconds to cancel..."
+	@sleep 5
+	@echo ""
+	@echo "🚀 Starting benchmark..."
+	@uv run python llm_agents/benchmark/run_gsm8k.py

@@ -271,6 +271,20 @@ class Examples:
                     "confidence_threshold": 0.85,
                     "min_responses": 4
                 }
+            },
+            "gsm8k_benchmark": {
+                "title": "GSM8K Mathematical Reasoning",
+                "description": "Tests self-consistency effectiveness with mathematical word problems",
+                "questions": [
+                    "Sarah has 12 apples. She gives away 3 apples to her friend. How many apples does Sarah have left?",
+                    "A store sells books for $8 each. If Tom buys 5 books and pays with a $50 bill, how much change does he get?",
+                    "In a class of 30 students, 60% are girls. How many boys are in the class?"
+                ],
+                "config": {
+                    "target_responses": 10,
+                    "confidence_threshold": 0.8,
+                    "min_responses": 5
+                }
             }
         }
     
@@ -319,6 +333,13 @@ class Examples:
                 "What is the next number: 13, -21, 34, -55, 89, ...?",
                 "Continue the sequence: 144, 73, 14, 8, 236, ...?",
                 "Next term: 3, 8, 23, 68, 203, ...?"
+            ],
+            "GSM8K Benchmark": [
+                "Sarah has 12 apples. She gives away 3 apples to her friend. How many apples does Sarah have left?",
+                "A store sells books for $8 each. If Tom buys 5 books and pays with a $50 bill, how much change does he get?",
+                "In a class of 30 students, 60% are girls. How many boys are in the class?",
+                "A car travels at 60 mph for 2.5 hours, then 40 mph for 1.5 hours. What is the total distance traveled?",
+                "A bakery made 145 cupcakes. They sold 80% of them. The remaining cupcakes are packed into boxes of 6. How many full boxes can they fill with the remaining cupcakes?"
             ]
         }
     
