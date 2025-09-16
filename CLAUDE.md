@@ -22,6 +22,7 @@ intelligent_agents/
 
 **Implemented Agent Types:**
 - **Self-Consistency Agent**: Model-based reflex with majority voting
+- **Enhanced Self-Consistency Agent**: ✅ Token-level confidence data collection with structured outputs
 - **Self-Reflection Agent**: Utility-based with confidence-aware early stopping
 - **Mathematical Reasoning**: Specialized support for math models (Qwen2-Math, DeepSeek-Math)
 - **Interactive Comparison**: Web-based agent evaluation and visualization
@@ -29,8 +30,9 @@ intelligent_agents/
 **Key Achievements:**
 - ✅ Confidence-aware early stopping with entropy calculation
 - ✅ Enhanced LaTeX parsing including `$\boxed{...}$` format (TDD implementation)
+- ✅ Token-level confidence data collection with structured-logprobs integration
 - ✅ GSM8K mathematical reasoning benchmark integration
-- ✅ 95%+ regex pattern test coverage (82 comprehensive tests)
+- ✅ 95%+ regex pattern test coverage (107 comprehensive tests)
 - ✅ Gradio web interface for real-time agent comparison
 
 ## Agent Characteristics

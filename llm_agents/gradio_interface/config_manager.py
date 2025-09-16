@@ -83,8 +83,10 @@ class ConfigManager:
         return {
             "claude-3-haiku": "Claude 3 Haiku (Fast, Cost-Effective)",
             "claude-3-5-sonnet": "Claude 3.5 Sonnet (Balanced)",
-            "gpt-4o": "GPT-4o (Advanced)",
-            "gpt-4o-mini": "GPT-4o Mini (Fast)",
+            "gpt-4o": "GPT-4o (Advanced) ✨ Enhanced Support",
+            "gpt-4o-mini": "GPT-4o Mini (Fast) ✨ Enhanced Support",
+            "openrouter/gpt-4o": "OpenRouter GPT-4o (Advanced) ✨ Enhanced Support",
+            "openrouter/gpt-4o-mini": "OpenRouter GPT-4o Mini (Recommended) ✨ Enhanced Support",
             "gpt-3.5-turbo": "GPT-3.5 Turbo (Classic)"
         }
     

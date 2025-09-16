@@ -91,7 +91,12 @@ class GradioInterface:
                 return "Connection failed", "", "", None, None, status
             
             # Process question
-            agent_type_enum = AgentType.SELF_CONSISTENCY if agent_type == "Self-Consistency" else AgentType.SELF_REFLECTION
+            if agent_type == "Self-Consistency":
+                agent_type_enum = AgentType.SELF_CONSISTENCY
+            elif agent_type == "Enhanced Self-Consistency":
+                agent_type_enum = AgentType.ENHANCED_SELF_CONSISTENCY
+            else:
+                agent_type_enum = AgentType.SELF_REFLECTION
             
             result = agent_wrapper.process_question(
                 question=question,
@@ -221,6 +226,27 @@ class GradioInterface:
         for answer, prob in result.answer_distribution.items():
             lines.append(f"- **{answer}:** {prob:.3f} ({prob*100:.1f}%)")
         
+        # Add token confidence information for enhanced self-consistency
+        if result.token_confidence_reasoning is not None or result.token_confidence_answer is not None:
+            lines.extend([
+                f"",
+                f"### Token Confidence Analysis (Normalized 0-1 Scale)",
+                f"- **Reasoning Confidence:** {result.token_confidence_reasoning:.3f} ({result.token_confidence_reasoning*100:.1f}%)" if result.token_confidence_reasoning is not None else "",
+                f"- **Answer Confidence:** {result.token_confidence_answer:.3f} ({result.token_confidence_answer*100:.1f}%)" if result.token_confidence_answer is not None else "",
+            ])
+            
+            # Add individual response token confidence
+            if result.individual_response_confidence:
+                lines.extend([
+                    f"",
+                    f"### Individual Response Token Confidence"
+                ])
+                for i, resp_data in enumerate(result.individual_response_confidence):
+                    status = "✅ CONSENSUS" if resp_data.get("matches_consensus", False) else "❌ OUTLIER"
+                    lines.append(f"- **Response {i+1}:** '{resp_data['answer']}' {status}")
+                    lines.append(f"  - Reasoning: {resp_data['reasoning_confidence']:.3f} ({resp_data['reasoning_confidence']*100:.1f}%)")
+                    lines.append(f"  - Answer: {resp_data['answer_confidence']:.3f} ({resp_data['answer_confidence']*100:.1f}%)")
+        
         # Add entropy information for self-reflection
         if result.distribution_entropy is not None:
             lines.extend([
@@ -332,6 +358,7 @@ class GradioInterface:
                 <strong>Confidence:</strong> {result.confidence:.3f} | 
                 <strong>Uncertainty:</strong> {result.uncertainty_level}
                 {f'<br><strong>Entropy:</strong> {result.normalized_entropy:.3f} ({result.entropy_level}) | <strong>Consensus:</strong> {result.consensus_type}' if result.distribution_entropy is not None else ''}
+                {f'<br><strong>Token Confidence:</strong> Reasoning {result.token_confidence_reasoning:.3f} ({result.token_confidence_reasoning*100:.1f}%) | Answer {result.token_confidence_answer:.3f} ({result.token_confidence_answer*100:.1f}%)' if result.token_confidence_reasoning is not None else ''}
             </p>
         </div>
         '''
@@ -836,17 +863,25 @@ class GradioInterface:
             gr.Markdown("""
             # 🤖 LLM Agent Comparison Interface
             
-            Compare **Self-Consistency** and **Self-Reflection** agents with interactive controls and visualizations.
+            Compare different agent types with interactive controls and visualizations.
             
             - **Self-Consistency**: Fixed sampling with majority vote
+            - **Enhanced Self-Consistency**: Traditional consensus + token-level confidence data
             - **Self-Reflection**: Confidence-aware early stopping with probability distributions
+            
+            ⚠️ **Enhanced Self-Consistency** requires models supporting structured outputs + logprobs (OpenRouter GPT-4o models recommended)
             """)
             
             # Connection status
             status_display = gr.Textbox(
                 label="Status",
                 value="Ready to process questions",
-                interactive=False
+                interactive=False,
+                lines=3,
+                max_lines=5,
+                show_copy_button=True,
+                container=True,
+                scale=1
             )
             
             with gr.Tabs():
@@ -862,7 +897,7 @@ class GradioInterface:
                             )
                             
                             agent_type = gr.Radio(
-                                choices=["Self-Consistency", "Self-Reflection"],
+                                choices=["Self-Consistency", "Enhanced Self-Consistency", "Self-Reflection"],
                                 value="Self-Reflection",
                                 label="Agent Type"
                             )
@@ -935,7 +970,7 @@ class GradioInterface:
                                 )
                                 model_name = gr.Dropdown(
                                     choices=list(self.config_manager.get_available_models().keys()),
-                                    value="claude-3-haiku",
+                                    value="openrouter/gpt-4o-mini",
                                     label="Model"
                                 )
                                 temperature = gr.Slider(
@@ -1030,7 +1065,7 @@ class GradioInterface:
                                 )
                                 comp_model_name = gr.Dropdown(
                                     choices=list(self.config_manager.get_available_models().keys()),
-                                    value="claude-3-haiku",
+                                    value="openrouter/gpt-4o-mini",
                                     label="Model"
                                 )
                                 comp_temperature = gr.Slider(

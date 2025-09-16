@@ -62,6 +62,8 @@ install: .venv
 	uv pip install networkx matplotlib pandas mazelib imageio seaborn
 	@echo "Installing web interface packages..."
 	uv pip install gradio
+	@echo "Installing structured logprobs for token-level confidence..."
+	uv pip install structured-logprobs
 
 # Run tests
 test:
@@ -94,6 +96,26 @@ test-config:
 test-parsing:
 	@echo "Running parsing tests..."
 	uv run pytest llm_agents/tests/test_parsing.py -v
+
+test-enhanced:
+	@echo "Running enhanced self-consistency tests..."
+	uv run pytest llm_agents/tests/test_enhanced_self_consistency.py -v
+
+# Enhanced agent demo with token confidence
+demo-enhanced:
+	@echo "🚀 Running Enhanced Self-Consistency Agent Demo"
+	@echo "This demo shows token-level confidence data collection"
+	@echo "⚠️  Requires a model that supports structured outputs + logprobs"
+	@echo "📋 Recommended: LLM_MODEL=openrouter/gpt-4o-mini"
+	@echo "🔑 Ensure OPENROUTER_API_KEY is set in your .env file"
+	@echo ""
+	@if [ -z "$(LLM_MODEL)" ]; then \
+		echo "💡 No LLM_MODEL set, demo will auto-select compatible model"; \
+	else \
+		echo "Using configured model: $(LLM_MODEL)"; \
+	fi
+	@echo ""
+	uv run python examples/enhanced_self_consistency_demo.py
 
 # Linting (if available)
 lint:
@@ -248,13 +270,14 @@ litellm-install:
 		-e LITELLM_LOG=INFO \
 		-e OPENAI_API_KEY=$${OPENAI_API_KEY:-dummy} \
 		-e ANTHROPIC_API_KEY=$${ANTHROPIC_API_KEY:-dummy} \
+		-e OPENROUTER_API_KEY=$${OPENROUTER_API_KEY:-dummy} \
 		$(DOCKER_IMAGE) \
 		--config /app/config.yaml \
 		--host 0.0.0.0 \
 		--port $(LITELLM_PORT)
 	@echo "LiteLLM server starting at http://localhost:$(HOST_PORT)"
-	@echo "📋 Available models: gpt-4o, gpt-4o-mini, gpt-3.5-turbo, claude-3-5-sonnet"
-	@echo "🔑 Set OPENAI_API_KEY or ANTHROPIC_API_KEY environment variables"
+	@echo "📋 Available models: gpt-4o, gpt-4o-mini, gpt-3.5-turbo, claude-3-5-sonnet, openrouter/gpt-4o-mini"
+	@echo "🔑 Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or OPENROUTER_API_KEY environment variables"
 	@echo "Use 'make litellm-logs' to see startup logs"
 	@echo "Use 'make litellm-status' to check if ready"
 

@@ -12,6 +12,18 @@ model_list:
     litellm_params:
       model: openai/gpt-4o-mini
       api_key: os.environ/OPENAI_API_KEY
+  
+  # OpenRouter models (requires OPENROUTER_API_KEY environment variable)
+  # These models support both structured outputs and logprobs for token confidence
+  - model_name: openrouter/gpt-4o-mini
+    litellm_params:
+      model: openrouter/openai/gpt-4o-mini
+      api_key: os.environ/OPENROUTER_API_KEY
+  
+  - model_name: openrouter/gpt-4o
+    litellm_params:
+      model: openrouter/openai/gpt-4o
+      api_key: os.environ/OPENROUTER_API_KEY
 
   # Anthropic models (requires ANTHROPIC_API_KEY environment variable)
   - model_name: claude-3-5-sonnet

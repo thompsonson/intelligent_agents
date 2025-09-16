@@ -9,11 +9,12 @@ from dataclasses import dataclass
 from enum import Enum
 import time
 
-from ..common.interfaces import LiteLLMAdapter
+from ..common.interfaces import LiteLLMAdapter, EnhancedLiteLLMAdapter
 from .debug_adapter import DebugLiteLLMAdapter
 from ..self_consistency.agent import SelfConsistencyAgent
+from ..self_consistency.enhanced_agent import EnhancedSelfConsistencyAgent, ConfidenceDataExporter
 from ..self_consistency.config import AgentConfig
-from ..self_consistency.domain import ConsensusResult
+from ..self_consistency.domain import ConsensusResult, EnhancedConsensusResult
 from ..self_reflection.agent import SelfReflectionAgent
 from ..self_reflection.config import ReflectionConfig
 from ..self_reflection.domain import ReflectionResult
@@ -22,6 +23,7 @@ from ..self_reflection.domain import ReflectionResult
 class AgentType(Enum):
     """Available agent types."""
     SELF_CONSISTENCY = "self_consistency"
+    ENHANCED_SELF_CONSISTENCY = "enhanced_self_consistency"
     SELF_REFLECTION = "self_reflection"
 
 
@@ -51,6 +53,11 @@ class UnifiedResult:
     normalized_entropy: Optional[float] = None  # Entropy normalized by max possible (0.0-1.0)
     entropy_level: Optional[str] = None  # "concentrated", "scattered", "uniform"
     consensus_type: Optional[str] = None  # "strong", "emerging", "divided", "binary"
+    
+    # Token confidence fields (enhanced self-consistency only)
+    token_confidence_reasoning: Optional[float] = None  # Normalized reasoning confidence (0.0-1.0)
+    token_confidence_answer: Optional[float] = None  # Normalized answer confidence (0.0-1.0)
+    individual_response_confidence: Optional[List[Dict[str, Any]]] = None  # Per-response token confidence data
 
 
 class AgentWrapper:
@@ -106,6 +113,10 @@ class AgentWrapper:
         
         if agent_type == AgentType.SELF_CONSISTENCY:
             result = self._process_with_self_consistency(
+                question, target_responses, prompt_template, debug_adapter
+            )
+        elif agent_type == AgentType.ENHANCED_SELF_CONSISTENCY:
+            result = self._process_with_enhanced_self_consistency(
                 question, target_responses, prompt_template, debug_adapter
             )
         elif agent_type == AgentType.SELF_REFLECTION:
@@ -205,6 +216,74 @@ class AgentWrapper:
             normalized_entropy=result.normalized_entropy,
             entropy_level=result.entropy_level,
             consensus_type=result.consensus_type
+        )
+    
+    def _process_with_enhanced_self_consistency(
+        self, question: str, target_responses: int, prompt_template: str, debug_adapter: Optional[DebugLiteLLMAdapter] = None
+    ) -> UnifiedResult:
+        """Process with enhanced self-consistency agent."""
+        try:
+            # Check if model supports structured outputs + logprobs
+            model_name = debug_adapter.model if debug_adapter else self.llm_adapter.model
+            if not self._check_enhanced_model_compatibility(model_name):
+                raise ValueError(f"Model '{model_name}' does not support structured outputs + logprobs. Please use a compatible model like openrouter/gpt-4o-mini or gpt-4o-mini.")
+            
+            # Create enhanced LLM adapter (not debug version for structured outputs)
+            enhanced_adapter = EnhancedLiteLLMAdapter(
+                model=self.llm_adapter.model,
+                temperature=self.llm_adapter.temperature,
+                base_url=self.llm_adapter.base_url,
+                api_key=self.llm_adapter.api_key,
+                **self.llm_adapter.kwargs
+            )
+            
+            config = AgentConfig(
+                llm_interface=enhanced_adapter,
+                target_responses=target_responses,
+                prompt_template=prompt_template
+            )
+            
+            agent = EnhancedSelfConsistencyAgent(config, question)
+            result: EnhancedConsensusResult = agent.process_question()
+            
+            # Convert to unified format
+            answer_distribution = {result.final_answer: result.confidence}
+            if result.confidence < 1.0:
+                # Add "other" category for remaining probability
+                answer_distribution["<other answers>"] = 1.0 - result.confidence
+            
+            uncertainty_level = self._calculate_uncertainty_level(result.confidence)
+            
+            return UnifiedResult(
+                agent_type="Enhanced Self-Consistency",
+                final_answer=result.final_answer,
+                confidence=result.confidence,
+                total_responses=target_responses,
+                early_stopping=False,  # Enhanced self-consistency doesn't use early stopping
+                answer_distribution=answer_distribution,
+                uncertainty_level=uncertainty_level,
+                # Token confidence data
+                token_confidence_reasoning=result.confidence_report.token_confidence_reasoning,
+                token_confidence_answer=result.confidence_report.token_confidence_answer,
+                individual_response_confidence=result.confidence_report.individual_response_data
+            )
+            
+        except Exception as e:
+            # Re-raise with clear error message
+            raise ValueError(f"Enhanced Self-Consistency processing failed: {str(e)}")
+    
+    def _check_enhanced_model_compatibility(self, model_name: str) -> bool:
+        """Check if model supports structured outputs + logprobs."""
+        compatible_models = [
+            'gpt-4o', 'gpt-4o-mini',
+            'openrouter/gpt-4o', 'openrouter/gpt-4o-mini',
+            'openrouter/openai/gpt-4o', 'openrouter/openai/gpt-4o-mini'
+        ]
+        
+        return any(
+            model_name == compat_model or 
+            model_name.endswith(compat_model.split('/')[-1])
+            for compat_model in compatible_models
         )
     
     def compare_agents(

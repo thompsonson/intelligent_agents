@@ -5,6 +5,8 @@ concrete implementations for different LLM providers.
 """
 
 import os
+import json
+import logging
 from abc import ABC, abstractmethod
 from typing import Optional, Any, Dict
 from openai import OpenAI
@@ -293,3 +295,134 @@ class LiteLLMAdapter(LLMInterface):
             answer = ' '.join(answer.split())
         
         return LLMResponse(reasoning=reasoning, answer=answer)
+
+
+class EnhancedLLMInterface(ABC):
+    """Abstract interface for LLM interactions with token-level confidence data."""
+    
+    @abstractmethod
+    def generate_enhanced_llm_response(self, prompt: str, question: str):
+        """Generate a single LLM response with token-level confidence data."""
+        pass
+
+
+class EnhancedLiteLLMAdapter(LiteLLMAdapter, EnhancedLLMInterface):
+    """Enhanced LiteLLM adapter with structured outputs and token confidence support."""
+    
+    def __init__(self, *args, **kwargs):
+        """Initialize enhanced adapter with same parameters as base adapter."""
+        super().__init__(*args, **kwargs)
+        
+        # JSON schema for Chain-of-Thought structured outputs
+        self.chain_of_thought_schema = {
+            "type": "object",
+            "properties": {
+                "reasoning": {
+                    "type": "string",
+                    "description": "Step-by-step reasoning process leading to the answer"
+                },
+                "answer": {
+                    "type": "string",
+                    "description": "Final numerical or textual answer extracted from reasoning"
+                }
+            },
+            "required": ["reasoning", "answer"]
+        }
+    
+    def generate_enhanced_llm_response(self, prompt: str, question: str):
+        """Generate LLM response with structured outputs and token probability data."""
+        from ..self_consistency.domain import EnhancedLLMResponse
+        
+        try:
+            # Define JSON schema for structured outputs (OpenAI format)
+            schema = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "chain_of_thought_response",
+                    "schema": self.chain_of_thought_schema
+                }
+            }
+
+            # Make API call with structured outputs + logprobs
+            completion = self.client.chat.completions.create(
+                model=self.model,
+                messages=[{"role": "user", "content": f"{prompt}\n\nQuestion: {question}"}],
+                temperature=self.temperature,
+                response_format=schema,
+                logprobs=True,  # Enable token-level probabilities for data collection
+                **self.kwargs
+            )
+
+            # Extract structured data
+            content = json.loads(completion.choices[0].message.content)
+
+            # Enhance with structured logprobs for token confidence data
+            logprob_data = None
+            try:
+                # Import here to avoid issues if library is not installed
+                from structured_logprobs.main import add_logprobs
+                enhanced_completion = add_logprobs(completion)
+                logprob_data = enhanced_completion.log_probs if hasattr(enhanced_completion, 'log_probs') else None
+            except ImportError:
+                logging.warning("structured-logprobs library not available, continuing without token confidence data")
+            except Exception as e:
+                logging.warning(f"Failed to extract logprobs: {e}")
+                # Continue without logprobs data
+
+            # Validate logprobs structure if available
+            if logprob_data and not self._validate_logprobs_structure(logprob_data):
+                logging.warning("Invalid logprobs structure detected, setting to None")
+                logprob_data = None
+
+            return EnhancedLLMResponse(
+                reasoning=content["reasoning"],
+                answer=content["answer"],
+                logprobs=logprob_data  # Token probability data for analysis (may be None)
+            )
+
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to parse JSON response: {e}")
+            raise  # Fail fast - structured outputs are required
+
+        except Exception as e:
+            logging.error(f"API call failed: {e}")
+            # Fallback to traditional parsing if structured outputs fail
+            logging.info("Falling back to traditional LLM response parsing")
+            traditional_response = self.generate_llm_response(prompt, question)
+            return EnhancedLLMResponse(
+                reasoning=traditional_response.reasoning,
+                answer=traditional_response.answer,
+                logprobs=None  # No token data available in fallback
+            )
+
+    def _validate_logprobs_structure(self, logprobs: Optional[Dict]) -> bool:
+        """Validate the logprobs data structure matches expectations.
+
+        Expected structure from structured-logprobs library:
+        [{"reasoning": float, "answer": float}] or {"reasoning": float, "answer": float}
+        Returns True if structure is valid, False otherwise.
+        """
+        if not logprobs:
+            return False
+
+        # Handle list format from structured-logprobs (take first element)
+        if isinstance(logprobs, list):
+            if len(logprobs) == 0:
+                logging.warning("Empty logprobs list")
+                return False
+            logprobs = logprobs[0]  # Take the first element
+        
+        if not isinstance(logprobs, dict):
+            logging.warning(f"Logprobs is not a dict: {type(logprobs)}")
+            return False
+
+        expected_fields = ["reasoning", "answer"]
+        for field in expected_fields:
+            if field not in logprobs:
+                logging.warning(f"Missing expected field '{field}' in logprobs structure")
+                return False
+            if not isinstance(logprobs[field], (int, float)):
+                logging.warning(f"Field '{field}' is not numeric: {type(logprobs[field])}")
+                return False
+
+        return True
