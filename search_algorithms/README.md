@@ -36,6 +36,7 @@ See [here](https://github.com/thompsonson/q-learning) for a Basic Q-Learning Sta
    * [Maze Solver Heuristics](#maze-solver-heuristics)
    * [Step Cost Calculation](#step-cost-calculation)
    * [Algorithm Comparison](#algorithm-comparison-1)
+- [Adaptive / Replanning Search Algorithms](#adaptive-replanning-search-algorithms)
 - [Other Search Algorithms (not (yet 🤞) implemented in the current codebase)](#other-search-algorithms-not-yet-implemented-in-the-current-codebase)
 
 <!-- TOC end -->
@@ -207,6 +208,13 @@ These variables help quantify the tradeoffs between different search algorithms 
 | **Best Use Cases** | Quick approximate solutions | Finding optimal paths when good heuristic available |
 | **Key Advantage** | Often finds decent solutions quickly | Guaranteed to find shortest path with admissible heuristic |
 | **Key Weakness** | Can make poor choices with misleading heuristics | Requires more memory than Greedy |
+
+<!-- TOC --><a name="adaptive-replanning-search-algorithms"></a>
+## Adaptive / Replanning Search Algorithms
+
+Every algorithm above answers "find a path" once, over a graph that never changes. Adaptive search algorithms are built for the opposite case: the graph changes *while* the agent is acting on a path through it, and re-running a full search from scratch on every change is wasteful.
+
+- [D* Lite](d_star_lite.md) — *design stage, not yet implemented*. Repairs an existing plan when edge costs change (e.g. a bridge breaks or is fixed) by only re-examining the nodes affected by the change, instead of resolving the whole maze. See [`documentation/d-star/environment_changes.md`](../documentation/d-star/environment_changes.md) and [`documentation/d-star/agent_changes.md`](../documentation/d-star/agent_changes.md) for how this would change `MazeEnvironment` and the agent's shape respectively.
 
 <!-- TOC --><a name="other-search-algorithms-not-yet-implemented-in-the-current-codebase"></a>
 ## Other Search Algorithms (not (yet 🤞) implemented in the current codebase)
