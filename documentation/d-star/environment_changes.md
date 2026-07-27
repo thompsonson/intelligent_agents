@@ -48,17 +48,22 @@ class MazeEnvironment:
         Returns float('inf') if the edge is currently broken."""
 
     def designate_bridge(self, state1: Tuple[int, int], state2: Tuple[int, int]) -> None:
-        """Mark an existing edge as a bridge — the only kind of edge allowed to toggle."""
+        """Mark an existing edge as a bridge — the only kind of edge allowed to toggle.
+        Registers both (state1, state2) and (state2, state1); the maze graph is undirected,
+        so a bridge is symmetric by construction, not a pair of independent directed edges."""
 
     def break_edge(self, state1: Tuple[int, int], state2: Tuple[int, int]) -> None:
-        """Set a bridge edge's cost to infinity (impassable). Raises if the edge isn't a designated bridge."""
+        """Set a bridge edge's cost to infinity (impassable) in both directions.
+        Raises if the edge isn't a designated bridge."""
 
     def fix_edge(self, state1: Tuple[int, int], state2: Tuple[int, int], cost: float = 1.0) -> None:
-        """Restore a bridge edge to a passable cost."""
+        """Restore a bridge edge to a passable cost in both directions."""
 
     def drain_changed_edges(self) -> List[Tuple[Tuple[int, int], Tuple[int, int]]]:
         """Return and clear the list of edges whose cost changed since this was last called.
-        This is the 'sense' step in D* Lite's Main() loop."""
+        This is the 'sense' step in D* Lite's Main() loop. A single break_edge()/fix_edge()
+        call appends both (state1, state2) and (state2, state1), since D* Lite's UpdateVertex
+        needs to re-examine the edge from either endpoint's perspective."""
 ```
 
 Notes on these choices, for discussion rather than settled decisions:
@@ -66,6 +71,7 @@ Notes on these choices, for discussion rather than settled decisions:
 - **Bridges are edges, not cells.** A wall toggling would change node validity (and thus `graph` topology, which every algorithm iterates over); an edge toggling only changes `get_step_cost`, which only informed search algorithms consult. This keeps BFS/DFS/GBFS unaffected by the new capability.
 - **`drain_changed_edges()` is a pull, not a push.** D* Lite's loop polls once per move ("scan graph for edges with changed cost") rather than reacting to a callback — simpler to reason about and matches the textbook pseudocode directly.
 - **Cost is `float('inf')` for a broken bridge, not edge removal.** Keeps `graph` (topology) and cost (weight) as separate concerns — an edge always exists once built; only its traversability changes. This also means Manhattan distance heuristics stay valid (they only depend on coordinates, never on cost).
+- **Bidirectional updates must be handled internally, not left to the caller.** `_create_graph()` already builds `graph` as undirected — `graph[A]` contains `B` and `graph[B]` contains `A` as independent adjacency-list entries, one per direction. If `break_edge(A, B)` only updated the `(A, B)` direction, the maze would end up with an inconsistent one-way bridge (passable from `B` to `A` but not the reverse), which doesn't correspond to anything physical for a grid maze and would silently break any algorithm that happens to approach the bridge from the "wrong" side. So `designate_bridge`/`break_edge`/`fix_edge` each internally update *both* `(A, B)` and `(B, A)` in the cost map, and `drain_changed_edges()` reports both — the agent's `UpdateVertex` needs to reconsider the edge from whichever endpoint is a predecessor, and predecessors can approach from either side.
 
 ## Config changes
 
