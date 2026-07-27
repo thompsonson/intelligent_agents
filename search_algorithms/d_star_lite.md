@@ -104,3 +104,4 @@ This is a design-stage document — D* Lite is **not yet implemented** in `maze_
 
 - [`documentation/d-star/environment_changes.md`](../documentation/d-star/environment_changes.md) — what `MazeEnvironment` needs to expose (mutable edge costs, a changed-edges feed) to make the `Main()` loop above possible
 - [`documentation/d-star/agent_changes.md`](../documentation/d-star/agent_changes.md) — how the agent's shape changes from a stateless one-shot planner to a stateful, persistent replanner, and what that does to its PEAS classification
+- [`documentation/d-star/beyond_the_maze.md`](../documentation/d-star/beyond_the_maze.md) — stress-tests the same design against a real dynamic graph (a multi-repo CI/CD pipeline) to check where the abstraction holds and where it strains; a cross-check, not a build spec
