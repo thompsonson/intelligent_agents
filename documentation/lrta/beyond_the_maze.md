@@ -76,8 +76,8 @@ This breaks the D* Lite/LRTA* environment model in a specific, structural way, n
 
 ## Open questions
 
-- Should DS-PDDL grow explicit AND-node semantics for fan-in guards like `downstream-ci-passed`, or is collapsing them into one opaque effector call the right engineering tradeoff regardless of what it costs a hypothetical learning agent?
-- If `h(s)` were ever learned for real here, does it need to be tracked per sub-signal (staging / publish / promote separately) rather than per guard node, given they don't share a cost distribution? That's a finer grain than either LRTA* or this document's first draft assumed.
+- ~~Should DS-PDDL grow explicit AND-node semantics for fan-in guards like `downstream-ci-passed`~~ — moot for `atomicguard` itself (out of scope to change), but resolved for the toy side: [`documentation/task-graph/`](../task-graph/) models fan-in as explicit multi-id `requires` edges (confirmed the DSL's `requires: tuple[str, ...]` already supports this — the real corpus just doesn't use it that way), specifically so a learning agent isn't stuck with one opaque node.
+- If `h(s)` were ever learned for real here, does it need to be tracked per sub-signal (staging / publish / promote separately) rather than per guard node, given they don't share a cost distribution? That's a finer grain than either LRTA* or this document's first draft assumed. `documentation/task-graph/scenarios.md`'s `pr_merge_lite` scenario builds this distinction in from the start rather than retrofitting it.
 - Is `comments-resolved`/`threads-resolved` worth promoting to explicit `:guard` nodes in `fix_pr.dspddl`, or does keeping that judgment call inside `ci-pr-summary.sh` correctly reflect that it's not something worth retrying/learning a cost for on its own?
 
 ## Relationship to the maze work
