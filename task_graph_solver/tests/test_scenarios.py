@@ -157,3 +157,76 @@ class TestPrMergeLiteScenario:
         assert "apply-actions" in result.fatal
         assert "merged" in result.unreachable
         assert "released" in result.unreachable
+
+    def test_released_requires_all_three_deploy_branches(self):
+        # Phase 6's target: the actual motivating case from
+        # documentation/lrta/beyond_the_maze.md's stress test.
+        nodes = build_pr_merge_lite(pass_probability=1.0)
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+        executor = AOStarExecutor(env)
+
+        result = executor.run()
+
+        assert result.success is True
+        attempted_order = [node_id for node_id, _ in executor.trace]
+        for branch in ("deploy-staging", "deploy-publish", "deploy-promote"):
+            assert attempted_order.index(branch) < attempted_order.index("released")
+
+    def test_released_cost_composes_max_of_three_deploy_branches(self):
+        nodes = build_pr_merge_lite(pass_probability=1.0)
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+        executor = AOStarExecutor(env)
+
+        executor.run()
+
+        assert executor.h["released"] == 1 + max(
+            executor.h["deploy-staging"],
+            executor.h["deploy-publish"],
+            executor.h["deploy-promote"],
+        )
+
+    def test_diagnosability_identifies_which_deploy_branch_actually_failed(self):
+        # The real system's downstream-ci-passed collapses three commit-status
+        # polls into one exit code - no way to tell which context failed from
+        # the guard-graph's own state. This is the corrected version:
+        # result.fatal names the exact failing branch.
+        nodes = build_pr_merge_lite(
+            pass_probability=1.0, overrides={"deploy-staging": 0.0}
+        )
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+
+        result = AOStarExecutor(env).run()
+
+        assert result.success is False
+        assert result.fatal == {"deploy-staging"}
+        assert "deploy-publish" in result.satisfied
+        assert "deploy-promote" in result.satisfied
+        assert result.unreachable == {"released"}
+
+    def test_diagnosability_when_a_different_branch_fails(self):
+        nodes = build_pr_merge_lite(
+            pass_probability=1.0, overrides={"deploy-publish": 0.0}
+        )
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+
+        result = AOStarExecutor(env).run()
+
+        assert result.fatal == {"deploy-publish"}
+        assert "deploy-staging" in result.satisfied
+        assert "deploy-promote" in result.satisfied
+        assert result.unreachable == {"released"}
+
+    def test_two_deploy_branches_failing_are_both_individually_identified(self):
+        nodes = build_pr_merge_lite(
+            pass_probability=1.0,
+            overrides={"deploy-staging": 0.0, "deploy-promote": 0.0},
+        )
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+        executor = AOStarExecutor(env)
+
+        result = executor.run()
+
+        assert result.fatal == {"deploy-staging", "deploy-promote"}
+        assert result.satisfied.issuperset({"deploy-publish"})
+        assert result.unreachable == {"released"}
+        assert "released" not in executor.h  # never attempted, per Phase 5's invariant

@@ -58,6 +58,75 @@ class TestAOStarAndJoinGating:
         assert "join" not in attempted_ids
 
 
+class TestAOStarThreeWayJoin:
+    def test_join_solved_only_after_all_three_children_solved(self):
+        nodes = {
+            "a": make_node("a"),
+            "b": make_node("b"),
+            "c": make_node("c"),
+            "join": make_node("join", requires=("a", "b", "c")),
+        }
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+
+        result = AOStarExecutor(env).run()
+
+        assert result.success is True
+        attempted_order = [node_id for node_id, _ in result.trace]
+        for child in ("a", "b", "c"):
+            assert attempted_order.index(child) < attempted_order.index("join")
+
+    def test_diagnosability_identifies_exactly_which_child_failed(self):
+        # The property documentation/lrta/beyond_the_maze.md found missing
+        # from the real system's single opaque three-way guard: which of
+        # several independent required children actually failed.
+        nodes = {
+            "a": make_node("a", pass_probability=1.0),
+            "b": make_node("b", pass_probability=0.0, rmax=1),
+            "c": make_node("c", pass_probability=1.0),
+            "join": make_node("join", requires=("a", "b", "c")),
+        }
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+
+        result = AOStarExecutor(env).run()
+
+        assert result.fatal == {"b"}  # exactly the failing one, not a/c
+        assert result.satisfied == {"a", "c"}
+        assert result.unreachable == {"join"}
+
+    def test_diagnosability_holds_regardless_of_which_child_fails(self):
+        for failing_child in ("a", "b", "c"):
+            nodes = {
+                node_id: make_node(
+                    node_id,
+                    pass_probability=0.0 if node_id == failing_child else 1.0,
+                    rmax=1 if node_id == failing_child else 3,
+                )
+                for node_id in ("a", "b", "c")
+            }
+            nodes["join"] = make_node("join", requires=("a", "b", "c"))
+            env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+
+            result = AOStarExecutor(env).run()
+
+            assert result.fatal == {failing_child}
+            assert result.satisfied == {"a", "b", "c"} - {failing_child}
+
+    def test_multiple_simultaneous_failures_are_each_identified(self):
+        nodes = {
+            "a": make_node("a", pass_probability=0.0, rmax=1),
+            "b": make_node("b", pass_probability=1.0),
+            "c": make_node("c", pass_probability=0.0, rmax=1),
+            "join": make_node("join", requires=("a", "b", "c")),
+        }
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+
+        result = AOStarExecutor(env).run()
+
+        assert result.fatal == {"a", "c"}
+        assert result.satisfied == {"b"}
+        assert result.unreachable == {"join"}
+
+
 class TestAOStarCostComposition:
     def test_cost_is_own_attempts_plus_max_of_required_children(self):
         # Bypass the environment's shared RNG sequence to test the AND
