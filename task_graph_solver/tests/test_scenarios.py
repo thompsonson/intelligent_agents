@@ -3,6 +3,7 @@ from task_graph_solver.core.environment import TaskGraphEnvironment
 from task_graph_solver.algorithms.topological import TopologicalExecutor
 from task_graph_solver.algorithms.lrta_star import LRTAStarLearner
 from task_graph_solver.algorithms.ao_star import AOStarExecutor
+from task_graph_solver.algorithms.d_star_lite import DStarLiteExecutor
 from task_graph_solver.scenarios.disk_check_lite import build_disk_check_lite
 from task_graph_solver.scenarios.repair_packages_lite import build_repair_packages_lite
 from task_graph_solver.scenarios.pr_merge_lite import build_pr_merge_lite
@@ -230,3 +231,78 @@ class TestPrMergeLiteScenario:
         assert result.satisfied.issuperset({"deploy-publish"})
         assert result.unreachable == {"released"}
         assert "released" not in executor.h  # never attempted, per Phase 5's invariant
+
+    def test_topological_executor_cannot_recover_from_a_fix_after_the_fact(self):
+        # Establishes the baseline D* Lite improves on: a plain executor has
+        # no sensing loop, so a fix that arrives after the run has already
+        # finished is invisible to it - not a bug, just what "no repair
+        # mechanism" means in practice.
+        nodes = build_pr_merge_lite(pass_probability=1.0)
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+        env.break_task("apply-actions")
+
+        result = TopologicalExecutor(env).run()
+
+        assert result.success is False
+        assert result.fatal == {"apply-actions"}
+        assert "merged" in result.unreachable
+        assert "released" in result.unreachable
+
+    def test_d_star_lite_recovers_from_a_break_on_an_and_join_sibling(self):
+        # apply-actions is one of merged's two required children (the other
+        # is ci-check) - breaking it and confirming recovery specifically
+        # exercises repair locality in the presence of a sibling AND-
+        # dependency, not just a straight chain like Phase 4's scenario.
+        nodes = build_pr_merge_lite(pass_probability=1.0)
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+        executor = DStarLiteExecutor(env)
+
+        env.break_task("apply-actions")  # broken before it's ever attempted
+
+        for _ in range(10):
+            if not executor.step():
+                break
+
+        assert "apply-actions" in executor.fatal
+        assert "ci-check" in executor.satisfied  # its sibling proceeds independently
+        assert "merged" not in executor.satisfied
+
+        env.fix_task("apply-actions")
+        result = executor.run()
+
+        assert result.success is True
+
+        # ci-check was satisfied before the break/fix saga - it must not be
+        # re-attempted once apply-actions is repaired.
+        ci_check_attempts = [n for n, _ in result.trace if n == "ci-check"]
+        assert len(ci_check_attempts) == 1
+        assert executor.repairs == ["apply-actions"]
+
+    def test_d_star_lite_recovers_from_a_break_on_a_deploy_branch(self):
+        # A break discovered after merged (an AND-join itself) has already
+        # resolved - the other two deploy branches may already be satisfied
+        # by the time the fix arrives and must not be redone.
+        nodes = build_pr_merge_lite(pass_probability=1.0)
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+        executor = DStarLiteExecutor(env)
+
+        while "merged" not in executor.satisfied:
+            assert executor.step()
+
+        env.break_task("deploy-staging")
+
+        for _ in range(10):
+            if not executor.step():
+                break
+
+        assert "deploy-staging" in executor.fatal
+        assert "released" not in executor.satisfied
+
+        env.fix_task("deploy-staging")
+        result = executor.run()
+
+        assert result.success is True
+        for node_id in ("ci-check", "generate-actions", "apply-actions", "merged"):
+            attempts = [n for n, _ in result.trace if n == node_id]
+            assert len(attempts) == 1
+        assert executor.repairs == ["deploy-staging"]
