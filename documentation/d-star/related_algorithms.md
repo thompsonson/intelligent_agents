@@ -19,7 +19,7 @@ Raised earlier in this investigation — D* Lite's `rhs(s) = min(cost(s,s') + g(
 
 | Algorithm | What it demonstrates | Why it matters |
 |---|---|---|
-| **LRTA\* (Learning Real-Time A\*, Korf 1990)** | An agent that moves in real time with *bounded lookahead*, and updates its heuristic estimates from experience each time it acts — repeated trials make the heuristic (and therefore the path) progressively better | A genuine bridge between classical search and RL: local Bellman-style value propagation, but "learning" here means heuristic improvement over repeated episodes, not a reward-driven policy. Building this would give a concrete, working answer to the Q-learning question instead of a written explanation |
+| **LRTA\* (Learning Real-Time A\*, Korf 1990)** | An agent that moves in real time with *bounded lookahead*, and updates its heuristic estimates from experience each time it acts — repeated trials make the heuristic (and therefore the path) progressively better | A genuine bridge between classical search and RL: local Bellman-style value propagation, but "learning" here means heuristic improvement over repeated episodes, not a reward-driven policy. Building this would give a concrete, working answer to the Q-learning question instead of a written explanation. Also the correct algorithmic home for the "Atomic Action Pair" (guarded LLM generator + retry budget) primitive — see [`documentation/lrta/beyond_the_maze.md`](../lrta/beyond_the_maze.md), which stress-tests that mapping against real `gh` CLI effectors |
 | **RTAA\*** | A refinement of LRTA* that updates a batch of heuristic values per move instead of one | Same pedagogical payoff as LRTA*, more practical performance — worth mentioning alongside it rather than as a separate build |
 
 ## Unrelated to the dynamic-environment thread, already flagged as gaps
@@ -37,4 +37,4 @@ Raised earlier in this investigation — D* Lite's `rhs(s) = min(cost(s,s') + g(
 
 - Whether any of these get built at all — this is a menu, not a roadmap with dates.
 - Whether LPA* is worth its own environment/agent design docs (mirroring D* Lite's), or is small enough to fold into `d_star_lite.md` as a "build this subset first" section instead of a parallel doc set.
-- Whether LRTA*/RTAA* belong under `documentation/d-star/` at all, given they're not about dynamic environments — they might warrant their own `documentation/lrta/` once (if) they're picked up, rather than being filed alongside the D* Lite work by association.
+- ~~Whether LRTA*/RTAA* belong under `documentation/d-star/` at all~~ — resolved: [`documentation/lrta/`](../lrta/) now exists, holding [`beyond_the_maze.md`](../lrta/beyond_the_maze.md). Still open: whether LRTA* gets the same environment/agent design-doc split D* Lite got, or whether the stress-test doc is enough on its own for now.
