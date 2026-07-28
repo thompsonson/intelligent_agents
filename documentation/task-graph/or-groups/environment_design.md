@@ -82,7 +82,7 @@ These are not the same failure mode, and conflating them would blur exactly the 
 | Is it part of the graph structure feeding the goal? | Yes — a member of a group that *does* unblock the goal | No — nothing downstream of it requires it, directly or transitively |
 | Why attempting it is wasteful | Only if a *different* sibling already satisfied the group, or will — attempting this one too spends budget the group didn't need | Always — there was never a scenario where attempting it helps reach the goal |
 | Which algorithm capability addresses it | AO*'s early-stop-on-satisfied-group (new, see `algorithm_fit.md`) | Nothing addresses it — it's meant to just sit there; a good agent might simply never attempt it if it never becomes relevant to the goal's dependency chain |
-| Real-world analogue | `gen_patch_comprehensive` succeeding after `gen_patch_minimal` already passed | An unrelated lint check nobody's release gate depends on |
+| In `scenario.md`'s toy example | `apply-actions-comprehensive` succeeding after `apply-actions-minimal` already passed | `check-disk`, reused unmodified from `disk_check_lite`, sitting disconnected in the same environment |
 
 ## Not decided
 
