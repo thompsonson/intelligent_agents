@@ -4,8 +4,15 @@ from task_graph_solver.core.environment import TaskGraphEnvironment
 from task_graph_solver.algorithms.topological import TopologicalExecutor
 
 
-def make_node(node_id, requires=(), pass_probability=1.0, rmax=3, r_patience=None,
-              kind="sensing", retry_flavor="sensing"):
+def make_node(
+    node_id,
+    requires=(),
+    pass_probability=1.0,
+    rmax=3,
+    r_patience=None,
+    kind="sensing",
+    retry_flavor="sensing",
+):
     return TaskNode(
         id=node_id,
         kind=kind,

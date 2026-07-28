@@ -13,4 +13,5 @@ class TaskGraphConfig:
         seed: Seed for the environment's random number generator, so guard
             outcomes are reproducible for teaching. None means unseeded.
     """
+
     seed: Optional[int] = None

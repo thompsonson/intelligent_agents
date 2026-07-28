@@ -37,6 +37,7 @@ See [here](https://github.com/thompsonson/q-learning) for a Basic Q-Learning Sta
    * [Step Cost Calculation](#step-cost-calculation)
    * [Algorithm Comparison](#algorithm-comparison-1)
 - [Adaptive / Replanning Search Algorithms](#adaptive-replanning-search-algorithms)
+- [AND-OR Graph Search Algorithms](#and-or-graph-search-algorithms)
 - [Other Search Algorithms (not (yet 🤞) implemented in the current codebase)](#other-search-algorithms-not-yet-implemented-in-the-current-codebase)
 
 <!-- TOC end -->
@@ -215,6 +216,13 @@ These variables help quantify the tradeoffs between different search algorithms 
 Every algorithm above answers "find a path" once, over a graph that never changes. Adaptive search algorithms are built for the opposite case: the graph changes *while* the agent is acting on a path through it, and re-running a full search from scratch on every change is wasteful.
 
 - [D* Lite](d_star_lite.md) — *design stage, not yet implemented*. Repairs an existing plan when edge costs change (e.g. a bridge breaks or is fixed) by only re-examining the nodes affected by the change, instead of resolving the whole maze. See [`documentation/d-star/environment_changes.md`](../documentation/d-star/environment_changes.md) and [`documentation/d-star/agent_changes.md`](../documentation/d-star/agent_changes.md) for how this would change `MazeEnvironment` and the agent's shape respectively.
+
+<!-- TOC --><a name="and-or-graph-search-algorithms"></a>
+## AND-OR Graph Search Algorithms
+
+Every algorithm above — including D* Lite — assumes a node's problem reduces to picking the single best next step among alternatives (an OR-choice). Some graphs need a node to require **all** of several children, not just the cheapest one — a fan-in, not a branch.
+
+- [AO* (AND-OR Graph Search)](ao_star.md) — *design stage, not yet implemented*. Distinguishes OR-nodes (solve any one child) from AND-nodes (solve every child). Surfaced by a real fan-in case ([`documentation/lrta/beyond_the_maze.md`](../documentation/lrta/beyond_the_maze.md)) that none of D* Lite, LPA*, or LRTA* can represent without distortion. See [`documentation/task-graph/`](../documentation/task-graph/) for the toy environment (`task_graph_solver`) built around AND-only dependency edges specifically to exercise this.
 
 <!-- TOC --><a name="other-search-algorithms-not-yet-implemented-in-the-current-codebase"></a>
 ## Other Search Algorithms (not (yet 🤞) implemented in the current codebase)

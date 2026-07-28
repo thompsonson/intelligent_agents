@@ -21,6 +21,7 @@ class ExecutionResult:
         execution_time: Wall-clock seconds, set by the caller (mirrors
             SearchResult's timing convention in maze_solver).
     """
+
     success: bool
     satisfied: Set[str]
     fatal: Set[str]

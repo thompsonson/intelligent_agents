@@ -4,8 +4,15 @@ from task_graph_solver.core.environment import TaskGraphEnvironment
 from task_graph_solver.algorithms.d_star_lite import DStarLiteExecutor
 
 
-def make_node(node_id, requires=(), pass_probability=1.0, rmax=3, r_patience=None,
-              kind="sensing", retry_flavor="sensing"):
+def make_node(
+    node_id,
+    requires=(),
+    pass_probability=1.0,
+    rmax=3,
+    r_patience=None,
+    kind="sensing",
+    retry_flavor="sensing",
+):
     return TaskNode(
         id=node_id,
         kind=kind,
@@ -19,16 +26,23 @@ def make_node(node_id, requires=(), pass_probability=1.0, rmax=3, r_patience=Non
 
 def repair_then_verify(pass_probability=1.0):
     return {
-        "repair": make_node("repair", pass_probability=pass_probability,
-                             kind="acting", retry_flavor="repair"),
-        "verify": make_node("verify", requires=("repair",),
-                             pass_probability=pass_probability),
+        "repair": make_node(
+            "repair",
+            pass_probability=pass_probability,
+            kind="acting",
+            retry_flavor="repair",
+        ),
+        "verify": make_node(
+            "verify", requires=("repair",), pass_probability=pass_probability
+        ),
     }
 
 
 class TestDStarLiteNoChanges:
     def test_behaves_like_plain_execution_when_nothing_breaks(self):
-        env = TaskGraphEnvironment(repair_then_verify(pass_probability=1.0), TaskGraphConfig(seed=1))
+        env = TaskGraphEnvironment(
+            repair_then_verify(pass_probability=1.0), TaskGraphConfig(seed=1)
+        )
         executor = DStarLiteExecutor(env)
 
         result = executor.run()
@@ -44,7 +58,9 @@ class TestDStarLiteBreakBeforeAttempt:
         # breaking any single node makes everything downstream unreachable.
         # This is the scope boundary noted in algorithm_fit.md: D* Lite's
         # "find another way" only matters when another way exists.
-        env = TaskGraphEnvironment(repair_then_verify(pass_probability=1.0), TaskGraphConfig(seed=1))
+        env = TaskGraphEnvironment(
+            repair_then_verify(pass_probability=1.0), TaskGraphConfig(seed=1)
+        )
         env.break_task("repair")
 
         result = DStarLiteExecutor(env).run()
@@ -56,7 +72,9 @@ class TestDStarLiteBreakBeforeAttempt:
 
 class TestDStarLiteRepairLocality:
     def test_fixing_a_broken_downstream_node_does_not_redo_upstream_work(self):
-        env = TaskGraphEnvironment(repair_then_verify(pass_probability=1.0), TaskGraphConfig(seed=1))
+        env = TaskGraphEnvironment(
+            repair_then_verify(pass_probability=1.0), TaskGraphConfig(seed=1)
+        )
         executor = DStarLiteExecutor(env)
 
         # Move 1: repair is the only ready node - attempt and satisfy it.
@@ -90,7 +108,9 @@ class TestDStarLiteRepairLocality:
         assert executor.repairs == ["verify"]
 
     def test_repair_count_reflects_number_of_sensed_fixes(self):
-        env = TaskGraphEnvironment(repair_then_verify(pass_probability=1.0), TaskGraphConfig(seed=1))
+        env = TaskGraphEnvironment(
+            repair_then_verify(pass_probability=1.0), TaskGraphConfig(seed=1)
+        )
         executor = DStarLiteExecutor(env)
 
         executor.step()  # satisfy repair

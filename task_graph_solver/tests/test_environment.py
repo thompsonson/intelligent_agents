@@ -5,8 +5,15 @@ from task_graph_solver.core.domain import AttemptOutcome, TaskNode
 from task_graph_solver.core.environment import TaskGraphEnvironment
 
 
-def make_node(node_id, requires=(), pass_probability=1.0, rmax=3, r_patience=None,
-              kind="sensing", retry_flavor="sensing"):
+def make_node(
+    node_id,
+    requires=(),
+    pass_probability=1.0,
+    rmax=3,
+    r_patience=None,
+    kind="sensing",
+    retry_flavor="sensing",
+):
     return TaskNode(
         id=node_id,
         kind=kind,
@@ -45,6 +52,55 @@ class TestTaskNodeValidation:
         node = make_node("generate", kind="acting", retry_flavor="generation")
         assert node.kind == "acting"
         assert node.retry_flavor == "generation"
+
+    def test_rmax_must_be_at_least_one(self):
+        with pytest.raises(ValueError):
+            make_node("a", rmax=0)
+
+    def test_r_patience_must_be_at_least_one(self):
+        with pytest.raises(ValueError):
+            make_node("a", rmax=3, r_patience=0)
+
+
+class TestGraphValidation:
+    def test_requires_referencing_unknown_node_is_rejected(self):
+        nodes = {"a": make_node("a", requires=("does-not-exist",))}
+        with pytest.raises(ValueError, match="does-not-exist"):
+            TaskGraphEnvironment(nodes, TaskGraphConfig())
+
+    def test_direct_cycle_is_rejected(self):
+        nodes = {
+            "a": make_node("a", requires=("b",)),
+            "b": make_node("b", requires=("a",)),
+        }
+        with pytest.raises(ValueError, match="cycle"):
+            TaskGraphEnvironment(nodes, TaskGraphConfig())
+
+    def test_self_reference_is_rejected(self):
+        nodes = {"a": make_node("a", requires=("a",))}
+        with pytest.raises(ValueError, match="cycle"):
+            TaskGraphEnvironment(nodes, TaskGraphConfig())
+
+    def test_longer_cycle_is_rejected(self):
+        nodes = {
+            "a": make_node("a", requires=("c",)),
+            "b": make_node("b", requires=("a",)),
+            "c": make_node("c", requires=("b",)),
+        }
+        with pytest.raises(ValueError, match="cycle"):
+            TaskGraphEnvironment(nodes, TaskGraphConfig())
+
+    def test_valid_dag_with_shared_dependency_is_accepted(self):
+        # A diamond (join requires both a and b, both require base) is a
+        # valid DAG, not a cycle - must not be rejected by cycle detection.
+        nodes = {
+            "base": make_node("base"),
+            "a": make_node("a", requires=("base",)),
+            "b": make_node("b", requires=("base",)),
+            "join": make_node("join", requires=("a", "b")),
+        }
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig())
+        assert env.ready_nodes(satisfied=set()) == ["base"]
 
 
 class TestReadyNodes:

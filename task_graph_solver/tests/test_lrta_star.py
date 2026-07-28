@@ -4,8 +4,15 @@ from task_graph_solver.core.environment import TaskGraphEnvironment
 from task_graph_solver.algorithms.lrta_star import LRTAStarLearner
 
 
-def make_node(node_id, requires=(), pass_probability=1.0, rmax=3, r_patience=None,
-              kind="sensing", retry_flavor="sensing"):
+def make_node(
+    node_id,
+    requires=(),
+    pass_probability=1.0,
+    rmax=3,
+    r_patience=None,
+    kind="sensing",
+    retry_flavor="sensing",
+):
     return TaskNode(
         id=node_id,
         kind=kind,
@@ -21,12 +28,19 @@ def linear_chain_factory(repair_pass_probability, verify_pass_probability=1.0):
     def factory(trial_index: int) -> TaskGraphEnvironment:
         nodes = {
             "repair": make_node(
-                "repair", pass_probability=repair_pass_probability, rmax=5,
-                kind="acting", retry_flavor="repair",
+                "repair",
+                pass_probability=repair_pass_probability,
+                rmax=5,
+                kind="acting",
+                retry_flavor="repair",
             ),
             "verify": make_node(
-                "verify", requires=("repair",), pass_probability=verify_pass_probability,
-                rmax=5, kind="sensing", retry_flavor="sensing",
+                "verify",
+                requires=("repair",),
+                pass_probability=verify_pass_probability,
+                rmax=5,
+                kind="sensing",
+                retry_flavor="sensing",
             ),
         }
         return TaskGraphEnvironment(nodes, TaskGraphConfig(seed=trial_index))
@@ -48,7 +62,9 @@ class TestLRTAStarBasics:
         # verify has real retries too (pass_probability < 1) but retry_flavor
         # "sensing" - it must never be treated as learnable repair cost.
         learner = LRTAStarLearner(
-            linear_chain_factory(repair_pass_probability=1.0, verify_pass_probability=0.3)
+            linear_chain_factory(
+                repair_pass_probability=1.0, verify_pass_probability=0.3
+            )
         )
         for _ in range(10):
             learner.run_trial()
@@ -75,6 +91,7 @@ class TestLRTAStarConvergence:
             # Drain the same environment the learner will independently build
             # (same seed => same rng sequence) to know the ground truth.
             from task_graph_solver.algorithms.topological import TopologicalExecutor
+
             TopologicalExecutor(env).run()
             max_retries_seen = max(max_retries_seen, env.retries_spent("repair"))
 

@@ -81,12 +81,26 @@ class TaskGraphEnvironment:
     def attempt(self, node_id: str) -> AttemptOutcome:
         """One simulated attempt at `node_id`. Records retry cost."""
 
+    def retries_spent(self, node_id: str) -> int:
+        """How many attempts have been made at `node_id` so far. Implemented in
+        Phase 1 - resolves the "per-node vs per-flavor" question below at the
+        environment layer: retries are tracked per node, and Phase 3's
+        LRTAStarLearner does the per-`retry_flavor` filtering itself by reading
+        each node's `retry_flavor` before deciding whether to learn from it,
+        rather than the environment doing that filtering natively.
+
     def break_task(self, node_id: str) -> None:
         """Optional Driver hook: force a previously-passable task to fail permanently.
         Not exercised unless a scenario specifically wants D* Lite-style repair."""
 
     def fix_task(self, node_id: str) -> None:
         """Inverse of break_task."""
+
+    def drain_changed_tasks(self) -> list[str]:
+        """Added in Phase 4 (not in the original sketch): the 'sense' step an
+        incremental-repair agent polls once per move, mirroring MazeEnvironment's
+        drain_changed_edges(). Needed because break_task/fix_task alone give no
+        way for an agent to detect a change without blind re-polling."""
 ```
 
 ## Comparison: maze environment vs. task graph environment
@@ -99,7 +113,12 @@ class TaskGraphEnvironment:
 | Dynamism | Static by default; a bridge can be designated to break/fix | Static by default; a task can be designated to break/fix (same Driver pattern) |
 | Natural algorithm family | D* Lite / A* / LRTA* — all OR-choice, `min`-over-successors | AO* — AND/OR composition; D* Lite/LRTA* only apply to single-chain scenarios (see `algorithm_fit.md`) |
 
-## Not decided
+## Resolved (were "Not decided")
 
-- Whether `attempt()` should be allowed to retry a node whose `requires` are satisfied but which itself already reached `FATAL` — real DS-PDDL treats a fatal Guard as terminal for that workflow run; the toy environment should probably match that rather than inventing a resurrection mechanic, but it's worth stating explicitly before writing the executor loop.
-- Whether cost/retry data should be queryable per-node only, or also aggregated per-`retry_flavor` — the latter is what `algorithm_fit.md`'s LRTA* mapping actually needs (learn only from `retry_flavor="repair"` observations), so the environment's data model should probably expose that split natively rather than making every algorithm re-derive it.
+- **Whether a `FATAL` node can be retried:** resolved differently by algorithm, not by the environment. `TopologicalExecutor` (Phase 2) treats `FATAL` as terminal, matching real DS-PDDL. `DStarLiteExecutor` (Phase 4) does allow a `FATAL` node back into consideration, but only in response to a sensed `drain_changed_tasks()` event (a Driver fix), never on its own — so the environment itself doesn't resurrect anything; an algorithm can choose to, if it has a reason (a sensed change) to.
+- **Per-node vs. per-`retry_flavor` cost data:** resolved as per-node at the environment layer (`retries_spent(node_id)`) — the environment doesn't natively aggregate by flavor. `LRTAStarLearner` (Phase 3) does the flavor filtering itself, checking each node's `retry_flavor` before deciding whether `retries_spent()` should feed `h_table`. Keeping the split in the algorithm rather than the environment means the "only learn from repair-flavor retries" rule lives where the LRTA*-specific reasoning is, not baked into the environment for every algorithm to inherit whether it wants it or not.
+
+## Also added since the original sketch (not anticipated here)
+
+- **Graph validation at construction time.** `requires` referencing a node id that doesn't exist, and cycles in the `requires` graph (direct, self-referential, or longer), are now rejected in `TaskGraphEnvironment.__init__` with a `ValueError`, rather than failing silently as permanent unreachability. Added after `pr_merge_lite`'s upcoming 8-node graph made "a typo silently deadlocks two nodes" a real risk rather than a theoretical one.
+- **`rmax >= 1` and `r_patience >= 1`** are now validated in `TaskNode.__post_init__`, alongside the pre-existing `r_patience < rmax` check.

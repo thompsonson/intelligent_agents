@@ -18,6 +18,8 @@ class TaskGraphEnvironment:
     """
 
     def __init__(self, nodes: Dict[str, TaskNode], config: TaskGraphConfig):
+        self._validate_graph(nodes)
+
         self.nodes = nodes
         self.config = config
         self._rng = random.Random(config.seed)
@@ -25,6 +27,31 @@ class TaskGraphEnvironment:
         self._consecutive_failures: Dict[str, int] = {node_id: 0 for node_id in nodes}
         self._broken: Set[str] = set()
         self._changed_since_drain: Set[str] = set()
+
+    @staticmethod
+    def _validate_graph(nodes: Dict[str, TaskNode]) -> None:
+        for node_id, node in nodes.items():
+            for dep in node.requires:
+                if dep not in nodes:
+                    raise ValueError(f"node {node_id!r} requires unknown node {dep!r}")
+
+        # DFS cycle detection over the requires graph.
+        WHITE, GRAY, BLACK = 0, 1, 2
+        color = {node_id: WHITE for node_id in nodes}
+
+        def visit(node_id: str, path: List[str]) -> None:
+            color[node_id] = GRAY
+            for dep in nodes[node_id].requires:
+                if color[dep] == GRAY:
+                    cycle = " -> ".join(path + [dep])
+                    raise ValueError(f"cycle detected in requires graph: {cycle}")
+                if color[dep] == WHITE:
+                    visit(dep, path + [dep])
+            color[node_id] = BLACK
+
+        for node_id in nodes:
+            if color[node_id] == WHITE:
+                visit(node_id, [node_id])
 
     def ready_nodes(self, satisfied: Set[str]) -> List[str]:
         """Nodes whose `requires` are fully contained in `satisfied` and
@@ -59,7 +86,10 @@ class TaskGraphEnvironment:
 
         self._consecutive_failures[node_id] += 1
 
-        if node.r_patience is not None and self._consecutive_failures[node_id] >= node.r_patience:
+        if (
+            node.r_patience is not None
+            and self._consecutive_failures[node_id] >= node.r_patience
+        ):
             return AttemptOutcome.FATAL
 
         if self._attempts_made[node_id] >= node.rmax:

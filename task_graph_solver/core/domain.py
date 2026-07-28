@@ -5,6 +5,7 @@ from typing import Literal, Optional, Tuple
 
 class AttemptOutcome(Enum):
     """Result of one simulated attempt at a TaskNode."""
+
     PASS = "pass"
     RETRY = "retry"
     FATAL = "fatal"
@@ -38,6 +39,7 @@ class TaskNode:
         requires: AND-dependencies - every id here must be satisfied before
             this node is ready to attempt. There is no OR-equivalent.
     """
+
     id: str
     kind: Literal["sensing", "acting"]
     retry_flavor: Literal["sensing", "generation", "repair"]
@@ -47,11 +49,19 @@ class TaskNode:
     requires: Tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        if self.r_patience is not None and self.r_patience >= self.rmax:
-            raise ValueError(
-                f"r_patience ({self.r_patience}) must be < rmax ({self.rmax}) "
-                f"for node {self.id!r}"
-            )
+        if self.rmax < 1:
+            raise ValueError(f"rmax must be >= 1 for node {self.id!r}, got {self.rmax}")
+        if self.r_patience is not None:
+            if self.r_patience < 1:
+                raise ValueError(
+                    f"r_patience must be >= 1 for node {self.id!r}, "
+                    f"got {self.r_patience}"
+                )
+            if self.r_patience >= self.rmax:
+                raise ValueError(
+                    f"r_patience ({self.r_patience}) must be < rmax ({self.rmax}) "
+                    f"for node {self.id!r}"
+                )
         if not (0.0 <= self.pass_probability <= 1.0):
             raise ValueError(
                 f"pass_probability must be in [0, 1] for node {self.id!r}, "
