@@ -24,6 +24,7 @@ class TaskGraphEnvironment:
         self._attempts_made: Dict[str, int] = {node_id: 0 for node_id in nodes}
         self._consecutive_failures: Dict[str, int] = {node_id: 0 for node_id in nodes}
         self._broken: Set[str] = set()
+        self._changed_since_drain: Set[str] = set()
 
     def ready_nodes(self, satisfied: Set[str]) -> List[str]:
         """Nodes whose `requires` are fully contained in `satisfied` and
@@ -75,8 +76,21 @@ class TaskGraphEnvironment:
         """Driver hook: force a task to fail permanently, regardless of its
         configured pass_probability, until fix_task() is called. Mirrors
         MazeEnvironment's break_edge/fix_edge pattern from the D* Lite design."""
-        self._broken.add(node_id)
+        if node_id not in self._broken:
+            self._broken.add(node_id)
+            self._changed_since_drain.add(node_id)
 
     def fix_task(self, node_id: str) -> None:
         """Inverse of break_task."""
-        self._broken.discard(node_id)
+        if node_id in self._broken:
+            self._broken.discard(node_id)
+            self._changed_since_drain.add(node_id)
+
+    def drain_changed_tasks(self) -> List[str]:
+        """Return and clear the list of tasks whose broken/fixed state has
+        changed since this was last called - the 'sense' step an incremental
+        repair agent (D* Lite) polls once per move, mirroring MazeEnvironment's
+        drain_changed_edges()."""
+        changed = sorted(self._changed_since_drain)
+        self._changed_since_drain.clear()
+        return changed
