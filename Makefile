@@ -7,13 +7,14 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live benchmark-gsm8k benchmark-gsm8k-reflection
+.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live benchmark-gsm8k benchmark-gsm8k-reflection test-task-graph
 
 # Default target
 help:
 	@echo "Available targets:"
 	@echo "  install        - Install dependencies with uv"
 	@echo "  test          - Run tests with pytest"
+	@echo "  test-task-graph - Run task_graph_solver tests (see documentation/task-graph/)"
 	@echo "  test-verbose  - Run tests with verbose output"
 	@echo "  test-coverage - Run tests with coverage report"
 	@echo "  test-integration - Run integration tests with env vars"
@@ -100,6 +101,11 @@ test-parsing:
 test-enhanced:
 	@echo "Running enhanced self-consistency tests..."
 	uv run pytest llm_agents/tests/test_enhanced_self_consistency.py -v
+
+# Run task_graph_solver tests (see documentation/task-graph/)
+test-task-graph:
+	@echo "Running task_graph_solver tests..."
+	uv run pytest task_graph_solver/tests/ -v
 
 # Enhanced agent demo with token confidence
 demo-enhanced:
