@@ -32,7 +32,11 @@
 5. `pr_merge_lite`'s `released` join + AO* — the three-way version, the actual motivating case from the real `atomicguard` stress test.
 6. (Later, optional) AO* + LRTA* combined on `pr_merge_lite`'s `apply-actions` subtree, per the "combinations worth naming" section above.
 
+## Resolved (were "Not decided")
+
+- **Visualization**: `task_graph_solver/visualization/graph_view.py` and `learning_curve.py` — a fresh module, not a reuse of `maze_solver`'s grid-based `_plot_maze` machinery, which genuinely doesn't fit AND-join nodes. DAG nodes are drawn as circles or squares (AND-joins) via `networkx`, animated frame-by-frame via `imageio` the same way `maze_solver`'s dashboards do, plus a separate line-chart renderer for LRTA*'s per-trial convergence (a fundamentally different kind of output than a DAG state).
+- **Build order as a task list**: steps 1–6 above are all implemented (Phases 1–7 in commit history, `git log --oneline task_graph_solver/`). Worked, grounded walkthroughs of three of them exist in [`documentation/task-graph/experiments/`](experiments/) — see `01_ao_star_pr_merge_lite.md` (step 4/5 above), `02_d_star_lite_pr_merge_lite.md` (step 3, extended to `pr_merge_lite`), and `03_lrta_star_convergence.md` (step 2).
+
 ## Not decided
 
-- Whether steps 4–5 should reuse `maze_solver`'s dashboard/visualization conventions (adapted for a DAG rather than a grid) or need their own visualization approach — DAGs with AND/OR node types aren't well served by the grid-based `_plot_maze` machinery `maze_solver/visualization/` is built around.
-- Whether this build order should be tracked as an actual task list once implementation starts, given it's now specific enough to be one.
+- Whether AO* + LRTA* combined (step 6) is worth building, given the "broader direction" discussion it needs first (seeding `AOStarExecutor`'s node selection from a prior `LRTAStarLearner.h_table` only helps fail-fast ordering among ready siblings, never choosing to skip a required node — there's no OR-escape hatch in an AND-only graph).

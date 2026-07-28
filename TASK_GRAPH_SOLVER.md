@@ -152,15 +152,21 @@ Same idea as `README.md`'s animated graph GIFs for BFS/DFS/Greedy/A* — watchin
 
 All eight nodes resolve in 8 steps. Watch `merged` (a square) wait for both `ci-check` and `apply-actions` before turning green, and `released` (a square) wait for all three deploy branches — the AND-composition this environment exists to demonstrate, not asserted in prose but actually executing.
 
+**Step-by-step walkthrough with the exact `h` arithmetic at each node:** [`documentation/task-graph/experiments/01_ao_star_pr_merge_lite.md`](documentation/task-graph/experiments/01_ao_star_pr_merge_lite.md).
+
 ### D* Lite: break a node, watch it recover
 
 ![D* Lite break and fix on pr_merge_lite](task_graph_solver/animations/d_star_lite_pr_merge_lite.gif)
 
-The Driver breaks `apply-actions` *before* it's ever attempted. `ci-check` and `generate-actions` proceed independently and turn green regardless. `apply-actions` turns red (fatal) the moment it's attempted while broken, which blocks `merged` and everything downstream — they stay white (pending/unreachable), not attempted at all. The Driver then fixes `apply-actions`; `DStarLiteExecutor` senses the change, returns it to consideration, and the whole graph completes. Critically: `ci-check`, already green before the break, is never touched again — the repair is local, not a full replan. Generated with `TopologicalExecutor` run against the same break as a contrast: it has no sensing loop, so a fix arriving after its run has already finished is simply invisible to it — see `test_topological_executor_cannot_recover_from_a_fix_after_the_fact` in `task_graph_solver/tests/test_scenarios.py`.
+The Driver breaks `apply-actions` *before* it's ever attempted. `ci-check` and `generate-actions` proceed independently and turn green regardless. `apply-actions` turns red (fatal) the moment it's attempted while broken, which blocks `merged` and everything downstream — they turn gray (blocked by a fatal ancestor, not merely pending), not attempted at all. The Driver then fixes `apply-actions`; `DStarLiteExecutor` senses the change, returns it to consideration, and the whole graph completes. Critically: `ci-check`, already green before the break, is never touched again — the repair is local, not a full replan. Contrast with `TopologicalExecutor` run against the identical break: it has no sensing loop, so a fix arriving after its run has already finished is simply invisible to it — see `test_topological_executor_cannot_recover_from_a_fix_after_the_fact` in `task_graph_solver/tests/test_scenarios.py`.
+
+**Step-by-step walkthrough, including the Driver/Agent sequence diagram and the `TopologicalExecutor` contrast:** [`documentation/task-graph/experiments/02_d_star_lite_pr_merge_lite.md`](documentation/task-graph/experiments/02_d_star_lite_pr_merge_lite.md).
 
 ### LRTA*: learning a node's true cost over repeated trials
 
 ![LRTA* convergence](task_graph_solver/animations/lrta_star_convergence.png)
+
+**Trial-by-trial walkthrough of the update rule, including why trial 1 doesn't start at the true worst case:** [`documentation/task-graph/experiments/03_lrta_star_convergence.md`](documentation/task-graph/experiments/03_lrta_star_convergence.md).
 
 A node with `pass_probability=0.3` (rmax=8) run through `LRTAStarLearner` for 25 trials. `h(repair)` starts at 4 (an early, lucky sequence of failures), jumps to 7 the first time a worse trial is actually observed, and then holds — the `max` update rule (`h(s) ← max(h(s), retries_spent(s))`) means the estimate can only grow, never shrink, and it stops moving once the true worst case has been seen. This is the same node used throughout `documentation/lrta/beyond_the_maze.md`'s repair-cost discussion, now actually learned rather than only described.
 
