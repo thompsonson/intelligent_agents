@@ -6,6 +6,7 @@ from task_graph_solver.algorithms.d_star_lite import DStarLiteExecutor
 from task_graph_solver.scenarios.pr_merge_lite import build_pr_merge_lite
 from task_graph_solver.scenarios.repair_packages_lite import build_repair_packages_lite
 from task_graph_solver.visualization.graph_view import (
+    _blocked_by_fatal_ancestor,
     animate_events,
     build_networkx_graph,
     render,
@@ -120,3 +121,47 @@ class TestAnimateEvents:
         assert out.exists()
         assert out.stat().st_size > 0
         assert executor.satisfied == {"repair", "verify"}
+
+
+class TestBlockedByFatalAncestor:
+    # Regression coverage for a real bug found by visually inspecting the
+    # generated animation: a naive `all_nodes - satisfied - fatal` marks
+    # every not-yet-attempted node as "unreachable" (gray) from frame one,
+    # even when nothing has failed yet and the node is perfectly reachable -
+    # it just hasn't had its turn. Only a node with an actual fatal
+    # ancestor should render as unreachable mid-animation.
+
+    def test_nothing_is_blocked_when_nothing_is_fatal(self):
+        nodes = build_pr_merge_lite()
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+
+        assert _blocked_by_fatal_ancestor("merged", env, fatal=set()) is False
+        assert _blocked_by_fatal_ancestor("released", env, fatal=set()) is False
+        assert _blocked_by_fatal_ancestor("ci-check", env, fatal=set()) is False
+
+    def test_blocked_by_a_direct_fatal_dependency(self):
+        nodes = build_pr_merge_lite()
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+
+        assert (
+            _blocked_by_fatal_ancestor("merged", env, fatal={"apply-actions"}) is True
+        )
+
+    def test_blocked_transitively_through_multiple_hops(self):
+        nodes = build_pr_merge_lite()
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+
+        # released <- deploy-staging <- merged <- apply-actions: three hops away
+        assert (
+            _blocked_by_fatal_ancestor("released", env, fatal={"apply-actions"}) is True
+        )
+
+    def test_not_blocked_by_an_unrelated_fatal_node(self):
+        nodes = build_pr_merge_lite()
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+
+        # ci-check has no dependencies at all, so nothing can block it.
+        assert (
+            _blocked_by_fatal_ancestor("ci-check", env, fatal={"apply-actions"})
+            is False
+        )

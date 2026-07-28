@@ -157,6 +157,29 @@ def _apply_event(satisfied: set, fatal: set, event: Event) -> str:
     raise ValueError(f"unknown event kind: {kind!r}")
 
 
+def _blocked_by_fatal_ancestor(
+    node_id: str, env: TaskGraphEnvironment, fatal: set
+) -> bool:
+    """True if any transitive dependency of node_id is in `fatal`. Used to
+    tell "not yet attempted, but still perfectly reachable" (pending, white)
+    apart from "genuinely blocked" (unreachable, gray) mid-run - a plain
+    `all_nodes - satisfied - fatal` over-eagerly marks every not-yet-resolved
+    node as unreachable, which is only correct once an algorithm has
+    finished and decided nothing more can change (ExecutionResult's own
+    unreachable field), not at an arbitrary intermediate frame."""
+    stack = list(env.nodes[node_id].requires)
+    seen: set = set()
+    while stack:
+        dep = stack.pop()
+        if dep in fatal:
+            return True
+        if dep in seen:
+            continue
+        seen.add(dep)
+        stack.extend(env.nodes[dep].requires)
+    return False
+
+
 def animate_events(
     env: TaskGraphEnvironment,
     events: List[Event],
@@ -183,7 +206,11 @@ def animate_events(
 
         for i, event in enumerate(events, start=1):
             caption = _apply_event(satisfied, fatal, event)
-            unreachable = all_nodes - satisfied - fatal
+            unreachable = {
+                n
+                for n in all_nodes - satisfied - fatal
+                if _blocked_by_fatal_ancestor(n, env, fatal)
+            }
             snapshot = ExecutionResult(
                 success=(satisfied == all_nodes),
                 satisfied=set(satisfied),
