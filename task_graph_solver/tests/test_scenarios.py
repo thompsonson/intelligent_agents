@@ -2,8 +2,10 @@ from task_graph_solver.core.config import TaskGraphConfig
 from task_graph_solver.core.environment import TaskGraphEnvironment
 from task_graph_solver.algorithms.topological import TopologicalExecutor
 from task_graph_solver.algorithms.lrta_star import LRTAStarLearner
+from task_graph_solver.algorithms.ao_star import AOStarExecutor
 from task_graph_solver.scenarios.disk_check_lite import build_disk_check_lite
 from task_graph_solver.scenarios.repair_packages_lite import build_repair_packages_lite
+from task_graph_solver.scenarios.pr_merge_lite import build_pr_merge_lite
 
 
 class TestDiskCheckLiteScenario:
@@ -80,3 +82,78 @@ class TestRepairPackagesLiteScenario:
 
         assert "repair" in learner.h_table
         assert "verify" not in learner.h_table
+
+
+class TestPrMergeLiteScenario:
+    def test_builds_eight_node_graph_with_two_and_joins(self):
+        nodes = build_pr_merge_lite()
+
+        assert set(nodes.keys()) == {
+            "ci-check",
+            "generate-actions",
+            "apply-actions",
+            "merged",
+            "deploy-staging",
+            "deploy-publish",
+            "deploy-promote",
+            "released",
+        }
+        assert nodes["merged"].requires == ("ci-check", "apply-actions")
+        assert nodes["released"].requires == (
+            "deploy-staging",
+            "deploy-publish",
+            "deploy-promote",
+        )
+        assert nodes["apply-actions"].r_patience == 1  # matches fix_pr.dspddl
+
+    def test_full_run_succeeds_when_everything_passes(self):
+        nodes = build_pr_merge_lite(pass_probability=1.0)
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+
+        result = AOStarExecutor(env).run()
+
+        assert result.success is True
+        assert result.satisfied == set(nodes.keys())
+
+    def test_merged_is_solved_only_after_both_ci_check_and_apply_actions(self):
+        # Phase 5's target: the smallest real AND-join, hand-verifiable.
+        nodes = build_pr_merge_lite(pass_probability=1.0)
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+        executor = AOStarExecutor(env)
+
+        executor.run()
+
+        attempted_order = [node_id for node_id, _ in executor.trace]
+        assert attempted_order.index("ci-check") < attempted_order.index("merged")
+        assert attempted_order.index("apply-actions") < attempted_order.index("merged")
+
+    def test_merged_cost_composes_from_its_two_required_children(self):
+        nodes = build_pr_merge_lite(pass_probability=1.0)
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+        executor = AOStarExecutor(env)
+
+        executor.run()
+
+        # Every node passes on its first attempt with pass_probability=1.0,
+        # so ci-check costs 1, and apply-actions costs 1 + h(generate-actions)
+        # = 1 + 1 = 2. merged's own cost is 1, composed with the max of its
+        # two required children: 1 + max(h[ci-check], h[apply-actions]).
+        assert executor.h["ci-check"] == 1
+        assert executor.h["generate-actions"] == 1
+        assert executor.h["apply-actions"] == 1 + 1
+        assert executor.h["merged"] == 1 + max(
+            executor.h["ci-check"], executor.h["apply-actions"]
+        )
+
+    def test_merged_unreachable_if_apply_actions_never_resolves(self):
+        nodes = build_pr_merge_lite(
+            pass_probability=1.0, overrides={"apply-actions": 0.0}
+        )
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+
+        result = AOStarExecutor(env).run()
+
+        assert result.success is False
+        assert "apply-actions" in result.fatal
+        assert "merged" in result.unreachable
+        assert "released" in result.unreachable
