@@ -40,3 +40,5 @@
 ## Not decided
 
 - Whether AO* + LRTA* combined (step 6) is worth building, given the "broader direction" discussion it needs first (seeding `AOStarExecutor`'s node selection from a prior `LRTAStarLearner.h_table` only helps fail-fast ordering among ready siblings, never choosing to skip a required node — there's no OR-escape hatch in an AND-only graph).
+
+**Update:** that "no OR-escape hatch" limitation is exactly what [`documentation/task-graph/or-groups/`](or-groups/) removes. Once a scenario has genuine OR-groups, AO* + LRTA* combined stops being just fail-fast reordering and becomes real alternative-selection (learn which variant tends to be cheapest, try it first) — see `or-groups/algorithm_fit.md`'s LRTA* section. Design-stage, not yet implemented; scoped separately so this document's "every scenario here is AND-only" framing stays accurate until it is.
