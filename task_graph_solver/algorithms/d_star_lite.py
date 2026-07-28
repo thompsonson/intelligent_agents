@@ -76,7 +76,7 @@ class DStarLiteExecutor:
 
         unreachable = all_nodes - self.satisfied - self.fatal
         return ExecutionResult(
-            success=(self.satisfied == all_nodes),
+            success=self.env.is_goal_reached(self.satisfied),
             satisfied=set(self.satisfied),
             fatal=set(self.fatal),
             unreachable=unreachable,

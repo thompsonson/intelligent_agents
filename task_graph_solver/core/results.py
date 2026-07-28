@@ -20,6 +20,12 @@ class ExecutionResult:
             across every node - the execution history.
         execution_time: Wall-clock seconds, set by the caller (mirrors
             SearchResult's timing convention in maze_solver).
+        not_needed: Losing OR-siblings that were never attempted because a
+            different member of their group already satisfied it before
+            this one became relevant - distinct from `unreachable` (which
+            is blocked by a fatal dependency) and from a true orphan (which
+            was simply never on any path to the goal). See
+            documentation/task-graph/or-groups/environment_design.md.
     """
 
     success: bool
@@ -28,3 +34,4 @@ class ExecutionResult:
     unreachable: Set[str]
     trace: List[Tuple[str, AttemptOutcome]] = field(default_factory=list)
     execution_time: float = 0.0
+    not_needed: Set[str] = field(default_factory=set)

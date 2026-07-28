@@ -1,7 +1,7 @@
 import pytest
 
 from task_graph_solver.core.config import TaskGraphConfig
-from task_graph_solver.core.domain import AttemptOutcome, TaskNode
+from task_graph_solver.core.domain import AttemptOutcome, GroupNode, TaskNode
 from task_graph_solver.core.environment import TaskGraphEnvironment
 
 
@@ -189,6 +189,106 @@ class TestAttempt:
         env.attempt("a")
         env.attempt("a")
         assert env.retries_spent("a") == 2
+
+
+class TestGroupNodeValidation:
+    def test_group_must_have_at_least_one_member(self):
+        with pytest.raises(ValueError):
+            GroupNode(id="g", members=())
+
+    def test_group_id_colliding_with_a_node_id_is_rejected(self):
+        nodes = {"a": make_node("a"), "b": make_node("b")}
+        group = GroupNode(id="a", members=("b",))
+        with pytest.raises(ValueError, match="collides"):
+            TaskGraphEnvironment(nodes, TaskGraphConfig(), groups=(group,))
+
+    def test_group_referencing_unknown_member_is_rejected(self):
+        nodes = {"a": make_node("a")}
+        group = GroupNode(id="g", members=("does-not-exist",))
+        with pytest.raises(ValueError, match="does-not-exist"):
+            TaskGraphEnvironment(nodes, TaskGraphConfig(), groups=(group,))
+
+    def test_requires_referencing_unknown_group_is_rejected(self):
+        nodes = {"a": make_node("a", requires=("no-such-group",))}
+        with pytest.raises(ValueError, match="no-such-group"):
+            TaskGraphEnvironment(nodes, TaskGraphConfig())
+
+
+class TestGroupNodeGating:
+    def _diamond_with_group(self):
+        nodes = {
+            "variant-a": make_node("variant-a"),
+            "variant-b": make_node("variant-b"),
+            "downstream": make_node("downstream", requires=("slot",)),
+        }
+        group = GroupNode(id="slot", members=("variant-a", "variant-b"))
+        return nodes, group
+
+    def test_downstream_not_ready_until_any_member_satisfied(self):
+        nodes, group = self._diamond_with_group()
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(), groups=(group,))
+
+        assert "downstream" not in env.ready_nodes(satisfied=set())
+        assert "downstream" in env.ready_nodes(satisfied={"variant-a"})
+
+    def test_either_member_alone_satisfies_the_group(self):
+        nodes, group = self._diamond_with_group()
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(), groups=(group,))
+
+        assert "downstream" in env.ready_nodes(satisfied={"variant-b"})
+
+    def test_both_members_satisfied_still_only_needs_one(self):
+        nodes, group = self._diamond_with_group()
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(), groups=(group,))
+
+        assert "downstream" in env.ready_nodes(satisfied={"variant-a", "variant-b"})
+
+    def test_group_ids_never_appear_in_ready_nodes(self):
+        # A GroupNode is never attempted directly - it has no Guard.
+        nodes, group = self._diamond_with_group()
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(), groups=(group,))
+
+        assert "slot" not in env.ready_nodes(satisfied=set())
+        assert "slot" not in env.ready_nodes(satisfied={"variant-a", "variant-b"})
+
+    def test_group_referenced_by_a_cycle_through_a_member_is_rejected(self):
+        # variant-a (a group member) requires "downstream", and "downstream"
+        # requires the group - a cycle through the member, not the group id
+        # itself, still needs to be caught.
+        nodes = {
+            "variant-a": make_node("variant-a", requires=("downstream",)),
+            "downstream": make_node("downstream", requires=("slot",)),
+        }
+        group = GroupNode(id="slot", members=("variant-a",))
+        with pytest.raises(ValueError, match="cycle"):
+            TaskGraphEnvironment(nodes, TaskGraphConfig(), groups=(group,))
+
+
+class TestExplicitGoal:
+    def test_goal_must_reference_a_known_node(self):
+        nodes = {"a": make_node("a")}
+        with pytest.raises(ValueError, match="does-not-exist"):
+            TaskGraphEnvironment(nodes, TaskGraphConfig(), goal="does-not-exist")
+
+    def test_goal_reached_once_goal_node_is_satisfied_even_with_others_pending(self):
+        nodes = {
+            "goal-node": make_node("goal-node"),
+            "unrelated": make_node("unrelated"),
+        }
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(), goal="goal-node")
+
+        assert env.is_goal_reached(satisfied={"goal-node"}) is True
+        assert env.is_goal_reached(satisfied=set()) is False
+
+    def test_no_goal_configured_falls_back_to_all_nodes_satisfied(self):
+        # Backward compatibility: every scenario built before this existed
+        # (disk_check_lite, repair_packages_lite, pr_merge_lite) doesn't
+        # pass a goal, and must keep meaning "everything satisfied".
+        nodes = {"a": make_node("a"), "b": make_node("b")}
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig())
+
+        assert env.is_goal_reached(satisfied={"a"}) is False
+        assert env.is_goal_reached(satisfied={"a", "b"}) is True
 
 
 class TestDriverBreakFix:

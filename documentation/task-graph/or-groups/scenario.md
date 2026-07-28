@@ -46,7 +46,7 @@ graph LR
 | `released` (**goal**) | sensing | sensing | `deploy-staging`, `deploy-publish`, `deploy-promote` | No |
 | `check-disk` | sensing | sensing | — | Reused as-is from `disk_check_lite` — see below |
 
-Ten attemptable nodes plus one `GroupNode` — two more nodes than `pr_merge_lite` (the variant split adds two), still the same order of magnitude, still hand-verifiable.
+Eleven attemptable nodes plus one `GroupNode` — three more than `pr_merge_lite`'s eight (the variant split adds two, `check-disk` adds one more), still the same order of magnitude, still hand-verifiable.
 
 ## The two "doesn't help the goal" cases, both grounded in existing material
 

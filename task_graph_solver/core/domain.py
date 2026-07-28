@@ -67,3 +67,28 @@ class TaskNode:
                 f"pass_probability must be in [0, 1] for node {self.id!r}, "
                 f"got {self.pass_probability}"
             )
+
+
+@dataclass
+class GroupNode:
+    """An OR-composition over existing TaskNodes: satisfied the instant any
+    one of `members` is satisfied. Not attempted directly - there is no
+    Guard to run, no pass_probability, no retry budget to exhaust.
+    Downstream nodes list the group's id in their own `requires` tuple
+    exactly as they would a plain node id; the AND-gating check treats a
+    group id and a node id identically from the outside.
+
+    See documentation/task-graph/or-groups/environment_design.md.
+
+    Attributes:
+        id: Unique identifier, must not collide with any TaskNode id.
+        members: ids of TaskNodes that satisfy this group - any one is
+            enough.
+    """
+
+    id: str
+    members: Tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not self.members:
+            raise ValueError(f"GroupNode {self.id!r} must have at least one member")

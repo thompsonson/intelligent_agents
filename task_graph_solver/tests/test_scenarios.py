@@ -7,6 +7,9 @@ from task_graph_solver.algorithms.d_star_lite import DStarLiteExecutor
 from task_graph_solver.scenarios.disk_check_lite import build_disk_check_lite
 from task_graph_solver.scenarios.repair_packages_lite import build_repair_packages_lite
 from task_graph_solver.scenarios.pr_merge_lite import build_pr_merge_lite
+from task_graph_solver.scenarios.pr_merge_with_variants import (
+    build_pr_merge_with_variants,
+)
 
 
 class TestDiskCheckLiteScenario:
@@ -306,3 +309,233 @@ class TestPrMergeLiteScenario:
             attempts = [n for n, _ in result.trace if n == node_id]
             assert len(attempts) == 1
         assert executor.repairs == ["deploy-staging"]
+
+
+class TestPrMergeWithVariantsScenario:
+    def test_builds_eleven_nodes_and_one_group(self):
+        nodes, groups, goal = build_pr_merge_with_variants()
+
+        assert set(nodes.keys()) == {
+            "ci-check",
+            "generate-actions",
+            "apply-actions-minimal",
+            "apply-actions-comprehensive",
+            "apply-actions-test-driven",
+            "merged",
+            "deploy-staging",
+            "deploy-publish",
+            "deploy-promote",
+            "released",
+            "check-disk",
+        }
+        assert len(groups) == 1
+        assert groups[0].id == "actions-ready"
+        assert set(groups[0].members) == {
+            "apply-actions-minimal",
+            "apply-actions-comprehensive",
+            "apply-actions-test-driven",
+        }
+        assert goal == "released"
+
+    def test_merged_requires_the_group_not_a_specific_variant(self):
+        nodes, _groups, _goal = build_pr_merge_with_variants()
+        assert nodes["merged"].requires == ("ci-check", "actions-ready")
+
+    def test_variants_share_generate_actions_as_their_only_requirement(self):
+        nodes, _groups, _goal = build_pr_merge_with_variants()
+        for variant_id in (
+            "apply-actions-minimal",
+            "apply-actions-comprehensive",
+            "apply-actions-test-driven",
+        ):
+            node = nodes[variant_id]
+            assert node.requires == ("generate-actions",)
+            assert node.retry_flavor == "repair"
+            assert node.r_patience == 1
+
+    def test_check_disk_is_a_disconnected_orphan(self):
+        nodes, _groups, _goal = build_pr_merge_with_variants()
+        assert nodes["check-disk"].requires == ()
+        for node_id, node in nodes.items():
+            if node_id != "check-disk":
+                assert "check-disk" not in node.requires
+
+    def test_environment_accepts_the_scenario_without_error(self):
+        nodes, groups, goal = build_pr_merge_with_variants()
+        env = TaskGraphEnvironment(
+            nodes, TaskGraphConfig(seed=1), groups=groups, goal=goal
+        )
+        assert env.goal == "released"
+
+    def test_topological_executor_attempts_all_three_variants_even_after_group_satisfied(
+        self,
+    ):
+        # The documented baseline waste: TopologicalExecutor has no concept
+        # of "stop once the group is satisfied", so all three variants get
+        # attempted regardless of order, even though only one was needed.
+        nodes, groups, goal = build_pr_merge_with_variants(pass_probability=1.0)
+        env = TaskGraphEnvironment(
+            nodes, TaskGraphConfig(seed=1), groups=groups, goal=goal
+        )
+
+        result = TopologicalExecutor(env).run()
+
+        assert result.success is True
+        for variant_id in (
+            "apply-actions-minimal",
+            "apply-actions-comprehensive",
+            "apply-actions-test-driven",
+        ):
+            assert variant_id in result.satisfied
+
+    def test_topological_executor_reaches_goal_even_when_the_orphan_fails(self):
+        # The whole point of an explicit goal: check-disk failing must not
+        # sink a run that otherwise reaches `released`.
+        nodes, groups, goal = build_pr_merge_with_variants(
+            pass_probability=1.0, check_disk_pass_probability=0.0
+        )
+        env = TaskGraphEnvironment(
+            nodes, TaskGraphConfig(seed=1), groups=groups, goal=goal
+        )
+
+        result = TopologicalExecutor(env).run()
+
+        assert result.success is True
+        assert "check-disk" in result.fatal
+        assert "released" in result.satisfied
+
+    def test_ao_star_stops_attempting_variants_once_the_group_is_satisfied(self):
+        # apply-actions-comprehensive is alphabetically first among the
+        # three variants, so AOStarExecutor attempts it first; once it
+        # passes, the other two must never be attempted at all.
+        nodes, groups, goal = build_pr_merge_with_variants(pass_probability=1.0)
+        env = TaskGraphEnvironment(
+            nodes, TaskGraphConfig(seed=1), groups=groups, goal=goal
+        )
+        executor = AOStarExecutor(env)
+
+        result = executor.run()
+
+        assert result.success is True
+        assert "apply-actions-comprehensive" in result.satisfied
+        assert result.not_needed == {
+            "apply-actions-minimal",
+            "apply-actions-test-driven",
+        }
+        attempted = {node_id for node_id, _ in executor.trace}
+        assert "apply-actions-minimal" not in attempted
+        assert "apply-actions-test-driven" not in attempted
+
+    def test_ao_star_still_attempts_the_disconnected_orphan(self):
+        # Pruning only applies to OR-group siblings - check-disk has no
+        # group and no bearing on the goal, but AO* has no goal-directed
+        # subgraph pruning here, so it still gets attempted like any other
+        # ready node.
+        nodes, groups, goal = build_pr_merge_with_variants(pass_probability=1.0)
+        env = TaskGraphEnvironment(
+            nodes, TaskGraphConfig(seed=1), groups=groups, goal=goal
+        )
+
+        result = AOStarExecutor(env).run()
+
+        assert "check-disk" in result.satisfied
+        assert "check-disk" not in result.not_needed
+
+    def test_ao_star_falls_back_to_next_variant_if_the_first_fails(self):
+        nodes, groups, goal = build_pr_merge_with_variants(
+            pass_probability=1.0,
+            overrides={"apply-actions-comprehensive": 0.0},
+        )
+        env = TaskGraphEnvironment(
+            nodes, TaskGraphConfig(seed=1), groups=groups, goal=goal
+        )
+
+        result = AOStarExecutor(env).run()
+
+        assert result.success is True
+        assert "apply-actions-comprehensive" in result.fatal
+        assert "apply-actions-minimal" in result.satisfied
+        assert "apply-actions-test-driven" in result.not_needed
+
+    def test_ao_star_group_cost_is_the_satisfied_members_own_cost(self):
+        nodes, groups, goal = build_pr_merge_with_variants(pass_probability=1.0)
+        env = TaskGraphEnvironment(
+            nodes, TaskGraphConfig(seed=1), groups=groups, goal=goal
+        )
+        executor = AOStarExecutor(env)
+
+        executor.run()
+
+        # merged requires ci-check and the group; the group's cost must be
+        # apply-actions-comprehensive's own h, not a min/max over all three
+        # (the other two were never attempted and have no real cost).
+        assert executor.h["merged"] == 1 + max(
+            executor.h["ci-check"], executor.h["apply-actions-comprehensive"]
+        )
+
+    def test_d_star_lite_cannot_progress_once_every_variant_is_broken(self):
+        # All three apply-actions-* variants broken before ever being
+        # attempted - actions-ready becomes genuinely unsolvable (every
+        # member fatal, the inverse of an AND-node's "any required child
+        # fatal" rule), so merged and released never become reachable.
+        nodes, groups, goal = build_pr_merge_with_variants(pass_probability=1.0)
+        env = TaskGraphEnvironment(
+            nodes, TaskGraphConfig(seed=1), groups=groups, goal=goal
+        )
+        executor = DStarLiteExecutor(env)
+
+        for variant_id in (
+            "apply-actions-minimal",
+            "apply-actions-comprehensive",
+            "apply-actions-test-driven",
+        ):
+            env.break_task(variant_id)
+
+        result = executor.run()
+
+        assert result.success is False
+        assert {
+            "apply-actions-minimal",
+            "apply-actions-comprehensive",
+            "apply-actions-test-driven",
+        } == executor.fatal
+        assert "merged" in result.unreachable
+        assert "released" in result.unreachable
+
+    def test_d_star_lite_recovers_once_any_single_variant_is_fixed(self):
+        # The distinguishing D* Lite story for this scenario, per
+        # documentation/task-graph/or-groups/algorithm_fit.md: recovery
+        # after every group member has been exhausted, not a "reroute"
+        # among simultaneously-ready siblings (every executor already does
+        # that for free). TopologicalExecutor given the same sequence would
+        # stay failed forever - it never senses the fix.
+        nodes, groups, goal = build_pr_merge_with_variants(pass_probability=1.0)
+        env = TaskGraphEnvironment(
+            nodes, TaskGraphConfig(seed=1), groups=groups, goal=goal
+        )
+        executor = DStarLiteExecutor(env)
+
+        for variant_id in (
+            "apply-actions-minimal",
+            "apply-actions-comprehensive",
+            "apply-actions-test-driven",
+        ):
+            env.break_task(variant_id)
+
+        for _ in range(10):
+            if not executor.step():
+                break
+
+        assert "released" not in executor.satisfied
+
+        env.fix_task("apply-actions-minimal")
+        result = executor.run()
+
+        assert result.success is True
+        assert "apply-actions-minimal" in result.satisfied
+        # The still-broken siblings were never satisfied, and ci-check
+        # (already satisfied before the break/fix saga) must not be
+        # re-attempted once the group is repaired.
+        ci_check_attempts = [n for n, _ in result.trace if n == "ci-check"]
+        assert len(ci_check_attempts) == 1
+        assert executor.repairs == ["apply-actions-minimal"]

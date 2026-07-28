@@ -1,15 +1,17 @@
 import random
-from typing import Dict, List, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 from .config import TaskGraphConfig
-from .domain import AttemptOutcome, TaskNode
+from .domain import AttemptOutcome, GroupNode, TaskNode
 
 
 class TaskGraphEnvironment:
-    """Simulated DAG of guarded tasks with AND-only `requires` edges.
+    """Simulated DAG of guarded tasks with AND-only `requires` edges, plus
+    optional OR-groups and an explicit goal.
 
     No real commands run - every node's outcome is drawn from its configured
-    `pass_probability`. See documentation/task-graph/environment_design.md.
+    `pass_probability`. See documentation/task-graph/environment_design.md
+    and documentation/task-graph/or-groups/environment_design.md.
 
     Mirrors MazeEnvironment's separation of concerns: the environment knows
     node validity/cost/readiness, but does not track which nodes an agent has
@@ -17,10 +19,18 @@ class TaskGraphEnvironment:
     doesn't track a search algorithm's visited set.
     """
 
-    def __init__(self, nodes: Dict[str, TaskNode], config: TaskGraphConfig):
-        self._validate_graph(nodes)
+    def __init__(
+        self,
+        nodes: Dict[str, TaskNode],
+        config: TaskGraphConfig,
+        groups: Tuple[GroupNode, ...] = (),
+        goal: Optional[str] = None,
+    ):
+        self._validate_graph(nodes, groups, goal)
 
         self.nodes = nodes
+        self.groups: Dict[str, GroupNode] = {group.id: group for group in groups}
+        self.goal = goal
         self.config = config
         self._rng = random.Random(config.seed)
         self._attempts_made: Dict[str, int] = {node_id: 0 for node_id in nodes}
@@ -29,19 +39,53 @@ class TaskGraphEnvironment:
         self._changed_since_drain: Set[str] = set()
 
     @staticmethod
-    def _validate_graph(nodes: Dict[str, TaskNode]) -> None:
+    def _validate_graph(
+        nodes: Dict[str, TaskNode],
+        groups: Tuple[GroupNode, ...],
+        goal: Optional[str],
+    ) -> None:
+        groups_by_id: Dict[str, GroupNode] = {}
+        for group in groups:
+            if group.id in nodes:
+                raise ValueError(
+                    f"group id {group.id!r} collides with an existing node id"
+                )
+            groups_by_id[group.id] = group
+
+        for group in groups:
+            for member in group.members:
+                if member not in nodes:
+                    raise ValueError(
+                        f"group {group.id!r} references unknown member {member!r}"
+                    )
+
         for node_id, node in nodes.items():
             for dep in node.requires:
-                if dep not in nodes:
+                if dep not in nodes and dep not in groups_by_id:
                     raise ValueError(f"node {node_id!r} requires unknown node {dep!r}")
 
-        # DFS cycle detection over the requires graph.
+        if goal is not None and goal not in nodes:
+            raise ValueError(f"goal references unknown node {goal!r}")
+
+        # DFS cycle detection over the requires graph, expanding any group id
+        # dependency into edges to each of its members - a cycle through a
+        # group member still needs to be caught even though the group id
+        # itself is never colored.
+        def neighbors(node_id: str) -> List[str]:
+            result = []
+            for dep in nodes[node_id].requires:
+                if dep in groups_by_id:
+                    result.extend(groups_by_id[dep].members)
+                else:
+                    result.append(dep)
+            return result
+
         WHITE, GRAY, BLACK = 0, 1, 2
         color = {node_id: WHITE for node_id in nodes}
 
         def visit(node_id: str, path: List[str]) -> None:
             color[node_id] = GRAY
-            for dep in nodes[node_id].requires:
+            for dep in neighbors(node_id):
                 if color[dep] == GRAY:
                     cycle = " -> ".join(path + [dep])
                     raise ValueError(f"cycle detected in requires graph: {cycle}")
@@ -53,16 +97,35 @@ class TaskGraphEnvironment:
             if color[node_id] == WHITE:
                 visit(node_id, [node_id])
 
+    def _is_satisfied(self, dep_id: str, satisfied: Set[str]) -> bool:
+        """Whether `dep_id` - a plain node id or a GroupNode id - counts as
+        satisfied. A group is satisfied the instant any one of its members
+        is; this is the single check point that lets ready_nodes() handle
+        AND and OR dependencies through the same code path."""
+        if dep_id in self.groups:
+            return any(member in satisfied for member in self.groups[dep_id].members)
+        return dep_id in satisfied
+
     def ready_nodes(self, satisfied: Set[str]) -> List[str]:
         """Nodes whose `requires` are fully contained in `satisfied` and
         haven't themselves been satisfied yet - the frontier of things that
-        could be attempted next."""
+        could be attempted next. Group ids never appear here - a GroupNode
+        has no Guard, so it is never itself attempted."""
         return [
             node_id
             for node_id, node in self.nodes.items()
             if node_id not in satisfied
-            and all(dep in satisfied for dep in node.requires)
+            and all(self._is_satisfied(dep, satisfied) for dep in node.requires)
         ]
+
+    def is_goal_reached(self, satisfied: Set[str]) -> bool:
+        """True once the configured `goal` node is satisfied. With no goal
+        configured, falls back to "every node satisfied" - the behavior
+        every scenario built before this existed (disk_check_lite,
+        repair_packages_lite, pr_merge_lite) already relies on."""
+        if self.goal is not None:
+            return self.goal in satisfied
+        return all(node_id in satisfied for node_id in self.nodes)
 
     def attempt(self, node_id: str) -> AttemptOutcome:
         """One simulated attempt at `node_id`. Consumes one unit of retry

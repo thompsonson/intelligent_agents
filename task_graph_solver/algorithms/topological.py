@@ -46,7 +46,7 @@ class TopologicalExecutor:
         unreachable = all_nodes - satisfied - fatal
 
         return ExecutionResult(
-            success=(satisfied == all_nodes),
+            success=self.env.is_goal_reached(satisfied),
             satisfied=satisfied,
             fatal=fatal,
             unreachable=unreachable,

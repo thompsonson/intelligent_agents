@@ -30,29 +30,65 @@ class AOStarExecutor:
     Phase 5 exists to verify - correct AND-composition, hand-checkable
     on the smallest real join (`merged`, two required children) before
     trusting it on `released`'s three-way join in Phase 6.
+
+    OR-groups (documentation/task-graph/or-groups/algorithm_fit.md) add one
+    more real capability: once a group is satisfied by one member, its
+    other members are never worth attempting - "don't explore an
+    alternative once you already have a solution for that OR-node" is
+    classical AO* behavior (Nilsson's SELECT-NODE only ever expands nodes
+    on the current best partial solution). `_is_prunable` implements that;
+    pruned candidates are recorded in `not_needed`, not `unsolvable` -
+    they weren't fatal, they simply stopped mattering. `h(group)` once
+    satisfied is the cost of whichever member actually passed - the only
+    one with a real observed cost, since a satisfied group's other
+    members are never attempted at all.
     """
 
     def __init__(self, env: TaskGraphEnvironment):
         self.env = env
         self.solved: Set[str] = set()
         self.unsolvable: Set[str] = set()
+        self.not_needed: Set[str] = set()
         self.h: Dict[str, float] = {}
         self.trace: List[Tuple[str, AttemptOutcome]] = []
+
+    def _cost_of(self, dep_id: str) -> float:
+        if dep_id in self.env.groups:
+            group = self.env.groups[dep_id]
+            satisfied_member = next(m for m in group.members if m in self.solved)
+            return self.h[satisfied_member]
+        return self.h[dep_id]
 
     def _compose_cost(self, node_id: str) -> float:
         node = self.env.nodes[node_id]
         own_cost = self.env.retries_spent(node_id)
         if not node.requires:
             return float(own_cost)
-        children_cost = max(self.h[dep] for dep in node.requires)
+        children_cost = max(self._cost_of(dep) for dep in node.requires)
         return own_cost + children_cost
 
+    def _is_prunable(self, node_id: str) -> bool:
+        """True if `node_id` is a member of a GroupNode already satisfied by
+        a different member - exploring it can no longer change whether the
+        group is solved, only waste budget."""
+        for group in self.env.groups.values():
+            if node_id in group.members and any(
+                member in self.solved for member in group.members
+            ):
+                return True
+        return False
+
     def step(self) -> bool:
-        ready = sorted(
-            node_id
-            for node_id in self.env.ready_nodes(self.solved)
-            if node_id not in self.unsolvable
-        )
+        ready = []
+        for node_id in self.env.ready_nodes(self.solved):
+            if node_id in self.unsolvable:
+                continue
+            if self._is_prunable(node_id):
+                self.not_needed.add(node_id)
+                continue
+            ready.append(node_id)
+        ready.sort()
+
         if not ready:
             return False
 
@@ -74,16 +110,17 @@ class AOStarExecutor:
         all_nodes = set(self.env.nodes.keys())
 
         for _ in range(max_steps):
-            if self.solved == all_nodes:
+            if self.solved | self.unsolvable | self.not_needed == all_nodes:
                 break
             if not self.step():
                 break
 
-        unreachable = all_nodes - self.solved - self.unsolvable
+        unreachable = all_nodes - self.solved - self.unsolvable - self.not_needed
         return ExecutionResult(
-            success=(self.solved == all_nodes),
+            success=self.env.is_goal_reached(self.solved),
             satisfied=set(self.solved),
             fatal=set(self.unsolvable),
             unreachable=unreachable,
             trace=list(self.trace),
+            not_needed=set(self.not_needed),
         )
