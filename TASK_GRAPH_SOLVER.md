@@ -264,6 +264,14 @@ A second, unrelated deterministic repair, same pattern: `build-check`'s Guard is
 
 **Full walkthrough, including both repairs, the real `time_spent` measurements (a ~20x gap between `ruff` and `python -m build`), and what it means for the LLM-based repairs still to come:** [`documentation/task-graph/experiments/07_atomicguard_lint_repair.md`](documentation/task-graph/experiments/07_atomicguard_lint_repair.md).
 
+### `atomicguard`-backed repair: an LLM-based fix, wired but not yet run live
+
+![GuardFirstExecutor: type-check (clean), a free check](task_graph_solver/animations/atomicguard_type_check_clean_free_check.gif)
+
+The first LLM-based repair, `type-check`: real `mypy` as the free check, atomicguard's real `LLMContainerFixGenerator` against OpenRouter as the repair, re-verified by a real `ContainerSubprocessGuard` re-running `mypy`. On `clean`, the check just passes, same shape as `lint`/`build-check` — real, tested, demonstrated. On `typing_broken`, the free check genuinely fails too, with real `mypy` feedback captured in the shared DAG. **No repair GIF exists for this node**, deliberately: this sandbox's own network policy blocks `openrouter.ai` outright, so no live LLM call has ever been attempted, let alone verified — recorded honestly rather than implied.
+
+**Full walkthrough, including exactly what's real versus not-yet-run, and the two unverified OpenRouter model slugs:** [`documentation/task-graph/experiments/08_atomicguard_type_check_llm_repair.md`](documentation/task-graph/experiments/08_atomicguard_type_check_llm_repair.md).
+
 ## Testing
 
 ```bash
