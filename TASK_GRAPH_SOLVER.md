@@ -288,7 +288,7 @@ uv run pytest task_graph_solver/tests/ -v
 
 ## Design documentation
 
-This module is design-doc-first, same discipline as the D* Lite maze work:
+This module is design-doc-first, same discipline as the D* Lite maze work. **For the narrative version of everything below — what got built, in what order, why, and what's actually been proven versus still open — see [`documentation/task-graph/README.md`](documentation/task-graph/README.md).** The rest of this section is the technical index.
 
 - [`documentation/task-graph/environment_design.md`](documentation/task-graph/environment_design.md) — the core primitives
 - [`documentation/task-graph/scenarios.md`](documentation/task-graph/scenarios.md) — the three toy graphs
