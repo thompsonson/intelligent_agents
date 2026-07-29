@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Deliberate build-check break: no `version` field and no `dynamic =
+# ["version"]` either, so hatchling's build_sdist fails validate_fields()
+# with "Field `project.version` can only be resolved dynamically if
+# `version` is in field `project.dynamic`" - mypy/ruff/pytest (which don't
+# read this section) stay unaffected.
+[project]
+name = "example-pkg"
+description = "Fixture package for real_task_graph_solver - see documentation/task-graph/real-guards/environment_design.md"
+requires-python = ">=3.9"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/example_pkg"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

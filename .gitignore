@@ -1,4 +1,7 @@
 **/__pycache__/**
+**/.pytest_cache/**
+**/.ruff_cache/**
+**/.mypy_cache/**
 .env
 .coverage
 blog_outline.md

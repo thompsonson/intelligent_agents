@@ -1,0 +1,6 @@
+[tool.ruff]
+# fixtures/ contains deliberately-broken example packages (one manufactured
+# failure per state, including a real lint violation in lint_broken/) - see
+# documentation/task-graph/real-guards/environment_design.md. These are test
+# data checked against by real subprocess calls, not source under lint.
+extend-exclude = ["fixtures"]
