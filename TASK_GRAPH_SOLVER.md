@@ -236,6 +236,18 @@ Same OR-groups scenario as below, solved by `PlanningExecutor`: `check-disk` (a 
 
 **Both scenarios, with the full `_ensure()` walkthrough and the `AOStarExecutor`/`GuardFirstExecutor` contrasts:** [`documentation/task-graph/experiments/05_planning_executor_sense_and_scope.md`](documentation/task-graph/experiments/05_planning_executor_sense_and_scope.md).
 
+### Real guards: the same executors against real `mypy`/`ruff`/`pytest`/`build`
+
+![TopologicalExecutor: a real mypy failure blocks release-ready](task_graph_solver/animations/real_guards_topological_typing_broken.gif)
+
+Every animation above ran against a simulated `pass_probability`. This one runs `real_task_graph_solver`'s `release_pipeline` scenario — five real checks feeding one real AND-join, `release-ready` — using `TopologicalExecutor` completely unmodified. `type-check` turns red on an actual `mypy` type error (`typing_broken`'s one manufactured break); `release-ready` stays gray, blocked by a real fatal ancestor, never attempted.
+
+![PlanningExecutor: real short-circuit on release_pipeline](task_graph_solver/animations/real_guards_planning_short_circuit.gif)
+
+Same idea as the goal-directed-planning animation above, now backed by a real, measured cost instead of a hypothetical one: on the `released` fixture state (`.status/*.ok` markers already present for all five checks — "this pipeline already succeeded in a previous run"), `PlanningExecutor` checks `release-ready` first, finds it already true, and never runs `mypy`, `ruff`, either `pytest` invocation, or `python -m build` at all. Measured by hand on the identical state: `PlanningExecutor` — 0.00s; `TopologicalExecutor`, which still has to walk the whole chain — 2.37s.
+
+**Full walkthrough, the marker-file design correction, and why `GuardFirstExecutor` specifically doesn't get a demonstration here:** [`documentation/task-graph/experiments/06_real_guards_release_pipeline.md`](documentation/task-graph/experiments/06_real_guards_release_pipeline.md).
+
 ## Testing
 
 ```bash

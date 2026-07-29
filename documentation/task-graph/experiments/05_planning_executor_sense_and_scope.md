@@ -87,3 +87,4 @@ graph LR
 
 - [Experiment 4: `GuardFirstExecutor` on the identical scenario](04_guard_first_pr_merge_lite.md) — walk-as-you-go, still reaches the free check, but only after paying for everything upstream of it.
 - [Experiment 1: AO* solving `pr_merge_lite`](01_ao_star_pr_merge_lite.md) — the AND-composition rule `PlanningExecutor` reuses (`h(n) = own_attempts + max(h(child))`) without needing to re-derive it.
+- [Experiment 6: real guards](06_real_guards_release_pipeline.md) — this exact short-circuit, backed by a real, measured wall-clock saving (2.37s vs. 0.00s) instead of a saved simulated retry count.

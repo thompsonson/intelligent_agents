@@ -91,3 +91,4 @@ This is the entire value proposition of D* Lite's sensing loop, made concrete: t
 
 - [Experiment 1: AO* solving the same graph with nothing broken](01_ao_star_pr_merge_lite.md) — the baseline this experiment perturbs.
 - [Experiment 3: LRTA* learning a node's true cost](03_lrta_star_convergence.md) — a different kind of adaptation: learning *how expensive* a node is, rather than *recovering from* a failure.
+- [Experiment 6: real guards](06_real_guards_release_pipeline.md) — this exact break/fix mechanism, reused against real `mypy` calls instead of a simulated `pass_probability`, deliberately scoped smaller to work around a real limitation (a whole-tree reset wiping other checks' evidence too).

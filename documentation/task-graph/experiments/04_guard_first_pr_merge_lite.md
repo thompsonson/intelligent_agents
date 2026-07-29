@@ -81,3 +81,4 @@ Every node turns green in frontier order, same as the original AO* animation —
 
 - [Experiment 1: AO* solving the same graph with nothing pre-satisfied](01_ao_star_pr_merge_lite.md) — the baseline topology this experiment reuses.
 - [Experiment 5: PlanningExecutor — sense-then-plan and goal-directed scope](05_planning_executor_sense_and_scope.md) — the same scenario, solved by an executor that checks the goal *first* and never walks the chain at all.
+- [Experiment 6: real guards](06_real_guards_release_pipeline.md) — why this executor's specific capability (free check before paid repair) doesn't get a meaningful demonstration once the checks are real: without a repair action, the two operations collapse into the same subprocess call.
