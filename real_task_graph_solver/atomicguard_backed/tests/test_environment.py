@@ -41,6 +41,7 @@ def make_fixtures(tmp_path, states=("state-a", "state-b")):
 
 MARKER_CHECK = ("sh", "-c", "grep -qx marker-0 marker.txt")
 MARKER_REPAIR = ("sh", "-c", "echo marker-0 > marker.txt")
+LYING_REPAIR = ("true",)  # exits 0 but never touches marker.txt
 
 
 class TestGraphValidation:
@@ -211,3 +212,78 @@ class TestRealChecksAndRepair:
         )
         with pytest.raises(ValueError, match="no manufactured broken state"):
             env.break_task("a")
+
+
+class TestDualStateAgentIntegration:
+    """New behaviour this environment gained by wrapping every real call in
+    a DualStateAgent instead of calling ActionPair.execute() bare - see
+    environment_design.md's "Revision" section."""
+
+    def test_a_repair_whose_own_guard_lies_is_still_correctly_fatal(self, tmp_path):
+        """The correction made while implementing the revision: a repair
+        generator's own exit code isn't always a trustworthy proxy for
+        "the real problem is fixed" (only verified true for ruff --fix,
+        never assumed for e.g. a plain sed edit). attempt() must always
+        re-verify via check_action_pair, not trust repair_action_pair's
+        own DualStateAgent-reported success."""
+        workdir = tmp_path / "workdir"
+        nodes = {"a": make_node("a", workdir, check=MARKER_CHECK, repair=LYING_REPAIR)}
+        env = AtomicGuardCheckEnvironment(
+            nodes, fixtures_dir=make_fixtures(tmp_path), workdir=workdir
+        )
+
+        env.reset_to_state("state-b")
+        # the repair's own DualStateAgent call reports success (`true`
+        # always exits 0) - but marker.txt was never touched, so the real
+        # check still fails, and attempt() must reflect that, not the
+        # repair's own lying exit code.
+        assert env.attempt("a") == AttemptOutcome.FATAL
+        assert env.check_invariant("a") is False
+
+    def test_dag_survives_reset_to_state(self, tmp_path):
+        """reset_to_state() wipes workdir on every call - the DAG's
+        base_dir must not live under it, or the audit trail it exists to
+        keep would be destroyed by the very state swaps it's meant to
+        record."""
+        workdir = tmp_path / "workdir"
+        nodes = {"a": make_node("a", workdir, check=MARKER_CHECK)}
+        env = AtomicGuardCheckEnvironment(
+            nodes, fixtures_dir=make_fixtures(tmp_path), workdir=workdir
+        )
+
+        env.reset_to_state("state-a")
+        env.check_invariant("a")
+        before = env._dag.get_all_for_action_pair(
+            action_pair_id="a", workflow_id=env._workflow_id
+        )
+        assert len(before) == 1
+
+        env.reset_to_state("state-b")  # wipes workdir, not the DAG
+        after = env._dag.get_all_for_action_pair(
+            action_pair_id="a", workflow_id=env._workflow_id
+        )
+        assert len(after) == 1
+        assert after[0].artifact_id == before[0].artifact_id
+
+    def test_repair_inherits_the_checks_real_failure_feedback(self, tmp_path):
+        """check_action_pair and repair_action_pair share one
+        action_pair_id (the node's own id) specifically so a repair's
+        DualStateAgent call automatically sees the check's real rejection
+        via the shared DAG - no extra plumbing. Proven here against a
+        real command whose failure feedback is genuinely informative."""
+        workdir = tmp_path / "workdir"
+        nodes = {"a": make_node("a", workdir, check=MARKER_CHECK, repair=MARKER_REPAIR)}
+        env = AtomicGuardCheckEnvironment(
+            nodes, fixtures_dir=make_fixtures(tmp_path), workdir=workdir
+        )
+
+        env.reset_to_state("state-b")
+        assert env.check_invariant("a") is False
+        env.attempt("a")
+
+        artifacts = env._dag.get_all_for_action_pair(
+            action_pair_id="a", workflow_id=env._workflow_id
+        )
+        rejected = [a for a in artifacts if a.status.value == "rejected"]
+        assert len(rejected) >= 1
+        assert rejected[0].guard_result.feedback != ""

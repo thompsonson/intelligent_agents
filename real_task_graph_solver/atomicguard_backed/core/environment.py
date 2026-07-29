@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 from atomicguard.application.action_pair import ActionPair
-from atomicguard.domain.models import AmbientEnvironment, Context
-from atomicguard.infrastructure.persistence.memory import InMemoryArtifactDAG
+from atomicguard.application.agent import DualStateAgent
+from atomicguard.domain.exceptions import RmaxExhausted
+from atomicguard.infrastructure.persistence.filesystem import FilesystemArtifactDAG
 from task_graph_solver.core.domain import AttemptOutcome
 
 from .domain import AtomicGuardCheckNode
@@ -20,13 +21,19 @@ class AtomicGuardCheckEnvironment:
     documentation/task-graph/atomicguard-variant/environment_design.md.
 
     Unlike RealCheckEnvironment, a node's Guard is a real, production
-    `atomicguard.ActionPair`, not a subprocess call this project wrote.
-    `check_invariant()` runs only `node.check_action_pair` - a free sensor,
-    no side effects. `attempt()` - only ever called after a failed check -
-    runs `node.repair_action_pair` (if the node has one) to genuinely try
-    to fix the problem, then re-runs `check_action_pair` for the final
-    verdict; a node with no repair_action_pair behaves like RealCheckNode,
-    re-running the same check and getting the same answer.
+    `atomicguard.ActionPair`, wrapped in a real `DualStateAgent` rather
+    than called bare - `DualStateAgent` owns EnvironmentState (the retry
+    loop, feedback threading, an `rmax` bound), the layer this project's
+    own bare-`ActionPair` calls were reinventing a weaker version of. Both
+    `check_invariant()` (`rmax=0` - run once, no retry, still real
+    `atomicguard` usage: `PreCommitGym` puts check-only APs through the
+    identical `DualStateAgent` path as fix APs) and `attempt()`
+    (`repair_rmax`) share one `FilesystemArtifactDAG` per environment, and
+    `check_action_pair`/`repair_action_pair` share one `action_pair_id`
+    (the node's own `id`) so a repair's `DualStateAgent` call automatically
+    inherits the check's real failure feedback - no extra plumbing.
+    `ExitCodeGuard` never sets `fatal=True`, so the only exception either
+    wrapper needs to catch is `RmaxExhausted`.
 
     A load-bearing difference from RealCheckEnvironment worth recording:
     RealCheckEnvironment's commands are resolved against `self._workdir`
@@ -36,6 +43,10 @@ class AtomicGuardCheckEnvironment:
     `workdir` must be decided *before* building the nodes' ActionPairs
     (though the directory itself need not exist yet - only reset_to_state()
     needs it to), and the same path handed to this environment.
+
+    The DAG's `base_dir` lives *outside* `workdir` deliberately:
+    `reset_to_state()` wipes `workdir` on every call, and would destroy the
+    audit trail this DAG exists to keep if it lived underneath it.
     """
 
     def __init__(
@@ -45,6 +56,9 @@ class AtomicGuardCheckEnvironment:
         workdir: Path,
         goal: Optional[str] = None,
         broken_states: Optional[Dict[str, str]] = None,
+        dag_dir: Optional[Path] = None,
+        repair_rmax: int = 3,
+        workflow_id: str = "atomicguard-backed",
     ):
         self._validate_graph(nodes, goal)
 
@@ -59,6 +73,10 @@ class AtomicGuardCheckEnvironment:
         self._attempts_made: Dict[str, int] = {}
         self._time_spent: Dict[str, float] = {}
         self._changed_since_drain: Set[str] = set()
+        self._repair_rmax = repair_rmax
+        self._workflow_id = workflow_id
+        dag_dir = Path(dag_dir) if dag_dir is not None else self._workdir.parent / "dag"
+        self._dag = FilesystemArtifactDAG(base_dir=str(dag_dir))
 
     @staticmethod
     def _validate_graph(
@@ -132,44 +150,61 @@ class AtomicGuardCheckEnvironment:
                 "there is no working tree to run a check against yet"
             )
 
-    def _make_context(self) -> Context:
-        ambient = AmbientEnvironment(repository=InMemoryArtifactDAG())
-        return Context(
-            ambient=ambient, specification="", workflow_id="atomicguard-backed"
-        )
-
-    def _run(self, action_pair: ActionPair, node_id: str) -> bool:
+    def _run(self, action_pair: ActionPair, node_id: str, rmax: int) -> bool:
+        """Wrap action_pair in a DualStateAgent sharing this environment's
+        DAG and node_id as action_pair_id - see the class docstring for
+        why. `DualStateAgent.execute()` composes its own Context; this
+        environment no longer builds one. `ExitCodeGuard` (the only Guard
+        used anywhere in this environment so far) never sets `fatal=True`,
+        so `RmaxExhausted` is the only exception a caller needs to catch."""
         start = time.monotonic()
-        result = action_pair.execute(
-            context=self._make_context(),
+        agent = DualStateAgent(
+            action_pair=action_pair,
+            artifact_dag=self._dag,
+            rmax=rmax,
             action_pair_id=node_id,
-            workflow_id="atomicguard-backed",
+            workflow_id=self._workflow_id,
         )
+        try:
+            agent.execute(specification="")
+            passed = True
+        except RmaxExhausted:
+            passed = False
         self._time_spent[node_id] = time.monotonic() - start
-        return result.guard_result.passed
+        return passed
 
     def attempt(self, node_id: str) -> AttemptOutcome:
         """If the node has a repair_action_pair, run it - a real Generator
         (and, where wired, Effector) genuinely attempting to fix the
-        problem - then re-run check_action_pair for the final verdict. A
-        node with no repair_action_pair just re-runs its check, matching
-        RealCheckNode: nothing here can turn a RETRY into a different
-        answer without an intervening repair, so this never returns
-        RETRY."""
+        problem, via a DualStateAgent bounded by `repair_rmax` - then
+        re-run check_action_pair for the real, final verdict: a repair
+        generator's own exit code isn't always a trustworthy proxy for
+        "the underlying problem is now fixed" (`ruff --fix`'s is, empirically
+        verified; a plain `sed` edit's isn't - it only proves the edit
+        itself ran, not that whatever it edited now satisfies the real
+        check), so this environment never trusts a repair's own Guard
+        as the final word. A node with no repair_action_pair just
+        re-runs its check once (`rmax=0`), matching RealCheckNode:
+        nothing here can turn a RETRY into a different answer without an
+        intervening repair, so this never returns RETRY."""
         self._ensure_ready()
         node = self.nodes[node_id]
-        if node.repair_action_pair is not None:
-            self._run(node.repair_action_pair, node_id)
-        passed = self._run(node.check_action_pair, node_id)
         self._attempts_made[node_id] = self._attempts_made.get(node_id, 0) + 1
+        if node.repair_action_pair is not None:
+            repaired = self._run(node.repair_action_pair, node_id, self._repair_rmax)
+            if not repaired:
+                return AttemptOutcome.FATAL
+            passed = self._run(node.check_action_pair, node_id, rmax=0)
+        else:
+            passed = self._run(node.check_action_pair, node_id, rmax=0)
         return AttemptOutcome.PASS if passed else AttemptOutcome.FATAL
 
     def check_invariant(self, node_id: str) -> bool:
-        """The free sensor: runs only check_action_pair (no generation
-        beyond the check command itself, no effector, no repair) - the
-        thing GuardFirstExecutor calls before ever paying for attempt()."""
+        """The free sensor: runs only check_action_pair, via a
+        DualStateAgent with rmax=0 (one real call, no retry) - the thing
+        GuardFirstExecutor calls before ever paying for attempt()."""
         self._ensure_ready()
-        return self._run(self.nodes[node_id].check_action_pair, node_id)
+        return self._run(self.nodes[node_id].check_action_pair, node_id, rmax=0)
 
     def retries_spent(self, node_id: str) -> int:
         return self._attempts_made.get(node_id, 0)
