@@ -1,7 +1,7 @@
 import shutil
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 from atomicguard.application.action_pair import ActionPair
 from atomicguard.application.agent import DualStateAgent
@@ -150,13 +150,24 @@ class AtomicGuardCheckEnvironment:
                 "there is no working tree to run a check against yet"
             )
 
-    def _run(self, action_pair: ActionPair, node_id: str, rmax: int) -> bool:
+    def _run(
+        self, action_pair: ActionPair, node_id: str, rmax: int
+    ) -> Tuple[bool, float]:
         """Wrap action_pair in a DualStateAgent sharing this environment's
         DAG and node_id as action_pair_id - see the class docstring for
         why. `DualStateAgent.execute()` composes its own Context; this
         environment no longer builds one. `ExitCodeGuard` (the only Guard
         used anywhere in this environment so far) never sets `fatal=True`,
-        so `RmaxExhausted` is the only exception a caller needs to catch."""
+        so `RmaxExhausted` is the only exception a caller needs to catch.
+        Returns (passed, elapsed) rather than recording elapsed itself -
+        `attempt()` calls this twice (repair, then re-check) and needs to
+        combine both durations; a version of this method that wrote
+        directly into `self._time_spent[node_id]` (the original shape)
+        let the second call silently clobber the first, so `time_spent()`
+        after a successful repair reported only the free re-check's
+        duration and discarded the real LLM round-trip entirely - found
+        via a live OpenRouter run whose reported time (0.14s for a
+        network call) was implausibly fast."""
         start = time.monotonic()
         agent = DualStateAgent(
             action_pair=action_pair,
@@ -170,8 +181,7 @@ class AtomicGuardCheckEnvironment:
             passed = True
         except RmaxExhausted:
             passed = False
-        self._time_spent[node_id] = time.monotonic() - start
-        return passed
+        return passed, time.monotonic() - start
 
     def attempt(self, node_id: str) -> AttemptOutcome:
         """If the node has a repair_action_pair, run it - a real Generator
@@ -186,17 +196,27 @@ class AtomicGuardCheckEnvironment:
         as the final word. A node with no repair_action_pair just
         re-runs its check once (`rmax=0`), matching RealCheckNode:
         nothing here can turn a RETRY into a different answer without an
-        intervening repair, so this never returns RETRY."""
+        intervening repair, so this never returns RETRY.
+
+        `time_spent(node_id)` after this call is the sum of every real
+        Action Pair call this attempt made - the repair plus its
+        mandatory re-check - not just the last one, so it still reflects
+        real network/subprocess time on a successful repair."""
         self._ensure_ready()
         node = self.nodes[node_id]
         self._attempts_made[node_id] = self._attempts_made.get(node_id, 0) + 1
         if node.repair_action_pair is not None:
-            repaired = self._run(node.repair_action_pair, node_id, self._repair_rmax)
+            repaired, repair_elapsed = self._run(
+                node.repair_action_pair, node_id, self._repair_rmax
+            )
             if not repaired:
+                self._time_spent[node_id] = repair_elapsed
                 return AttemptOutcome.FATAL
-            passed = self._run(node.check_action_pair, node_id, rmax=0)
+            passed, check_elapsed = self._run(node.check_action_pair, node_id, rmax=0)
+            self._time_spent[node_id] = repair_elapsed + check_elapsed
         else:
-            passed = self._run(node.check_action_pair, node_id, rmax=0)
+            passed, elapsed = self._run(node.check_action_pair, node_id, rmax=0)
+            self._time_spent[node_id] = elapsed
         return AttemptOutcome.PASS if passed else AttemptOutcome.FATAL
 
     def check_invariant(self, node_id: str) -> bool:
@@ -204,14 +224,19 @@ class AtomicGuardCheckEnvironment:
         DualStateAgent with rmax=0 (one real call, no retry) - the thing
         GuardFirstExecutor calls before ever paying for attempt()."""
         self._ensure_ready()
-        return self._run(self.nodes[node_id].check_action_pair, node_id, rmax=0)
+        passed, elapsed = self._run(
+            self.nodes[node_id].check_action_pair, node_id, rmax=0
+        )
+        self._time_spent[node_id] = elapsed
+        return passed
 
     def retries_spent(self, node_id: str) -> int:
         return self._attempts_made.get(node_id, 0)
 
     def time_spent(self, node_id: str) -> float:
-        """Wall-clock seconds the last-run Action Pair took (via attempt()
-        or check_invariant()). 0.0 if never run."""
+        """Wall-clock seconds the last-run attempt()/check_invariant()
+        call took in total - every real Action Pair call it made, summed,
+        not just the last one. 0.0 if never run."""
         return self._time_spent.get(node_id, 0.0)
 
     def break_task(self, node_id: str) -> None:

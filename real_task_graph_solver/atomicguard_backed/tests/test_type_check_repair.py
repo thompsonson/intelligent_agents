@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from atomicguard.domain.models import AmbientEnvironment, Context
 from atomicguard.infrastructure.guards.container_subprocess_guard import (
@@ -7,6 +9,7 @@ from atomicguard.infrastructure.gym.precommit_generators import (
     LLMContainerFixGenerator,
 )
 from atomicguard.infrastructure.persistence.memory import InMemoryArtifactDAG
+from task_graph_solver.core.domain import AttemptOutcome
 
 from real_task_graph_solver.atomicguard_backed.core.environment import (
     AtomicGuardCheckEnvironment,
@@ -155,3 +158,63 @@ class TestRepairPromptRendersWithRealFeedback:
         rendered = prompt_template.render(context)
 
         assert "mypy: real error text" in rendered
+
+
+@pytest.mark.skipif(
+    OR_KEY_ENV_VAR not in os.environ,
+    reason=f"requires a real OpenRouter key in {OR_KEY_ENV_VAR} for a live LLM call",
+)
+class TestLiveOpenRouterRepair:
+    """The one thing the rest of this file cannot test: an actual LLM call
+    resolving a real type error. Skipped whenever OR_KEY isn't set, so the
+    suite still passes with zero network access for anyone running it
+    without a key - see HANDOVER_live_llm_test.md and algorithm_fit.md for
+    the live run this documents.
+
+    Confirmed live (2026-07-29), both OpenRouter model slugs real and
+    resolvable: DEFAULT_MODEL (deepseek/deepseek-v4-flash) reliably
+    produces *a* fix that survives real mypy re-verification -> PASS, but
+    not always the *same* fix - across repeated live runs it sometimes
+    corrects the annotation (`-> str` to `-> float`, preserving runtime
+    behavior) and sometimes instead coerces the return value
+    (`return str(...)`, satisfying mypy by changing what the function
+    actually returns). Both are real, valid mypy-passing repairs; this
+    test intentionally only asserts the mypy-visible outcome, not which
+    strategy the LLM picked - asserting the exact diff was tried first
+    and was flaky against this real nondeterminism. See
+    algorithm_fit.md's `type-check` section for why this distinction
+    (annotation fix vs. behavior-changing fix) matters and isn't
+    caught by anything in this pipeline: `check_action_pair` only
+    verifies mypy is satisfied, never that behavior was preserved.
+
+    GEMINI_2_5_FLASH_LITE also produces a correct-looking fix but wraps
+    it in a markdown code fence LLMContainerFixGenerator doesn't strip,
+    turning it into a syntax error -> FATAL. That's a real gap in
+    atomicguard's own generator, not this repo's wiring - not re-tested
+    here since it isn't this repo's bug to assert against, but recorded
+    in llm_config.py and algorithm_fit.md so it isn't silently
+    rediscovered later.
+    """
+
+    def test_default_model_genuinely_repairs_typing_broken(self, tmp_path):
+        workdir = tmp_path / "workdir"
+        nodes, goal = build_type_check_repair(workdir)
+        env = AtomicGuardCheckEnvironment(
+            nodes,
+            fixtures_dir=FIXTURES_DIR,
+            workdir=workdir,
+            goal=goal,
+            broken_states=BROKEN_STATES,
+        )
+
+        env.reset_to_state("typing_broken")
+        domain_py = workdir / "src" / "example_pkg" / "domain.py"
+        before = domain_py.read_text()
+        assert env.check_invariant("type-check") is False
+
+        outcome = env.attempt("type-check")
+
+        after = domain_py.read_text()
+        assert outcome == AttemptOutcome.PASS
+        assert after != before
+        assert env.time_spent("type-check") > 0.0
