@@ -2,6 +2,8 @@
 
 This project implements a comprehensive system for exploring, visualizing, and comparing different search algorithms in maze environments, with a focus on providing educational insights into algorithm behavior.
 
+**Sibling environment:** for the same algorithms (D* Lite, LRTA*, AO*) applied to a DAG of guarded tasks instead of a grid — AND/OR composition, repair locality, learned retry cost, and guard-first/goal-directed execution — see [`TASK_GRAPH_SOLVER.md`](TASK_GRAPH_SOLVER.md).
+
 ## Environment Setup Details
 
 ```bash

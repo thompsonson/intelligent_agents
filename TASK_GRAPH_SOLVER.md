@@ -30,13 +30,16 @@ task_graph_solver/
 │   └── results.py          # ExecutionResult
 ├── algorithms/
 │   ├── topological.py      # TopologicalExecutor - baseline, no heuristic, no repair
-│   ├── ao_star.py           # AOStarExecutor - AND-composition cost tracking
+│   ├── ao_star.py           # AOStarExecutor - AND-composition cost tracking + OR-group pruning
 │   ├── d_star_lite.py       # DStarLiteExecutor - incremental repair via sensed breaks/fixes
-│   └── lrta_star.py         # LRTAStarLearner - learns retry cost over repeated trials
+│   ├── lrta_star.py         # LRTAStarLearner - learns retry cost over repeated trials
+│   ├── guard_first.py       # GuardFirstExecutor - check invariant before paying for a repair
+│   └── planning.py          # PlanningExecutor - goal-directed, sense-then-plan (recursive ensure())
 ├── scenarios/
-│   ├── disk_check_lite.py       # 1 node, no edges - the trivial baseline
-│   ├── repair_packages_lite.py  # 2-node linear chain - cleanest LRTA*/D* Lite demo
-│   └── pr_merge_lite.py         # 8 nodes, two AND-joins - the motivating case
+│   ├── disk_check_lite.py         # 1 node, no edges - the trivial baseline
+│   ├── repair_packages_lite.py    # 2-node linear chain - cleanest LRTA*/D* Lite demo
+│   ├── pr_merge_lite.py           # 8 nodes, two AND-joins - the motivating case
+│   └── pr_merge_with_variants.py  # pr_merge_lite + an OR-group (3 apply-actions variants) + a true orphan
 └── visualization/
     ├── graph_view.py        # DAG rendering + GIF animation (networkx + matplotlib + imageio)
     └── learning_curve.py    # LRTA* convergence line chart
@@ -76,6 +79,28 @@ class TaskNode:
             (application/workflow.py, "Extension 09").
         requires: AND-dependencies - every id here must be satisfied before
             this node is ready to attempt. There is no OR-equivalent.
+        invariant_pass_probability: Chance this node's invariant already
+            holds, checkable for free before ever attempting a repair.
+            Defaults to 0.0 ("never already satisfied"), so every scenario
+            built before this existed keeps its exact prior behavior. See
+            documentation/task-graph/guard-first/environment_design.md.
+    """
+```
+
+### GroupNode
+
+```python
+@dataclass
+class GroupNode:
+    """An OR-composition over existing TaskNodes: satisfied the instant any
+    one of `members` is satisfied. Not attempted directly - no Guard, no
+    pass_probability, no retry budget. Downstream nodes reference the
+    group's id in their own `requires` exactly as they would a node id.
+    See documentation/task-graph/or-groups/environment_design.md.
+
+    Attributes:
+        id: Unique identifier, must not collide with any TaskNode id.
+        members: ids of TaskNodes that satisfy this group - any one is enough.
     """
 ```
 
@@ -83,16 +108,26 @@ class TaskNode:
 
 ```python
 class TaskGraphEnvironment:
-    """Simulated DAG of guarded tasks with AND-only `requires` edges.
+    """Simulated DAG of guarded tasks with AND-only `requires` edges, plus
+    optional OR-groups and an explicit goal.
 
     No real commands run - every node's outcome is drawn from its configured
     `pass_probability`. Mirrors MazeEnvironment's separation of concerns: the
     environment knows node validity/cost/readiness, but does not track which
     nodes an agent has already satisfied - that's the algorithm's job.
 
+    Constructor: TaskGraphEnvironment(nodes, config, groups=(), goal=None).
+
     Methods:
         ready_nodes(satisfied): AND-gated frontier - nodes whose requires
-            are all in `satisfied` and aren't themselves satisfied yet.
+            are all satisfied (a group counts as satisfied once any one
+            member is) and aren't themselves satisfied yet. Group ids never
+            appear here - a GroupNode has no Guard, so it's never attempted.
+        is_goal_reached(satisfied): True once `goal` is satisfied; with no
+            goal configured, falls back to "every node satisfied".
+        check_invariant(node_id): A free sensor - draws from
+            `invariant_pass_probability`, consumes no retry budget, blocked
+            by break_task like attempt() is.
         attempt(node_id): One simulated attempt; consumes retry budget
             unless the node is Driver-broken.
         retries_spent(node_id): Attempts made so far.
@@ -103,7 +138,7 @@ class TaskGraphEnvironment:
     """
 ```
 
-Constructing one validates the graph up front: `requires` referencing an unknown node, or any cycle (direct, self-referential, or longer), raises `ValueError` rather than silently deadlocking.
+Constructing one validates the graph up front: `requires` referencing an unknown node or group, an unknown `goal`, a group id colliding with a node id, an unknown group member, or any cycle (direct, self-referential, longer, or routed through a group's members) all raise `ValueError` rather than silently deadlocking.
 
 ### ExecutionResult
 
@@ -113,34 +148,45 @@ class ExecutionResult:
     """Result of running an algorithm over a TaskGraphEnvironment to completion.
 
     Attributes:
-        success: True only if every node in the graph ended up satisfied.
-        satisfied: Nodes that reached PASS.
+        success: True iff `goal` is satisfied (or, with no goal configured,
+            iff every node in the graph is) - see is_goal_reached().
+        satisfied: Nodes that reached PASS, including via a free check.
         fatal: Nodes that reached FATAL.
         unreachable: Nodes that never became ready because at least one of
             their `requires` ended up in `fatal` - distinct from `fatal`
             itself, since these were never attempted at all.
-        trace: Ordered (node_id, outcome) pairs for every attempt made.
+        trace: Ordered (node_id, outcome) pairs for every paid attempt made
+            (free checks never appear here).
+        not_needed: Losing OR-siblings never attempted because a different
+            group member already satisfied it first.
+        free_checks: Nodes satisfied via a free check_invariant() rather
+            than a paid attempt() - distinct from a plain `satisfied` entry
+            (a paid attempt occurred) and from `not_needed` (a different
+            node did the work; here the same node's own invariant held).
     """
 ```
 
-### The four algorithms
+### The algorithms
 
 | Class | What it adds over the baseline | Scenario it targets |
 |---|---|---|
-| `TopologicalExecutor` | Nothing - attempts whatever's ready, sorted by id, no learning, no repair | All three scenarios; the smoke-test baseline |
-| `AOStarExecutor` | `h`, a cost-to-solve estimate per solved node, composed as `own_attempts + max(h(child) for child in requires)` — the AND-composition rule from [`search_algorithms/ao_star.md`](search_algorithms/ao_star.md) | `pr_merge_lite`'s `merged` and `released` joins |
-| `DStarLiteExecutor` | Senses Driver `break_task`/`fix_task` calls via `drain_changed_tasks()` and returns a previously-FATAL node to consideration if it was fixed - the thing `TopologicalExecutor` structurally cannot do | `repair_packages_lite` and `pr_merge_lite`, wherever a Driver break/fix is exercised |
+| `TopologicalExecutor` | Nothing - attempts whatever's ready, sorted by id, no learning, no repair | All scenarios; the smoke-test baseline |
+| `AOStarExecutor` | `h`, a cost-to-solve estimate per solved node, composed as `own_attempts + max(h(child) for child in requires)` — the AND-composition rule from [`search_algorithms/ao_star.md`](search_algorithms/ao_star.md). Also prunes a satisfied OR-group's other members, recorded in `not_needed` | `pr_merge_lite`'s `merged`/`released` joins; `pr_merge_with_variants`'s `actions-ready` group |
+| `DStarLiteExecutor` | Senses Driver `break_task`/`fix_task` calls via `drain_changed_tasks()` and returns a previously-FATAL node to consideration if it was fixed - the thing `TopologicalExecutor` structurally cannot do | `repair_packages_lite`, `pr_merge_lite`, and `pr_merge_with_variants` (recovery after every group member is exhausted), wherever a Driver break/fix is exercised |
 | `LRTAStarLearner` | Learns `h_table` for `retry_flavor="repair"` nodes only, over repeated trials via an `env_factory(trial_index)` callable | `repair_packages_lite`'s `repair` node - the cleanest isolation of the "repair-attempt retry is learnable cost" signal |
+| `GuardFirstExecutor` | `TopologicalExecutor` plus one addition: check `check_invariant()` for free before paying for a repair. Still walk-as-you-go - only checks the node it's currently standing on | `pr_merge_lite` with a node's invariant already true |
+| `PlanningExecutor` | Goal-directed, sense-then-plan: a recursive, backward-chaining `_ensure(node_id)` from `goal` down. Goal-directed scope (a true orphan is never visited at all), sense-then-plan short-circuiting, and OR-group pruning all fall out of one function | `pr_merge_lite` (goal already satisfied) and `pr_merge_with_variants` (goal-directed scope) |
 
-Each one's honest scope boundary is documented in its own docstring and in [`documentation/task-graph/algorithm_fit.md`](documentation/task-graph/algorithm_fit.md) - none of them claims to solve `pr_merge_lite` end to end by itself.
+Each one's honest scope boundary is documented in its own docstring and in [`documentation/task-graph/algorithm_fit.md`](documentation/task-graph/algorithm_fit.md) - none of them claims to solve `pr_merge_lite` end to end by itself. `AOStarExecutor` and `PlanningExecutor` in particular are deliberately kept separate rather than one being a revision of the other - see the cross-reference note on `AOStarExecutor`'s own docstring.
 
 ## Scenarios
 
 - **`disk_check_lite`** — 1 node, no edges, no repair path. Modeled on `atomicguard/examples/sysadmin/workflows-guard/disk_check.dspddl`.
 - **`repair_packages_lite`** — `repair` (acting, repair-flavor) → `verify` (sensing, requires `repair`). Modeled on `repair_packages.dspddl`.
 - **`pr_merge_lite`** — 8 nodes, two AND-joins (`merged` requires 2 children, `released` requires 3). Modeled on the `pr_merge` workflow family, with `released`'s fan-in deliberately made explicit (three `requires` edges) rather than hidden inside one opaque script the way the real system's `downstream-ci-passed` guard does — see [`documentation/lrta/beyond_the_maze.md`](documentation/lrta/beyond_the_maze.md).
+- **`pr_merge_with_variants`** — `pr_merge_lite`'s exact topology, with `apply-actions` split into three OR-grouped variant strategies (`actions-ready`), plus `disk_check_lite`'s `check-disk` reused unmodified as a true orphan. Goal: `released`. See [`documentation/task-graph/or-groups/scenario.md`](documentation/task-graph/or-groups/scenario.md).
 
-Full detail: [`documentation/task-graph/scenarios.md`](documentation/task-graph/scenarios.md).
+Full detail: [`documentation/task-graph/scenarios.md`](documentation/task-graph/scenarios.md) (the original three) and [`documentation/task-graph/or-groups/scenario.md`](documentation/task-graph/or-groups/scenario.md) (`pr_merge_with_variants`).
 
 ## Visualization Examples
 
