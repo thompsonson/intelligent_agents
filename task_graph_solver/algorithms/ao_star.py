@@ -42,6 +42,17 @@ class AOStarExecutor:
     satisfied is the cost of whichever member actually passed - the only
     one with a real observed cost, since a satisfied group's other
     members are never attempted at all.
+
+    Known limitation, not an oversight: this still walks the forward
+    `ready_nodes()` frontier, so it visits nodes with no bearing on `goal`
+    (e.g. a true orphan like `check-disk` in `pr_merge_with_variants`) the
+    same as `TopologicalExecutor` does. Classical AO* (Nilsson's
+    SELECT-NODE/EXPAND) is top-down and goal-directed - it never expands a
+    node unless something on the current best partial solution needed it.
+    `PlanningExecutor` (documentation/task-graph/goal-directed-planning/
+    environment_design.md) is that top-down form; it is a separate
+    executor rather than a revision of this one, so this class's existing
+    forward-frontier tests and behavior stay meaningful.
     """
 
     def __init__(self, env: TaskGraphEnvironment):

@@ -127,6 +127,17 @@ class TaskGraphEnvironment:
             return self.goal in satisfied
         return all(node_id in satisfied for node_id in self.nodes)
 
+    def check_invariant(self, node_id: str) -> bool:
+        """A free sensor: draws from `node_id`'s `invariant_pass_probability`
+        without consuming any retry budget - the toy equivalent of a
+        live-sensing Guard checked before any generation happens. See
+        documentation/task-graph/guard-first/environment_design.md. A
+        broken node (see break_task) never reports itself as already
+        satisfied, the same way it can never PASS via attempt()."""
+        if node_id in self._broken:
+            return False
+        return self._rng.random() < self.nodes[node_id].invariant_pass_probability
+
     def attempt(self, node_id: str) -> AttemptOutcome:
         """One simulated attempt at `node_id`. Consumes one unit of retry
         budget, unless the node is currently broken (see break_task) - a

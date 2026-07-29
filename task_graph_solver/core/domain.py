@@ -38,6 +38,12 @@ class TaskNode:
             (application/workflow.py, "Extension 09").
         requires: AND-dependencies - every id here must be satisfied before
             this node is ready to attempt. There is no OR-equivalent.
+        invariant_pass_probability: Chance that this node's invariant
+            already holds, checkable for free before ever attempting a
+            repair - see documentation/task-graph/guard-first/
+            environment_design.md. Defaults to 0.0, meaning "never already
+            satisfied," so every scenario built before this existed keeps
+            its exact prior behavior unless it deliberately opts in.
     """
 
     id: str
@@ -47,6 +53,7 @@ class TaskNode:
     rmax: int
     r_patience: Optional[int] = None
     requires: Tuple[str, ...] = ()
+    invariant_pass_probability: float = 0.0
 
     def __post_init__(self) -> None:
         if self.rmax < 1:
@@ -66,6 +73,11 @@ class TaskNode:
             raise ValueError(
                 f"pass_probability must be in [0, 1] for node {self.id!r}, "
                 f"got {self.pass_probability}"
+            )
+        if not (0.0 <= self.invariant_pass_probability <= 1.0):
+            raise ValueError(
+                f"invariant_pass_probability must be in [0, 1] for node "
+                f"{self.id!r}, got {self.invariant_pass_probability}"
             )
 
 

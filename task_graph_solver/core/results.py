@@ -26,6 +26,12 @@ class ExecutionResult:
             is blocked by a fatal dependency) and from a true orphan (which
             was simply never on any path to the goal). See
             documentation/task-graph/or-groups/environment_design.md.
+        free_checks: Nodes satisfied by a free `check_invariant()` sensor
+            rather than a paid `attempt()` repair - distinct from `satisfied`
+            members reached via `trace` (a paid attempt occurred) and from
+            `not_needed` (a *different* node did the work; here the same
+            node's own invariant already held). See
+            documentation/task-graph/guard-first/environment_design.md.
     """
 
     success: bool
@@ -35,3 +41,4 @@ class ExecutionResult:
     trace: List[Tuple[str, AttemptOutcome]] = field(default_factory=list)
     execution_time: float = 0.0
     not_needed: Set[str] = field(default_factory=set)
+    free_checks: Set[str] = field(default_factory=set)

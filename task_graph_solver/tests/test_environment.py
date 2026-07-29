@@ -13,6 +13,7 @@ def make_node(
     r_patience=None,
     kind="sensing",
     retry_flavor="sensing",
+    invariant_pass_probability=0.0,
 ):
     return TaskNode(
         id=node_id,
@@ -22,6 +23,7 @@ def make_node(
         rmax=rmax,
         r_patience=r_patience,
         requires=requires,
+        invariant_pass_probability=invariant_pass_probability,
     )
 
 
@@ -289,6 +291,60 @@ class TestExplicitGoal:
 
         assert env.is_goal_reached(satisfied={"a"}) is False
         assert env.is_goal_reached(satisfied={"a", "b"}) is True
+
+
+class TestGuardFirstInvariantCheck:
+    def test_default_invariant_pass_probability_is_zero(self):
+        node = make_node("a")
+        assert node.invariant_pass_probability == 0.0
+
+    def test_invariant_pass_probability_out_of_bounds_rejected(self):
+        with pytest.raises(ValueError):
+            make_node("a", invariant_pass_probability=1.5)
+        with pytest.raises(ValueError):
+            make_node("a", invariant_pass_probability=-0.1)
+
+    def test_check_invariant_always_false_when_probability_is_zero(self):
+        node = make_node("a", invariant_pass_probability=0.0)
+        env = TaskGraphEnvironment({"a": node}, TaskGraphConfig(seed=1))
+
+        for _ in range(20):
+            assert env.check_invariant("a") is False
+
+    def test_check_invariant_always_true_when_probability_is_one(self):
+        node = make_node("a", invariant_pass_probability=1.0)
+        env = TaskGraphEnvironment({"a": node}, TaskGraphConfig(seed=1))
+
+        assert env.check_invariant("a") is True
+
+    def test_check_invariant_does_not_consume_retry_budget(self):
+        node = make_node("a", invariant_pass_probability=1.0, rmax=3)
+        env = TaskGraphEnvironment({"a": node}, TaskGraphConfig(seed=1))
+
+        env.check_invariant("a")
+        env.check_invariant("a")
+        env.check_invariant("a")
+
+        assert env.retries_spent("a") == 0
+
+    def test_check_invariant_deterministic_with_fixed_seed(self):
+        node = make_node("a", invariant_pass_probability=0.5)
+
+        env_1 = TaskGraphEnvironment({"a": node}, TaskGraphConfig(seed=7))
+        results_1 = [env_1.check_invariant("a") for _ in range(10)]
+
+        env_2 = TaskGraphEnvironment({"a": node}, TaskGraphConfig(seed=7))
+        results_2 = [env_2.check_invariant("a") for _ in range(10)]
+
+        assert results_1 == results_2
+
+    def test_broken_node_never_reports_already_satisfied(self):
+        node = make_node("bridge", invariant_pass_probability=1.0)
+        env = TaskGraphEnvironment({"bridge": node}, TaskGraphConfig(seed=1))
+
+        env.break_task("bridge")
+
+        assert env.check_invariant("bridge") is False
 
 
 class TestDriverBreakFix:

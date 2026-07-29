@@ -4,6 +4,8 @@ from task_graph_solver.algorithms.topological import TopologicalExecutor
 from task_graph_solver.algorithms.lrta_star import LRTAStarLearner
 from task_graph_solver.algorithms.ao_star import AOStarExecutor
 from task_graph_solver.algorithms.d_star_lite import DStarLiteExecutor
+from task_graph_solver.algorithms.guard_first import GuardFirstExecutor
+from task_graph_solver.algorithms.planning import PlanningExecutor
 from task_graph_solver.scenarios.disk_check_lite import build_disk_check_lite
 from task_graph_solver.scenarios.repair_packages_lite import build_repair_packages_lite
 from task_graph_solver.scenarios.pr_merge_lite import build_pr_merge_lite
@@ -539,3 +541,90 @@ class TestPrMergeWithVariantsScenario:
         ci_check_attempts = [n for n, _ in result.trace if n == "ci-check"]
         assert len(ci_check_attempts) == 1
         assert executor.repairs == ["apply-actions-minimal"]
+
+
+class TestGuardFirstVsPlanningOnPrMergeLite:
+    def test_guard_first_still_walks_the_whole_chain_before_reaching_released(self):
+        # GuardFirstExecutor checks-then-repairs each node it reaches, in
+        # frontier order - it cannot discover released is already true
+        # without first walking every node between here and there.
+        nodes = build_pr_merge_lite(
+            pass_probability=1.0, invariant_overrides={"released": 1.0}
+        )
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1), goal="released")
+
+        result = GuardFirstExecutor(env).run()
+
+        assert result.success is True
+        assert "released" in result.free_checks
+        # every upstream node still got walked and paid for (or free-checked)
+        for node_id in (
+            "ci-check",
+            "generate-actions",
+            "apply-actions",
+            "merged",
+            "deploy-staging",
+            "deploy-publish",
+            "deploy-promote",
+        ):
+            assert node_id in result.satisfied
+
+    def test_planning_executor_skips_the_entire_chain_in_one_check(self):
+        # Same scenario, same override - PlanningExecutor checks `released`
+        # (the goal) first, finds it already true, and stops. Nothing
+        # upstream is ever visited: not checked, not attempted.
+        nodes = build_pr_merge_lite(
+            pass_probability=1.0, invariant_overrides={"released": 1.0}
+        )
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1), goal="released")
+
+        result = PlanningExecutor(env).run()
+
+        assert result.success is True
+        assert result.satisfied == {"released"}
+        assert result.free_checks == {"released"}
+        assert result.trace == []
+        for node_id in (
+            "ci-check",
+            "generate-actions",
+            "apply-actions",
+            "merged",
+            "deploy-staging",
+            "deploy-publish",
+            "deploy-promote",
+        ):
+            assert node_id not in result.satisfied
+
+
+class TestPlanningExecutorGoalDirectedScopeOnPrMergeWithVariants:
+    def test_planning_executor_never_touches_the_disconnected_orphan(self):
+        # AOStarExecutor still attempts check-disk (it walks the forward
+        # frontier); PlanningExecutor, working backward from the goal,
+        # never visits it at all.
+        nodes, groups, goal = build_pr_merge_with_variants(pass_probability=1.0)
+        env = TaskGraphEnvironment(
+            nodes, TaskGraphConfig(seed=1), groups=groups, goal=goal
+        )
+
+        result = PlanningExecutor(env).run()
+
+        assert result.success is True
+        assert "check-disk" not in result.satisfied
+        assert "check-disk" not in result.fatal
+        assert "check-disk" not in result.unreachable
+        attempted_ids = {node_id for node_id, _ in result.trace}
+        assert "check-disk" not in attempted_ids
+
+    def test_planning_executor_still_prunes_losing_or_siblings(self):
+        nodes, groups, goal = build_pr_merge_with_variants(pass_probability=1.0)
+        env = TaskGraphEnvironment(
+            nodes, TaskGraphConfig(seed=1), groups=groups, goal=goal
+        )
+
+        result = PlanningExecutor(env).run()
+
+        assert result.success is True
+        assert result.not_needed == {
+            "apply-actions-minimal",
+            "apply-actions-test-driven",
+        }

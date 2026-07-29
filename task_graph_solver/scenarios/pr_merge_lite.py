@@ -6,6 +6,7 @@ from ..core.domain import TaskNode
 def build_pr_merge_lite(
     pass_probability: float = 1.0,
     overrides: Optional[Dict[str, float]] = None,
+    invariant_overrides: Optional[Dict[str, float]] = None,
 ) -> Dict[str, TaskNode]:
     """The full 8-node graph from documentation/task-graph/scenarios.md,
     modeled on the pr_merge workflow family (check_pr.dspddl, fix_pr.dspddl,
@@ -23,6 +24,13 @@ def build_pr_merge_lite(
         overrides: Per-node pass_probability overrides, e.g.
             {"deploy-staging": 0.0} to force one branch of the `released`
             join to fail while leaving the rest at the default.
+        invariant_overrides: Per-node invariant_pass_probability overrides,
+            e.g. {"released": 1.0} for the guard-first/sense-then-plan
+            scenarios (documentation/task-graph/guard-first/,
+            goal-directed-planning/) - "this step may already be true from
+            a previous, interrupted run." Every node defaults to 0.0
+            (TaskNode's own default), so this scenario needs no changes to
+            demonstrate the pre-guard-first algorithms.
 
     rmax/r_patience values are taken from the real .dspddl files where a
     direct correspondence exists (`ci-check` <- check_pr.dspddl's
@@ -33,9 +41,13 @@ def build_pr_merge_lite(
     than a multi-step repair.
     """
     overrides = overrides or {}
+    invariant_overrides = invariant_overrides or {}
 
     def p(node_id: str) -> float:
         return overrides.get(node_id, pass_probability)
+
+    def inv(node_id: str) -> float:
+        return invariant_overrides.get(node_id, 0.0)
 
     return {
         "ci-check": TaskNode(
@@ -43,6 +55,7 @@ def build_pr_merge_lite(
             kind="sensing",
             retry_flavor="sensing",
             pass_probability=p("ci-check"),
+            invariant_pass_probability=inv("ci-check"),
             rmax=3,
         ),
         "generate-actions": TaskNode(
@@ -50,6 +63,7 @@ def build_pr_merge_lite(
             kind="acting",
             retry_flavor="generation",
             pass_probability=p("generate-actions"),
+            invariant_pass_probability=inv("generate-actions"),
             rmax=3,
         ),
         "apply-actions": TaskNode(
@@ -57,6 +71,7 @@ def build_pr_merge_lite(
             kind="acting",
             retry_flavor="repair",
             pass_probability=p("apply-actions"),
+            invariant_pass_probability=inv("apply-actions"),
             rmax=3,
             r_patience=1,
             requires=("generate-actions",),
@@ -66,6 +81,7 @@ def build_pr_merge_lite(
             kind="acting",
             retry_flavor="repair",
             pass_probability=p("merged"),
+            invariant_pass_probability=inv("merged"),
             rmax=2,
             requires=("ci-check", "apply-actions"),
         ),
@@ -74,6 +90,7 @@ def build_pr_merge_lite(
             kind="sensing",
             retry_flavor="sensing",
             pass_probability=p("deploy-staging"),
+            invariant_pass_probability=inv("deploy-staging"),
             rmax=3,
             requires=("merged",),
         ),
@@ -82,6 +99,7 @@ def build_pr_merge_lite(
             kind="sensing",
             retry_flavor="sensing",
             pass_probability=p("deploy-publish"),
+            invariant_pass_probability=inv("deploy-publish"),
             rmax=3,
             requires=("merged",),
         ),
@@ -90,6 +108,7 @@ def build_pr_merge_lite(
             kind="sensing",
             retry_flavor="sensing",
             pass_probability=p("deploy-promote"),
+            invariant_pass_probability=inv("deploy-promote"),
             rmax=3,
             requires=("merged",),
         ),
@@ -98,6 +117,7 @@ def build_pr_merge_lite(
             kind="sensing",
             retry_flavor="sensing",
             pass_probability=p("released"),
+            invariant_pass_probability=inv("released"),
             rmax=3,
             requires=("deploy-staging", "deploy-publish", "deploy-promote"),
         ),
