@@ -144,7 +144,7 @@ Full detail: [`documentation/task-graph/scenarios.md`](documentation/task-graph/
 
 ## Visualization Examples
 
-Same idea as `README.md`'s animated graph GIFs for BFS/DFS/Greedy/A* — watching an algorithm's state evolve step by step, rather than reading a final answer. `task_graph_solver`'s DAG has two features the maze's grid doesn't: **AND-join nodes are drawn as squares** instead of circles, and node color reflects live status (white = pending, green = satisfied, red = fatal, gray = unreachable).
+Same idea as `README.md`'s animated graph GIFs for BFS/DFS/Greedy/A* — watching an algorithm's state evolve step by step, rather than reading a final answer. `task_graph_solver`'s DAG has two features the maze's grid doesn't: **AND-join nodes are drawn as squares** instead of circles, and node color reflects live status (white = pending, green = satisfied via a paid `attempt()`, cyan = satisfied via a free `check_invariant()`, red = fatal, gray = unreachable).
 
 ### AO* solving `pr_merge_lite`
 
@@ -170,6 +170,26 @@ The Driver breaks `apply-actions` *before* it's ever attempted. `ci-check` and `
 
 A node with `pass_probability=0.3` (rmax=8) run through `LRTAStarLearner` for 25 trials. `h(repair)` starts at 4 (an early, lucky sequence of failures), jumps to 7 the first time a worse trial is actually observed, and then holds — the `max` update rule (`h(s) ← max(h(s), retries_spent(s))`) means the estimate can only grow, never shrink, and it stops moving once the true worst case has been seen. This is the same node used throughout `documentation/lrta/beyond_the_maze.md`'s repair-cost discussion, now actually learned rather than only described.
 
+### Guard-first: check before you repair
+
+![GuardFirstExecutor: pr_merge_lite, released already true](task_graph_solver/animations/guard_first_pr_merge_lite.gif)
+
+`released` gets an `invariant_pass_probability` of `1.0` — the toy equivalent of "this workflow already completed in a previous, interrupted run." Every node turns green (a paid repair attempt) in frontier order, same as Experiment 1's animation, except `released`: it turns **cyan**, not green, satisfied via a free `check_invariant()` call instead of a paid `attempt()`. Grounded in a real gap in `atomicguard`'s own `ActionPair.execute()`, which always calls its generator unconditionally, with no phase that checks whether the invariant already holds first.
+
+**Step-by-step walkthrough and the `TopologicalExecutor` cost contrast:** [`documentation/task-graph/experiments/04_guard_first_pr_merge_lite.md`](documentation/task-graph/experiments/04_guard_first_pr_merge_lite.md).
+
+### Goal-directed planning: sense-then-plan and scope, from one recursive function
+
+![PlanningExecutor: sense-then-plan short-circuit](task_graph_solver/animations/planning_short_circuit.gif)
+
+Same scenario as the guard-first animation above, solved by a different executor: `PlanningExecutor` works backward from the goal, so checking `released` is the *first* thing that happens, not the last. Two frames, total — nothing upstream of `released` is ever visited at all, not even checked.
+
+![PlanningExecutor: goal-directed scope on pr_merge_with_variants](task_graph_solver/animations/planning_goal_directed_scope.gif)
+
+Same OR-groups scenario as below, solved by `PlanningExecutor`: `check-disk` (a true orphan) and two of the three `apply-actions-*` variants stay white for the entire run — never checked, never attempted, absent from every result set. Contrast with `AOStarExecutor` on the identical graph, which still attempts `check-disk` since it walks the forward frontier.
+
+**Both scenarios, with the full `_ensure()` walkthrough and the `AOStarExecutor`/`GuardFirstExecutor` contrasts:** [`documentation/task-graph/experiments/05_planning_executor_sense_and_scope.md`](documentation/task-graph/experiments/05_planning_executor_sense_and_scope.md).
+
 ## Testing
 
 ```bash
@@ -178,7 +198,7 @@ make test-task-graph
 uv run pytest task_graph_solver/tests/ -v
 ```
 
-75 tests as of this writing, covering: graph validation (unknown deps, cycles), AND-gating and unreachable propagation, cost composition (AO*), repair locality (D* Lite, including on AND-join siblings), learned-cost convergence (LRTA*), and the visualization/animation code itself (smoke tests against real algorithm runs, not just static assertions).
+138 tests as of this writing, covering: graph validation (unknown deps, cycles), AND-gating and unreachable propagation, cost composition (AO*), repair locality (D* Lite, including on AND-join siblings), learned-cost convergence (LRTA*), OR-groups and explicit-goal gating, guard-first free checks, goal-directed sense-then-plan execution, and the visualization/animation code itself (smoke tests against real algorithm runs, not just static assertions).
 
 ## Design documentation
 
@@ -189,4 +209,6 @@ This module is design-doc-first, same discipline as the D* Lite maze work:
 - [`documentation/task-graph/algorithm_fit.md`](documentation/task-graph/algorithm_fit.md) — which algorithm targets which scenario, and the explicit build order
 - [`search_algorithms/ao_star.md`](search_algorithms/ao_star.md) — the AO* algorithm reference (notation, pseudocode, properties)
 - [`documentation/d-star/`](documentation/d-star/) and [`documentation/lrta/`](documentation/lrta/) — the maze-side D* Lite/LRTA* design work and the real-`atomicguard` stress tests that motivated this whole module
-- [`documentation/task-graph/or-groups/`](documentation/task-graph/or-groups/) — **design-stage, not yet implemented.** Extends `pr_merge_lite` (same topology, not a new domain) with OR-groups (`apply-actions` split into three variant strategies sharing one slot, only one needs to pass) and an explicit goal distinct from "every node satisfied" — grounded in `atomicguard`'s own real proposal for fixing its "single-exit corridor" RL bottleneck (`docs/archive/notes/2026-02-25T18-multi-path-rl-design.md`). This is what finally gives `AOStarExecutor` a real OR-choice to make; `DStarLiteExecutor` gets its existing repair-locality capability applied to a whole group instead of one node, not a new "reroute" capability — corrected in `or-groups/algorithm_fit.md` after an earlier overclaim
+- [`documentation/task-graph/or-groups/`](documentation/task-graph/or-groups/) — **implemented.** Extends `pr_merge_lite` (same topology, not a new domain) with `GroupNode` (`apply-actions` split into three variant strategies sharing one slot, only one needs to pass) and an explicit `goal` distinct from "every node satisfied" — grounded in `atomicguard`'s own real proposal for fixing its "single-exit corridor" RL bottleneck (`docs/archive/notes/2026-02-25T18-multi-path-rl-design.md`). Gives `AOStarExecutor` a real OR-choice to prune; `DStarLiteExecutor` gets its existing repair-locality capability applied to a whole group instead of one node, not a new "reroute" capability — corrected in `or-groups/algorithm_fit.md` after an earlier overclaim. Scenario: `pr_merge_with_variants` (`task_graph_solver/scenarios/pr_merge_with_variants.py`).
+- [`documentation/task-graph/guard-first/`](documentation/task-graph/guard-first/) — **implemented.** Adds `TaskNode.invariant_pass_probability` and `env.check_invariant()` — a free, non-budget-consuming sensor, grounded in a real gap in `atomicguard`'s `ActionPair.execute()` (Phase 1 always generates unconditionally, with no phase that checks the live world state first). `GuardFirstExecutor`: `TopologicalExecutor` plus check-before-repair, still walk-as-you-go.
+- [`documentation/task-graph/goal-directed-planning/`](documentation/task-graph/goal-directed-planning/) — **implemented.** `PlanningExecutor`: a new, separately-named executor (`AOStarExecutor` is deliberately left unchanged, with a cross-reference note explaining why) implementing a recursive, backward-chaining `_ensure(node_id)` from the goal down. Goal-directed scope, sense-then-plan short-circuiting, and OR-group pruning all fall out of the one function, rather than needing three separate mechanisms.

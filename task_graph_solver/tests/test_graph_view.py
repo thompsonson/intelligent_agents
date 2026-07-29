@@ -1,14 +1,22 @@
 from task_graph_solver.core.config import TaskGraphConfig
 from task_graph_solver.core.domain import AttemptOutcome, TaskNode
 from task_graph_solver.core.environment import TaskGraphEnvironment
+from task_graph_solver.core.results import ExecutionResult
 from task_graph_solver.algorithms.ao_star import AOStarExecutor
 from task_graph_solver.algorithms.d_star_lite import DStarLiteExecutor
+from task_graph_solver.algorithms.guard_first import GuardFirstExecutor
+from task_graph_solver.algorithms.planning import PlanningExecutor
 from task_graph_solver.scenarios.pr_merge_lite import build_pr_merge_lite
+from task_graph_solver.scenarios.pr_merge_with_variants import (
+    build_pr_merge_with_variants,
+)
 from task_graph_solver.scenarios.repair_packages_lite import build_repair_packages_lite
 from task_graph_solver.visualization.graph_view import (
     _blocked_by_fatal_ancestor,
+    _node_status,
     animate_events,
     build_networkx_graph,
+    record_events,
     render,
     trace_to_events,
 )
@@ -123,6 +131,100 @@ class TestAnimateEvents:
         assert executor.satisfied == {"repair", "verify"}
 
 
+class TestFreeCheckStatus:
+    def test_node_in_free_checks_reports_free_check_status_not_satisfied(self):
+        result = ExecutionResult(
+            success=True,
+            satisfied={"a"},
+            fatal=set(),
+            unreachable=set(),
+            free_checks={"a"},
+        )
+        assert _node_status("a", result) == "free_check"
+
+    def test_node_satisfied_via_paid_attempt_reports_satisfied_status(self):
+        result = ExecutionResult(
+            success=True, satisfied={"a"}, fatal=set(), unreachable=set()
+        )
+        assert _node_status("a", result) == "satisfied"
+
+
+class TestRecordEvents:
+    def test_records_a_free_check_and_no_attempts_when_invariant_already_holds(
+        self, tmp_path
+    ):
+        nodes = build_pr_merge_lite(
+            pass_probability=1.0, invariant_overrides={"released": 1.0}
+        )
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1), goal="released")
+        executor = PlanningExecutor(env)
+
+        result, events = record_events(env, executor)
+
+        assert result.success is True
+        assert events == [("check", "released", True)]
+
+        out = tmp_path / "planning.gif"
+        animate_events(env, events, save_path=str(out), title="planning")
+        assert out.exists()
+        assert out.stat().st_size > 0
+
+    def test_records_checks_and_attempts_in_chronological_order_for_guard_first(self):
+        nodes = build_pr_merge_lite(
+            pass_probability=1.0, invariant_overrides={"released": 1.0}
+        )
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1), goal="released")
+        executor = GuardFirstExecutor(env)
+
+        result, events = record_events(env, executor)
+
+        assert result.success is True
+        event_kinds = [(kind, node_id) for kind, node_id, *_ in events]
+        # every node gets a "check" first (guard-first's free sensor), and
+        # every node except "released" (already true) also gets an "attempt"
+        assert ("check", "released") in event_kinds
+        assert ("attempt", "released") not in event_kinds
+        assert ("attempt", "ci-check") in event_kinds
+
+
+class TestAnimateEventsWithChecks:
+    def test_a_true_check_event_colors_the_node_as_free_check_not_satisfied(
+        self, tmp_path
+    ):
+        nodes = build_pr_merge_lite(
+            pass_probability=1.0, invariant_overrides={"released": 1.0}
+        )
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1), goal="released")
+
+        out = tmp_path / "check_event.gif"
+        animate_events(
+            env, [("check", "released", True)], save_path=str(out), title="check"
+        )
+
+        assert out.exists()
+        assert out.stat().st_size > 0
+
+    def test_a_false_check_event_does_not_mark_the_node_satisfied(self, tmp_path):
+        nodes = build_pr_merge_lite(pass_probability=1.0)
+        env = TaskGraphEnvironment(nodes, TaskGraphConfig(seed=1))
+
+        out = tmp_path / "check_false.gif"
+        # A false check followed by a real attempt - both must render without
+        # the false check having marked the node satisfied prematurely.
+        animate_events(
+            env,
+            [
+                ("check", "ci-check", False),
+                ("attempt", "ci-check", AttemptOutcome.PASS),
+            ],
+            save_path=str(out),
+            title="check-false",
+        )
+
+        assert out.exists()
+        assert out.stat().st_size > 0
+
+
 class TestBlockedByFatalAncestor:
     # Regression coverage for a real bug found by visually inspecting the
     # generated animation: a naive `all_nodes - satisfied - fatal` marks
@@ -165,3 +267,32 @@ class TestBlockedByFatalAncestor:
             _blocked_by_fatal_ancestor("ci-check", env, fatal={"apply-actions"})
             is False
         )
+
+    def test_requires_naming_a_group_id_expands_to_its_members(self):
+        # "merged" requires ("ci-check", "actions-ready") - "actions-ready"
+        # is a GroupNode id, not a plain node in env.nodes. A naive walk
+        # that indexes env.nodes[dep] for every dep in requires crashes with
+        # a KeyError the first time it meets a group id - found by actually
+        # generating an animation over pr_merge_with_variants, not by
+        # inspection.
+        nodes, groups, goal = build_pr_merge_with_variants()
+        env = TaskGraphEnvironment(
+            nodes, TaskGraphConfig(seed=1), groups=groups, goal=goal
+        )
+
+        assert (
+            _blocked_by_fatal_ancestor("merged", env, fatal={"apply-actions-minimal"})
+            is False
+        )  # only one of three group members is fatal - the group isn't blocked
+        assert (
+            _blocked_by_fatal_ancestor(
+                "merged",
+                env,
+                fatal={
+                    "apply-actions-minimal",
+                    "apply-actions-comprehensive",
+                    "apply-actions-test-driven",
+                },
+            )
+            is True
+        )  # every group member fatal - the group (and merged) is genuinely blocked

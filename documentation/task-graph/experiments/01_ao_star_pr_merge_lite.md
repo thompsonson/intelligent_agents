@@ -75,3 +75,4 @@ Frame by frame, the two square nodes are the tell: `merged` stays white through 
 
 - [Experiment 2: D* Lite break/fix on the same graph](02_d_star_lite_pr_merge_lite.md) — what happens when one of these nodes fails permanently mid-run, and how repair differs from re-running this experiment from scratch.
 - [Experiment 3: LRTA* learning a node's true cost](03_lrta_star_convergence.md) — where the `h` values in this experiment would come from if they weren't all trivially `1` (i.e., if nodes actually had variable retry cost).
+- [Experiment 5: `PlanningExecutor`](05_planning_executor_sense_and_scope.md) — reuses this same AND-composition rule, applied top-down from the goal instead of bottom-up from the frontier.
