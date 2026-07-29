@@ -1,8 +1,8 @@
-# Algorithm Fit: `lint_repair`
+# Algorithm Fit: two deterministic, no-LLM repairs
 
 ## Purpose
 
-`environment_design.md` specifies `AtomicGuardCheckNode`/`AtomicGuardCheckEnvironment`; `scenario.md` specifies the one-node graph and the two fixture states it exercises. This document is the payoff `real-guards/algorithm_fit.md` had to defer: `GuardFirstExecutor` (imported unmodified from `task_graph_solver.algorithms`, same as every other executor in this project) finally gets a demonstration where check and repair are genuinely different operations, not the same subprocess run twice.
+`environment_design.md` specifies `AtomicGuardCheckNode`/`AtomicGuardCheckEnvironment`; `scenario.md` specifies the two one-node graphs and the fixture states each exercises. This document is the payoff `real-guards/algorithm_fit.md` had to defer: `GuardFirstExecutor` (imported unmodified from `task_graph_solver.algorithms`, same as every other executor in this project) finally gets a demonstration where check and repair are genuinely different operations, not the same subprocess run twice - now shown twice, against two unrelated real tools.
 
 ## `GuardFirstExecutor` — the free check, for real this time
 
@@ -12,13 +12,23 @@ On `lint_broken`, `check_invariant("lint")` runs the same free check and genuine
 
 **Run this yourself:** `real_task_graph_solver/atomicguard_backed/tests/test_lint_repair.py::TestGuardFirstExecutorRealRepair`. Animations: [`atomicguard_lint_clean_free_check.gif`](../../../task_graph_solver/animations/atomicguard_lint_clean_free_check.gif) (one frame - the free check, nothing else happens) contrasted with [`atomicguard_lint_broken_real_repair.gif`](../../../task_graph_solver/animations/atomicguard_lint_broken_real_repair.gif) (two frames - the failed free check, then the real repair turning the node green).
 
+## `GuardFirstExecutor` on `build-check` — the second deterministic repair, a different real tool entirely
+
+Same shape, a genuinely different failure mode and a genuinely different repair mechanism: on `clean`, `check_invariant("build-check")` runs only `python -m build --no-isolation --sdist --wheel --outdir dist` - it passes, `attempt()` is never called. `result.free_checks == {"build-check"}`, `env.retries_spent("build-check") == 0`.
+
+On `publish_broken`, the free check genuinely fails - `hatchling`'s `build_sdist` raises `validate_fields()`'s real error, since `pyproject.toml` has no `version` field. `attempt("build-check")` then runs `repair_action_pair` - a real `sed` call inserting `version = "0.1.0"` into `pyproject.toml`'s `[project]` table - and re-checks: the build now genuinely succeeds. `result.free_checks == set()`, `env.retries_spent("build-check") == 1`. Confirmed by hand: `pyproject.toml` gains the literal line `version = "0.1.0"`, and real `example_pkg-0.1.0.tar.gz`/`example_pkg-0.1.0-py3-none-any.whl` artifacts land in `dist/` - not a declared pass, an actual package built from a file this repair actually edited.
+
+Worth noting explicitly: `build-check`'s repair mechanism (`sed`, editing a config file) has nothing in common with `lint`'s (`ruff --fix`, the tool's own auto-fix flag) beyond both being deterministic and LLM-free. That's the point of building a second one before touching the LLM-based cases - it's evidence the "no-LLM repair" category isn't one trick that happens to work once, but a genuine class of fixable failure (`environment_design.md`'s per-failure-mode table predicted this; this is that prediction checked).
+
+**Run this yourself:** `real_task_graph_solver/atomicguard_backed/tests/test_build_check_repair.py::TestGuardFirstExecutorRealBuildCheckRepair`. Animations: [`atomicguard_build_check_clean_free_check.gif`](../../../task_graph_solver/animations/atomicguard_build_check_clean_free_check.gif) contrasted with [`atomicguard_build_check_broken_real_repair.gif`](../../../task_graph_solver/animations/atomicguard_build_check_broken_real_repair.gif).
+
 ## The other executors: unchanged, briefly
 
 `TopologicalExecutor`/`AOStarExecutor`/`PlanningExecutor`/`DStarLiteExecutor` all continue to work against `AtomicGuardCheckEnvironment` exactly as they do against `RealCheckEnvironment` - `attempt()`/`check_invariant()`/`ready_nodes()`/`is_goal_reached()` are the only interface they touch, and none of it changed shape. Not separately demonstrated here: a one-node graph gives `AOStarExecutor`'s AND-composition and `PlanningExecutor`'s short-circuit nothing new to show beyond what `real-guards/algorithm_fit.md` already proved on the real six-node graph - the thing genuinely new in this phase is `GuardFirstExecutor`'s repair, not a retest of composition rules that don't depend on what kind of Guard a node has.
 
-## What real `time_spent` looks like for a genuinely fast check
+## What real `time_spent` looks like, and how much it already varies between two deterministic repairs
 
-`env.time_spent("lint")` after the `lint_broken` run (repair + re-check) measures ~0.03s on this machine - both `ruff` invocations together. Recorded here as a real number, not to claim anything about `ruff`'s general performance, but as a contrast point for whichever of `type-check`/`architecture-test`'s eventual LLM-based repairs gets built next: those will be seconds, not hundredths of a second, and `AOStarExecutor`'s `h` (attempt-count only) still won't be able to see that difference - only `time_spent` will, same limitation `real-guards/algorithm_fit.md` already noted for `mypy` vs `ruff`.
+`env.time_spent("lint")` after the `lint_broken` run (repair + re-check) measures ~0.03s on this machine - both `ruff` invocations together. `env.time_spent("build-check")` after the `publish_broken` run measures ~0.57s - the `sed` edit is instant, but `python -m build` genuinely does more work (spawning a build backend, resolving dependencies, writing real archives) than `ruff` ever does. Nearly a 20x difference, and both nodes are equally "deterministic, no LLM" by the design doc's own category - `AOStarExecutor`'s `h` (attempt-count only) sees both as cost `1`, identical, and can't distinguish them at all; only `time_spent` can. This gap is itself the preview for whichever of `type-check`/`architecture-test`'s eventual LLM-based repairs gets built next: those will be seconds to tens of seconds, a further jump in the same direction, same limitation `real-guards/algorithm_fit.md` already noted for `mypy` vs `ruff`.
 
 ## What this environment validates that `real-guards/` alone could not
 
