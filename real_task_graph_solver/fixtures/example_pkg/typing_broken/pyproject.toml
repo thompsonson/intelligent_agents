@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "example-pkg"
+version = "0.1.0"
+description = "Fixture package for real_task_graph_solver - see documentation/task-graph/real-guards/environment_design.md"
+requires-python = ">=3.9"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/example_pkg"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
