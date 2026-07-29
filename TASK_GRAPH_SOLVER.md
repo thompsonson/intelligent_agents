@@ -248,6 +248,18 @@ Same idea as the goal-directed-planning animation above, now backed by a real, m
 
 **Full walkthrough, the marker-file design correction, and why `GuardFirstExecutor` specifically doesn't get a demonstration here:** [`documentation/task-graph/experiments/06_real_guards_release_pipeline.md`](documentation/task-graph/experiments/06_real_guards_release_pipeline.md).
 
+### `atomicguard`-backed repair: `GuardFirstExecutor`'s free check, finally meaningful
+
+![GuardFirstExecutor: lint (clean), a free check](task_graph_solver/animations/atomicguard_lint_clean_free_check.gif)
+
+Experiment 6's real checks had no repair action, so `GuardFirstExecutor`'s free check and a paid `attempt()` always ran the identical command. This closes that gap: `lint`'s Guard is now a real, production `atomicguard.ActionPair` (`ruff check src/`), with a second real `ActionPair` behind it (`ruff check --fix src/`) that genuinely repairs the problem when the first one fails. On `clean`, the check just passes — `attempt()` is never called.
+
+![GuardFirstExecutor: lint (lint_broken), a real repair](task_graph_solver/animations/atomicguard_lint_broken_real_repair.gif)
+
+On `lint_broken`, the free check genuinely fails first (a real F401 unused import), then `attempt()` runs the real repair — confirmed by hand, not just asserted: the unused import is actually gone from the file on disk afterward, not a declared pass.
+
+**Full walkthrough, including the real `time_spent` measurement and what it means for the LLM-based repairs still to come:** [`documentation/task-graph/experiments/07_atomicguard_lint_repair.md`](documentation/task-graph/experiments/07_atomicguard_lint_repair.md).
+
 ## Testing
 
 ```bash
