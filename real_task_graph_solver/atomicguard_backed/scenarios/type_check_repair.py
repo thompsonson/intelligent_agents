@@ -37,6 +37,14 @@ _REPAIR_PROMPT = PromptTemplate(
         "The file below fails `mypy` with the feedback shown. Fix the type "
         "error and return the complete, corrected file content."
     ),
+    # Required whenever feedback_history is non-empty (PromptTemplate.render()
+    # raises ValueError otherwise, caught only by an actual dry run against a
+    # real DualStateAgent - see environment_design.md's "Not decided" note on
+    # this). feedback_history is non-empty on this repair's very first call:
+    # check_action_pair and repair_action_pair share one action_pair_id, so
+    # the check's real rejection is already in the shared DAG before
+    # LLMContainerFixGenerator.generate() ever runs.
+    feedback_wrapper="mypy reported this error:\n{feedback}",
 )
 
 

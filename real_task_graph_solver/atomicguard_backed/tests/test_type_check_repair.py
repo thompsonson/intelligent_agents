@@ -1,10 +1,12 @@
 import pytest
+from atomicguard.domain.models import AmbientEnvironment, Context
 from atomicguard.infrastructure.guards.container_subprocess_guard import (
     ContainerSubprocessGuard,
 )
 from atomicguard.infrastructure.gym.precommit_generators import (
     LLMContainerFixGenerator,
 )
+from atomicguard.infrastructure.persistence.memory import InMemoryArtifactDAG
 
 from real_task_graph_solver.atomicguard_backed.core.environment import (
     AtomicGuardCheckEnvironment,
@@ -124,3 +126,32 @@ class TestRealMypyCheckWithoutNetwork:
         ]
         assert len(rejected) == 1
         assert "Incompatible return value type" in rejected[0].guard_result.feedback
+
+
+class TestRepairPromptRendersWithRealFeedback:
+    """A real bug found by a dry run against a dummy key, before any
+    network call was ever attempted: PromptTemplate.render() raises
+    ValueError if feedback_history is non-empty and feedback_wrapper is
+    unset. Since check_action_pair and repair_action_pair share one
+    action_pair_id, the repair's very first DualStateAgent call already
+    has non-empty feedback_history (the check's real rejection, inherited
+    through the shared DAG) - so this isn't an edge case, it's the normal
+    path, and would have broken every real repair attempt regardless of
+    network access or model choice."""
+
+    def test_repair_prompt_template_renders_with_feedback_history_present(
+        self, tmp_path
+    ):
+        workdir = tmp_path / "workdir"
+        nodes, _goal = build_type_check_repair(workdir, api_key="dummy-key")
+        prompt_template = nodes["type-check"].repair_action_pair._prompt_template
+
+        context = Context(
+            ambient=AmbientEnvironment(repository=InMemoryArtifactDAG()),
+            specification="",
+            feedback_history=(("previous file content", "mypy: real error text"),),
+        )
+
+        rendered = prompt_template.render(context)
+
+        assert "mypy: real error text" in rendered
