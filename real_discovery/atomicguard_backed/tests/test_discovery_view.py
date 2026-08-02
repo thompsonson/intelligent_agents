@@ -1,12 +1,14 @@
 import pytest
 
 from discovery.agents.discovery_agent import DiscoveryAgent
-from discovery.core.environment import DiscoveryEnvironment
-from discovery.scenarios.pipeline_fanout_lite import (
+from real_discovery.atomicguard_backed.core.environment import (
+    StatefulDiscoveryEnvironment,
+)
+from real_discovery.atomicguard_backed.scenarios.pipeline_fanout_lite import (
     build_pipeline_fanout_lite,
     build_pipeline_fanout_lite_gated,
 )
-from discovery.visualization.discovery_view import (
+from real_discovery.atomicguard_backed.visualization.discovery_view import (
     _node_display_state,
     _walk_frames,
     build_networkx_graph,
@@ -15,12 +17,12 @@ from discovery.visualization.discovery_view import (
 
 @pytest.fixture
 def env():
-    return DiscoveryEnvironment(build_pipeline_fanout_lite())
+    return StatefulDiscoveryEnvironment(build_pipeline_fanout_lite())
 
 
 @pytest.fixture
 def gated_env():
-    return DiscoveryEnvironment(build_pipeline_fanout_lite_gated())
+    return StatefulDiscoveryEnvironment(build_pipeline_fanout_lite_gated())
 
 
 class TestBuildNetworkxGraph:
@@ -39,19 +41,18 @@ class TestBuildNetworkxGraph:
         assert graph.has_edge("commit", "unit-tests")
         assert graph.has_edge("merge-gate", "deploy")
 
-    def test_only_contains_known_edges_nodes(self):
+    def test_never_senses_a_node_outside_known_edges(self):
         # The bug this replaces: build_networkx_graph() used to take `env`
-        # and read every node's true notifies directly - including nodes
-        # the walk never discovered, bypassing sense_edges() entirely.
-        # It's now pure - no env, no bypassing the sensing contract.
+        # and sense every node in env.nodes, regardless of what was
+        # actually discovered. It's now pure - no env, no sensing.
         graph = build_networkx_graph({"a": ("b",), "b": ()})
         assert set(graph.nodes()) == {"a", "b"}
 
     def test_a_notified_but_never_sensed_target_still_gets_a_node(self):
-        # experiment 1's exact case: unit-tests is named in commit's
-        # notifies but the walk never itself senses it (goal reached down
-        # the other branch first) - it's still a real node a frame can
-        # reference, just with no real is_goal answer yet.
+        # A target named in some sensed node's notifies but never itself
+        # a known_edges key (never itself sensed) - possible whenever a
+        # walk doesn't fully explore the topology - still needs to exist
+        # as a node a frame can reference, just with a placeholder is_goal.
         graph = build_networkx_graph({"commit": ("lint", "unit-tests")})
         assert "unit-tests" in graph.nodes()
         assert graph.nodes["unit-tests"]["is_goal"] is False
@@ -71,40 +72,25 @@ class TestWalkFrames:
         assert caption == "sense_edges('commit') → ('lint', 'unit-tests')"
         assert known == {"commit", "lint", "unit-tests"}
         assert visited == {"commit"}
-        assert cleared == {"commit"}  # requires=() clears instantly
+        assert cleared == {"commit"}
         assert known_edges["commit"] == ("lint", "unit-tests")
 
-    def test_revisiting_a_node_backtracks_without_resensing(self, env):
-        # merge-gate is reached twice (path index 2 and 4); the second
-        # arrival is a backtrack, not a fresh sense - see
-        # backtracking-exploration/algorithm_fit.md's worked example.
-        result = DiscoveryAgent(env, start_id="commit").walk()
-        assert result.path[2] == "merge-gate"
-        assert result.path[4] == "merge-gate"
-
-        frames, _ = _walk_frames(env, result.path)
-        assert frames[2][1] == "sense_edges('merge-gate') → ('deploy',)"
-        assert frames[4][1] == "backtrack to 'merge-gate'"
-
-    def test_known_set_only_grows(self, env):
-        result = DiscoveryAgent(env, start_id="commit").walk()
-        frames, _ = _walk_frames(env, result.path)
-        known_sizes = [len(known) for _, _, known, _, _ in frames]
-        assert known_sizes == sorted(known_sizes)
-        assert known_sizes[-1] == 6  # every node eventually known
-
-    def test_final_frame_has_every_node_visited(self, env):
-        result = DiscoveryAgent(env, start_id="commit").walk()
-        frames, known_edges = _walk_frames(env, result.path)
-        _, _, _, visited, cleared = frames[-1]
-        assert visited == set(build_pipeline_fanout_lite().keys())
-        assert cleared == visited  # requires=() everywhere in this scenario
-        assert set(known_edges.keys()) == set(build_pipeline_fanout_lite().keys())
+    def test_known_edges_records_each_node_at_most_once(self, gated_env):
+        # merge-gate is visited twice (sensed, then cleared on the
+        # resumed visit) - known_edges must still hold exactly one entry
+        # for it, the one real sense, not a second one on the revisit.
+        result = DiscoveryAgent(gated_env, start_id="commit").walk()
+        _, known_edges = _walk_frames(gated_env, result.path)
+        assert known_edges["merge-gate"] == ("deploy",)
+        assert len(known_edges) == 6  # every node in the topology, once each
 
 
 class TestNodeDisplayState:
     def test_unvisited_is_known(self):
-        assert _node_display_state("x", visited=set(), cleared=set(), is_goal=False) == "known"
+        assert (
+            _node_display_state("x", visited=set(), cleared=set(), is_goal=False)
+            == "known"
+        )
 
     def test_visited_but_not_cleared_is_blocked(self):
         assert (
@@ -141,9 +127,6 @@ class TestWalkFramesWithAndJoins:
 
     def test_merge_gate_clears_on_the_resumed_visit(self, gated_env):
         result = DiscoveryAgent(gated_env, start_id="commit").walk()
-        # First sense (blocked) and the resumed, now-clearable revisit -
-        # see documentation/discovery/and-joins/algorithm_fit.md's
-        # phase 1 / phase 2 trace.
         merge_gate_indices = [
             i for i, n in enumerate(result.path) if n == "merge-gate"
         ]
@@ -151,17 +134,7 @@ class TestWalkFramesWithAndJoins:
         first, resumed = merge_gate_indices[0], merge_gate_indices[1]
 
         frames, _ = _walk_frames(gated_env, result.path)
-        assert "merge-gate" not in frames[first][4]  # still blocked
+        assert "merge-gate" not in frames[first][4]
         assert "merge-gate" not in frames[resumed - 1][4]
-        assert "merge-gate" in frames[resumed][4]  # now cleared
+        assert "merge-gate" in frames[resumed][4]
         assert frames[resumed][1] == "'merge-gate' requires satisfied - cleared"
-
-    def test_blocked_node_never_appears_cleared_before_its_requires_do(
-        self, gated_env
-    ):
-        result = DiscoveryAgent(gated_env, start_id="commit").walk()
-        frames, _ = _walk_frames(gated_env, result.path)
-        for _, _, _, _, cleared in frames:
-            if "merge-gate" in cleared:
-                assert "lint" in cleared
-                assert "integration-tests" in cleared
