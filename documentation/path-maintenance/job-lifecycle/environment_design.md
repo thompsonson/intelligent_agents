@@ -39,6 +39,18 @@ Using the same canonical AIMA property list `CLAUDE.md`'s own PEAS analyses and 
 | **Known/Unknown** | Known (full topology exposed from the start) | **Known** | The *rule* governing a job's resolution is configured and known to the scenario (same "known but seeded" shape as `task_graph_solver`'s `pass_probability`), even though `PathMaintenanceAgent` itself never reads that configuration — it only polls |
 | **Observable** | Fully, but lazily | **Unchanged** | The agent could still query any node's current lifecycle state at any time; it still chooses to only check what it's about to act on. Multi-agent-ness changed *who* causes state change, not *what's visible* when asked |
 
+## Resolved: topology moves to a DAG, in a new environment
+
+A real pipeline (pre-commit → CI → k8s deploy, possibly with parallel checks) fans out; the maze's single corridor can't represent that without contorting it. Composition across the fanned-out nodes is AND — "every node on the path must be `SUCCEEDED`-or-repaired-to-`SUCCEEDED`" — the same semantics `task_graph_solver`'s `requires` already gives `TaskGraphEnvironment`. This step moves off the maze.
+
+**Reviewed `task_graph_solver` directly before deciding how.** Its DAG *structure* is the right size; its execution *model* is not, and reusing it wholesale would be over-complicated for what this step needs:
+
+- **Reusable as-is:** `requires`-only AND composition and its validation (`_validate_graph`'s cycle/unknown-dependency checks), and `ready_nodes(satisfied) -> list[str]` — the AND-respecting frontier primitive. A nice consequence: an AND-only DAG has no alternative routes to choose between, so there's no A*-equivalent search step needed at all here — the topology itself already *is* the plan, which is what "Known: full topology exposed from the start" already implied.
+- **Wrong shape, not reusable:** `attempt(node_id) -> AttemptOutcome` conflates *starting* a job and *getting its resolved outcome* into one synchronous call — there's no percept for "started, not resolved yet" anywhere in `AttemptOutcome`'s three values (`PASS`/`RETRY`/`FATAL`, all already-terminal). `rmax`/`r_patience`/`pass_probability`/`_attempts_made` are all retry-*economics* that don't apply now that this step is deterministic and known, with no retry budget. All five existing executors (`TopologicalExecutor` included) are solving *which node to attempt next*, under retry economics — a decision problem `PathMaintenanceAgent` doesn't have, since its order is already known.
+- **Missing entirely, from every environment in this repo so far, including the real `atomicguard`-backed one:** a lifecycle sensor. `check_invariant()` is the closest existing thing, but it's boolean and resolves instantly (one probability draw). Every real Guard already built (`ruff`, `mypy`, `python -m build`) is a synchronous subprocess call — none of them models "sense now, get told it's not resolved yet, sense again later."
+
+**Decision:** a new, independent environment — not a `TaskGraphEnvironment` subclass, not an import. There's already a precedent for exactly this move: `real_task_graph_solver/core/environment.py`'s `RealCheckEnvironment` docstring states, verbatim, "Same public shape as `task_graph_solver`'s `TaskGraphEnvironment`" — an independent class matching the API shape, not inheriting it. Same move here: reuse the `requires`-validation and `ready_nodes()` *pattern*, drop everything retry-economics-shaped, add the lifecycle sensor that doesn't exist anywhere yet.
+
 ## Proposed lifecycle and API surface (signatures only — no implementation yet)
 
 ```python
@@ -50,35 +62,79 @@ class JobState(Enum):
 ```
 
 ```python
-class MazeEnvironment:  # or its step-2 environment, see "Not decided" below
-    def get_job_state(self, cell: Tuple[int, int]) -> JobState:
-        """Current lifecycle state. Never mutates anything - a pure sense,
-        same contract as step 1's get_cell_state()."""
+@dataclass
+class JobNode:
+    id: str
+    requires: Tuple[str, ...] = ()
+    # deliberately no pass_probability/rmax/r_patience/retry_flavor - see
+    # "wrong shape, not reusable" above. This step is deterministic and
+    # known; there is no retry budget to track.
+```
+
+```python
+class JobGraphEnvironment:
+    nodes: Dict[str, JobNode]
+
+    def __init__(self, nodes: Dict[str, JobNode], config: JobGraphConfig):
+        """Same requires-validation shape as TaskGraphEnvironment._validate_graph
+        (cycle detection, unknown-dependency checks) - reused as a pattern,
+        not imported."""
+
+    def ready_nodes(self, satisfied: Set[str]) -> List[str]:
+        """Same AND-gating shape as TaskGraphEnvironment.ready_nodes(): the
+        frontier of nodes whose requires are all satisfied and haven't
+        themselves resolved yet."""
+
+    def get_job_state(self, node_id: str) -> JobState:
+        """Current lifecycle state. Never mutates anything, consumes no
+        budget - a pure sense, same contract as step 1's get_cell_state()."""
 
     def advance_jobs(self) -> None:
-        """Moves every PENDING/IN_PROGRESS job on the path one step through
-        its configured, deterministic lifecycle. Represents the other
-        agents (CI, k8s, pre-commit) doing their own work between our
-        agent's senses - not something PathMaintenanceAgent calls itself.
-        Exactly who calls this (scenario setup stepping through a script,
-        or something that stands for the other agents more literally) is
+        """Moves every PENDING/IN_PROGRESS node one step through its
+        configured, deterministic lifecycle. Represents the other agents
+        (CI, k8s, pre-commit) doing their own work between our agent's
+        senses - not something PathMaintenanceAgent calls itself. Exactly
+        who calls this (scenario setup stepping through a script, or
+        something that stands for the other agents more literally) is
         open - see below."""
+
+    def repair_job(self, node_id: str) -> None:
+        """Deterministic repair of a FAILED node: same no-op-that-always-
+        succeeds contract as step 1's repair_cell()."""
 ```
 
 ```python
 class PathMaintenanceAgent:
+    def __init__(self, environment: JobGraphEnvironment, order: List[str]):
+        """`order` is the belief state, generalized: a topological ordering
+        of the DAG's nodes (computed once, ties broken by id for
+        reproducibility - same tie-break TopologicalExecutor already uses),
+        taking the place of step 1's coordinate path. The class keeps its
+        name and its walk() shape - only the domain type of one element
+        changes, from a grid coordinate to a node id. "The path of a change
+        through infra" is still the right framing; it's just a topological
+        order instead of an A*-computed route now."""
+
     def walk(self) -> WalkResult:
-        """Same walk as step 1, with one change: before treating a cell as
-        SUCCEEDED or FAILED, keep sensing (get_job_state()) while it's
-        PENDING or IN_PROGRESS. Still never starts a job, never recomputes
-        or deviates from the path."""
+        """Same walk as step 1, generalized from coordinates to node ids,
+        with one change: before treating a node as SUCCEEDED or FAILED,
+        keep sensing (get_job_state()) while it's PENDING or IN_PROGRESS.
+        Processes `order` strictly one node at a time, sequentially - no
+        concurrent handling of multiple in-progress nodes in this step (see
+        "Not decided"). Still never starts a job, never recomputes or
+        deviates from `order`."""
 ```
 
-`WalkResult` likely needs a new field recording how many senses were spent waiting per cell, the same way `task_graph_solver`'s `ExecutionResult` tracks retry cost — proposed, not settled.
+`WalkResult` likely needs a new field recording how many senses were spent waiting per node, the same way `task_graph_solver`'s `ExecutionResult` tracks retry cost — proposed, not settled.
+
+## Where this lives
+
+Not `maze_solver/` — nothing about a DAG of jobs is spatial. Following the same precedent `task_graph_solver` itself set ("a new toy environment built around that shape directly, instead of retrofitting the maze's... model onto something that's structurally different"): a new top-level package, `path_maintenance/`, sibling to `maze_solver/` and `task_graph_solver/`. Step 1's code stays exactly where it is in `maze_solver/agents/` — it's genuinely maze-specific and already shipped; nothing here proposes moving or generalizing it retroactively. `PATH_MAINTENANCE.md` already documents both under one umbrella and doesn't need to change shape, just gain a second "System Architecture" section once this exists.
 
 ## Not decided
 
-- **Topology: stay in the maze, or move to `task_graph_solver`'s DAG?** A real pipeline (pre-commit → CI → k8s deploy, possibly with parallel checks) can fan out; the maze's single corridor can't represent that without contorting it. `task_graph_solver`'s `requires` is already AND-composition — "every node on the path must be `SUCCEEDED`-or-repaired-to-`SUCCEEDED`," exactly the composition a fanned-out pipeline needs. Genuinely open: build the job lifecycle once more on the linear maze path (cheapest, reuses step 1's tests and viz directly, but is throwaway work the moment fan-out is needed), or move straight to a small DAG scenario (2-3 nodes, one AND-join) since the linear case is a degenerate special case of it anyway. Leaning toward the DAG, since `task_graph_solver` already has the AND-`requires` structure and the `break_task`/`fix_task` Driver-hook shape built and tested — but not deciding this without discussing it explicitly, since it also means this step's home moves out of `maze_solver/agents/`.
 - **What exactly resolves `advance_jobs()`, and who calls it.** For a deterministic, known lifecycle, the simplest version is scenario config saying "this job takes exactly N senses to leave `IN_PROGRESS`" — but whether that's driven by scenario setup stepping a script (step 1's `inject_repairs()` shape) or something modeling the other agents more literally is unresolved.
-- **Whether `FAILED` exists yet, or only `SUCCEEDED`.** Reusing step 1's `repair_cell()` no-op for a sensed `FAILED` outcome costs nothing new to build and exercises both branches in a demo — but if the goal for this step is narrowly "prove the wait loop," `SUCCEEDED`-only might be the smaller, more honest slice. Leaning toward including `FAILED` since the repair path already exists and not exercising it would leave the GIF one-note, but flagging this as a real scope choice, not an obvious one.
+- **Whether `FAILED` exists yet, or only `SUCCEEDED`.** Reusing step 1's repair pattern for a sensed `FAILED` outcome costs nothing new to build and exercises both branches in a demo — but if the goal for this step is narrowly "prove the wait loop," `SUCCEEDED`-only might be the smaller, more honest slice. Leaning toward including `FAILED` since the repair path already exists and not exercising it would leave the GIF one-note, but flagging this as a real scope choice, not an obvious one.
+- **Sequential-but-single-threaded walk, confirmed for this step only.** `walk()` processes `order` one node at a time even though the DAG can have several ready nodes at once — deliberately not dispatching/polling multiple in-progress nodes concurrently yet, since that needs real time-modeling (whose poll happens when) this step doesn't have a reason to build. Worth flagging explicitly since it's the one place "the DAG can fan out" and "the agent still walks a single fixed order" are in tension — resolved for now by picking one topological order and treating it exactly like step 1's path, fan-out and all being resolved into a line before the agent ever sees it.
 - **`WalkResult`'s new field(s) for wait/poll cost** — shape TBD, see above.
+- **`path_maintenance/` as the new package name** — proposed, not confirmed.
