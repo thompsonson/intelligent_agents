@@ -7,7 +7,7 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live benchmark-gsm8k benchmark-gsm8k-reflection test-task-graph test-maze-solver test-path-maintenance
+.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live benchmark-gsm8k benchmark-gsm8k-reflection test-task-graph test-maze-solver test-path-maintenance test-discovery
 
 # Default target
 help:
@@ -17,6 +17,7 @@ help:
 	@echo "  test-task-graph - Run task_graph_solver tests (see documentation/task-graph/)"
 	@echo "  test-maze-solver - Run maze_solver tests (see documentation/path-maintenance/)"
 	@echo "  test-path-maintenance - Run path_maintenance tests (see documentation/path-maintenance/graph-topology/)"
+	@echo "  test-discovery - Run discovery tests (see documentation/discovery/)"
 	@echo "  test-verbose  - Run tests with verbose output"
 	@echo "  test-coverage - Run tests with coverage report"
 	@echo "  test-integration - Run integration tests with env vars"
@@ -118,6 +119,11 @@ test-maze-solver:
 test-path-maintenance:
 	@echo "Running path_maintenance tests..."
 	uv run pytest path_maintenance/tests/ -v
+
+# Run discovery tests (see documentation/discovery/)
+test-discovery:
+	@echo "Running discovery tests..."
+	uv run pytest discovery/tests/ -v
 
 # Enhanced agent demo with token confidence
 demo-enhanced:
