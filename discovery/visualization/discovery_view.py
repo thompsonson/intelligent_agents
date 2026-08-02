@@ -25,18 +25,47 @@ AGENT_MARKER_COLOR = "orange"
 # same as path_maintenance's own graph_view.py.
 
 
-def build_networkx_graph(env: DiscoveryEnvironment) -> nx.DiGraph:
+def build_networkx_graph(known_edges: Dict[str, Tuple[str, ...]]) -> nx.DiGraph:
     """A directed graph with an edge from each node to what it notifies -
     already the direction work flows in, unlike a requires-graph (see
     documentation/discovery/environment_design.md's "The edge points the
-    other way"). Built from the environment's full node set, since the
-    environment always holds the whole graph - only the *rendering* below
-    restricts what's shown to what the agent has actually discovered."""
+    other way"). Built purely from `known_edges` - what the walk itself
+    has actually sensed (see _walk_frames() below) - never from the
+    environment's own full node set directly.
+
+    An earlier version of this function read `env.nodes` instead, using
+    every node's true `.notifies` regardless of what the walk had
+    discovered. That's a real correctness bug, not a harmless shortcut:
+    environment_design.md's own "Observable: Partially... no enumeration,
+    no 'list all nodes'" is this environment's defining property, and
+    reading `env.nodes` directly bypasses `sense_edges()`/`sense_requires()`
+    entirely - the same god's-eye access DiscoveryAgent itself is never
+    given. That it cost nothing (a dataclass field, not a real action)
+    doesn't make it correct; it undermines the actual point every
+    discovery GIF makes, that the graph is learned incrementally, not
+    already known. See PR #15's review discussion, where the identical
+    pattern in real_discovery/'s version was caught costing 90 real
+    subprocess calls for a walk that needed 6 - the same bug, just with a
+    real, measurable cost there instead of a conceptual one here.
+
+    A target named in some sensed node's `notifies` isn't necessarily
+    itself a key in `known_edges` - it may be known (named) but never
+    itself visited/sensed (see experiment 1's `unit-tests`/
+    `integration-tests`: the walk reaches the goal down the other branch
+    first and never senses them). Such a target still needs to exist as a
+    node here - it can appear in a frame's `known` set - just with no
+    real `is_goal` answer yet, since that's genuinely unknown until it's
+    sensed. `_node_display_state()` never actually reads `is_goal` for an
+    unvisited node (it returns "known" before ever consulting it), so the
+    placeholder value here is never observed - it exists only so the
+    graph has every node a frame might reference."""
     graph = nx.DiGraph()
-    for node_id, node in env.nodes.items():
-        graph.add_node(node_id, is_goal=not node.notifies)
-    for node_id, node in env.nodes.items():
-        for target in node.notifies:
+    for node_id, notifies in known_edges.items():
+        graph.add_node(node_id, is_goal=not notifies)
+    for node_id, notifies in known_edges.items():
+        for target in notifies:
+            if target not in graph:
+                graph.add_node(target, is_goal=False)  # not yet sensed
             graph.add_edge(node_id, target)
     return graph
 
@@ -69,7 +98,7 @@ def _node_display_state(
 
 
 def render(
-    env: DiscoveryEnvironment,
+    known_edges: Dict[str, Tuple[str, ...]],
     known: Set[str],
     visited: Optional[Set[str]] = None,
     cleared: Optional[Set[str]] = None,
@@ -82,6 +111,9 @@ def render(
     node's notifies, plus the start id) - not the full environment. Edges
     shown are only those whose source has been visited (sensed), since an
     edge is only known once its source node has actually been queried.
+    `known_edges` is the walk's own already-sensed data (see
+    build_networkx_graph()) - this function never reads the environment
+    directly.
 
     `cleared` defaults to `visited` when omitted - step 1/2 callers never
     had a blocked concept at all (every node's requires=() clears
@@ -90,7 +122,7 @@ def render(
     visited = visited or set()
     cleared = visited if cleared is None else cleared
 
-    full_graph = build_networkx_graph(env)
+    full_graph = build_networkx_graph(known_edges)
     full_pos = _layered_layout(full_graph)
 
     graph = full_graph.subgraph(known).copy()
@@ -165,7 +197,9 @@ def render(
 Frame = Tuple[str, str, Set[str], Set[str], Set[str]]
 
 
-def _walk_frames(env: DiscoveryEnvironment, path: List[str]) -> List[Frame]:
+def _walk_frames(
+    env: DiscoveryEnvironment, path: List[str]
+) -> Tuple[List[Frame], Dict[str, Tuple[str, ...]]]:
     """Pure, render-free replay of `path` - DiscoveryAgent.walk()'s own
     move-by-move record, backtracks included (backtracking-exploration/
     algorithm_fit.md's "Not decided" -> resolved: path is the full move
@@ -188,12 +222,21 @@ def _walk_frames(env: DiscoveryEnvironment, path: List[str]) -> List[Frame]:
     which nodes are `cleared` at each frame - a second, independent replay
     of the same deterministic rule walk() already applied once, not a
     second source of truth: given the same `path`, it always agrees.
+
+    Also returns `known_edges` - every node's notifies, recorded the one
+    time each is actually sensed during this replay (never more than
+    once per node). This is the only sensing this whole visualization
+    module does; render() (via build_networkx_graph()) uses it instead of
+    ever reading the environment's own node set directly - see that
+    function's docstring for why that distinction is load-bearing, not
+    cosmetic.
     """
     known: Set[str] = {path[0]}
     visited: Set[str] = set()
     cleared: Set[str] = set()
     sensed: Set[str] = set()
     known_requires: Dict[str, Tuple[str, ...]] = {}
+    known_edges: Dict[str, Tuple[str, ...]] = {}
     frames: List[Frame] = []
 
     for node_id in path:
@@ -201,6 +244,7 @@ def _walk_frames(env: DiscoveryEnvironment, path: List[str]) -> List[Frame]:
         if not was_sensed:
             notifies = env.sense_edges(node_id)
             known_requires[node_id] = env.sense_requires(node_id)
+            known_edges[node_id] = notifies
             sensed.add(node_id)
             known.update(notifies)
         visited.add(node_id)
@@ -220,7 +264,7 @@ def _walk_frames(env: DiscoveryEnvironment, path: List[str]) -> List[Frame]:
 
         frames.append((node_id, caption, set(known), set(visited), set(cleared)))
 
-    return frames
+    return frames, known_edges
 
 
 def animate_walk(
@@ -235,18 +279,19 @@ def animate_walk(
     animate_walk(). Callers get `path` from `DiscoveryAgent.walk().path`
     directly; there's no separate instrumented-recording step here the
     way path_maintenance's graph_view.record_walk() has, since `path`
-    already is the real move-by-move record."""
+    already is the real move-by-move record. `_walk_frames()` is called
+    exactly once, up front, so every sense happens exactly once per node -
+    render() itself never touches the environment."""
     base_title = title or "Discovery"
+    frames, known_edges = _walk_frames(env, path)
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         frame_files = []
 
-        for i, (node_id, caption, known, visited, cleared) in enumerate(
-            _walk_frames(env, path)
-        ):
+        for i, (node_id, caption, known, visited, cleared) in enumerate(frames):
             frame_path = os.path.join(tmp_dir, f"frame_{i:03d}.png")
             render(
-                env,
+                known_edges,
                 known=known,
                 visited=visited,
                 cleared=cleared,

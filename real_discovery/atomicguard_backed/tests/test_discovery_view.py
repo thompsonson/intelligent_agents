@@ -48,6 +48,15 @@ class TestBuildNetworkxGraph:
         graph = build_networkx_graph({"a": ("b",), "b": ()})
         assert set(graph.nodes()) == {"a", "b"}
 
+    def test_a_notified_but_never_sensed_target_still_gets_a_node(self):
+        # A target named in some sensed node's notifies but never itself
+        # a known_edges key (never itself sensed) - possible whenever a
+        # walk doesn't fully explore the topology - still needs to exist
+        # as a node a frame can reference, just with a placeholder is_goal.
+        graph = build_networkx_graph({"commit": ("lint", "unit-tests")})
+        assert "unit-tests" in graph.nodes()
+        assert graph.nodes["unit-tests"]["is_goal"] is False
+
 
 class TestWalkFrames:
     def test_one_frame_per_path_position(self, env):

@@ -33,12 +33,24 @@ def build_networkx_graph(known_edges: Dict[str, Tuple[str, ...]]) -> nx.DiGraph:
     that needed only 6, and silently widened a failing check's blast
     radius to nodes the walk never visited - a real violation of this
     package's own "nothing gets sensed except through the walk"
-    principle, not just wasted work. See PR #15's review discussion."""
+    principle, not just wasted work. See PR #15's review discussion.
+
+    A target named in some sensed node's `notifies` isn't necessarily
+    itself a key in `known_edges` - it may be known but never itself
+    sensed. `_node_display_state()` never reads `is_goal` for an
+    unvisited node (it returns "known" before consulting it), so the
+    placeholder value below is never observed - it exists only so the
+    graph has every node a frame might reference. This scenario's own
+    walk happens to fully explore the topology, so this path isn't
+    exercised here, but see discovery/'s own experiment 1 for a real
+    case where it is (that fix caught this, too)."""
     graph = nx.DiGraph()
     for node_id, notifies in known_edges.items():
         graph.add_node(node_id, is_goal=not notifies)
     for node_id, notifies in known_edges.items():
         for target in notifies:
+            if target not in graph:
+                graph.add_node(target, is_goal=False)  # not yet sensed
             graph.add_edge(node_id, target)
     return graph
 
