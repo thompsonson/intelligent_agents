@@ -77,7 +77,7 @@ Phase 1 ends back at `commit`, parent stack empty. `visited = {commit, lint, mer
 
 Parent stack empties again; readiness sweep finds nothing left blocked. Walk ends.
 
-**Totals:** `path` has 15 entries (14 moves). `nodes_sensed == 6` (every node, `deploy` last). `total_cost == 14`. `cleared == visited ==` all six nodes. `blocked_nodes == []`. `goal_reached is True` — and critically, `deploy` is the *last* node sensed, not the third of four the way step 2's ungated walk sensed it. That reordering is the entire point of this step.
+**Totals:** `path` has 15 entries (14 moves). `nodes_sensed == 6` (every node, `deploy` last). `total_cost == 14`. `cleared == visited ==` all six nodes. `blocked_nodes == []`. `goal_reached is True` — and critically, `deploy` is the *last* of 6 nodes sensed, not the 4th of 6 the way step 2's ungated walk sensed it (`commit, lint, merge-gate, deploy, unit-tests, integration-tests`). That reordering is the entire point of this step.
 
 ## Resolved: tie-break when more than one blocked node clears in the same sweep
 
