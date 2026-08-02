@@ -44,12 +44,15 @@ LRTA* still starts each trial with the *node* it's learning about — and the wh
 
 **Testing**: `discovery/tests/` (25 tests). Runs alongside this repo's other suites — `make test-discovery` / `uv run pytest discovery/tests/ -v`.
 
+**Next (designed, not yet implemented): AND-joins.** Step 2's own walk shows the bug this step exists to fix: `deploy` gets sensed at move 3, before `unit-tests`/`integration-tests` are ever touched. `merge-gate.requires = (lint, integration-tests)` closes that — but plain backtracking alone turns out not to be enough once a node can be sensed-but-blocked and only become clearable *after* the walk has backtracked past it entirely; see [`documentation/discovery/and-joins/algorithm_fit.md`](documentation/discovery/and-joins/algorithm_fit.md) for the non-termination bug a naive extension hits, the two-phase fix (unchanged DFS-with-backtrack exploration, plus a Kahn-style readiness sweep between phases), and the deliberate non-reuse of `task_graph_solver`'s parked `PlanningExecutor._ensure()`.
+
 ## Related documents
 
 - [`documentation/lrta/beyond_the_maze.md`](documentation/lrta/beyond_the_maze.md) — the real-`atomicguard` stress test that motivated `retry_flavor`'s three-way split (sensing/generation/repair), and the repair-cost node LRTA*'s demo uses.
 - [`documentation/task-graph/environment_design.md`](documentation/task-graph/environment_design.md) — `TaskNode`/`TaskGraphEnvironment`, shared infrastructure between this document and `TASK_GRAPH_SOLVER.md`.
 - [`documentation/discovery/environment_design.md`](documentation/discovery/environment_design.md) — `DiscoveryNode`/`DiscoveryEnvironment`/`DiscoveryAgent`'s full design, including every resolved fork (arrival-gating, position-tracking, movement, deferred AND-joins, goal, cost).
 - [`documentation/discovery/scenario.md`](documentation/discovery/scenario.md) / [`algorithm_fit.md`](documentation/discovery/algorithm_fit.md) — `pipeline_fanout_lite`'s topology and the traversal-policy reasoning.
+- [`documentation/discovery/and-joins/environment_design.md`](documentation/discovery/and-joins/environment_design.md) — step 3's `requires`, the three-state (known/visited/cleared) model, and why the reachability constraint is heavier this time than step 1's goal-ambiguity caveat.
 - [`documentation/discovery/backtracking-exploration/algorithm_fit.md`](documentation/discovery/backtracking-exploration/algorithm_fit.md) — step 2: backtracking turns this into the "exploring an unknown graph" problem, DFS-vs-BFS-vs-learned-exploration compared directly.
 - [`documentation/discovery/experiments/02_pipeline_fanout_backtracking.md`](documentation/discovery/experiments/02_pipeline_fanout_backtracking.md) — step 2 run for real, frame-by-frame, with the GIF.
 - [`TASK_GRAPH_SOLVER.md`](TASK_GRAPH_SOLVER.md) — the sibling document for the "environment already known" side of `task_graph_solver`: `TopologicalExecutor`, `AOStarExecutor`, `DStarLiteExecutor`.
