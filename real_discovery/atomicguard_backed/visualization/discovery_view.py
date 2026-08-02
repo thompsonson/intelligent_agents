@@ -23,22 +23,21 @@ NODE_COLORS = {
 AGENT_MARKER_COLOR = "orange"
 
 
-def build_networkx_graph(env: StatefulDiscoveryEnvironment) -> nx.DiGraph:
+def build_networkx_graph(known_edges: Dict[str, Tuple[str, ...]]) -> nx.DiGraph:
     """A directed graph with an edge from each node to what it notifies -
-    unlike discovery/'s own build_networkx_graph(), a StatefulDiscoveryNode
-    has no `.notifies` field to read: every node's real check_action_pair
-    is actually run here (one real sense_edges() call per node) to build
-    the full picture this function needs for layout/is_goal. The
-    environment already holds the full `nodes` dict up front (see
-    environment_design.md's "small steps" scope), so every node is
-    reachable to sense regardless of what the walk itself has discovered
-    - only the *rendering* in render() below restricts what's shown to
-    what the agent has actually walked."""
+    built purely from `known_edges`, data the walk itself already sensed
+    (one real call per node, via `_walk_frames`'s replay). Never senses
+    anything itself, unlike an earlier version of this function: sensing
+    every node in `env.nodes` here (rather than just what the walk
+    discovered) cost 90 real subprocess calls on a 15-frame/6-node walk
+    that needed only 6, and silently widened a failing check's blast
+    radius to nodes the walk never visited - a real violation of this
+    package's own "nothing gets sensed except through the walk"
+    principle, not just wasted work. See PR #15's review discussion."""
     graph = nx.DiGraph()
-    notifies_by_node = {node_id: env.sense_edges(node_id) for node_id in env.nodes}
-    for node_id, notifies in notifies_by_node.items():
+    for node_id, notifies in known_edges.items():
         graph.add_node(node_id, is_goal=not notifies)
-    for node_id, notifies in notifies_by_node.items():
+    for node_id, notifies in known_edges.items():
         for target in notifies:
             graph.add_edge(node_id, target)
     return graph
@@ -67,7 +66,7 @@ def _node_display_state(
 
 
 def render(
-    env: StatefulDiscoveryEnvironment,
+    known_edges: Dict[str, Tuple[str, ...]],
     known: Set[str],
     visited: Optional[Set[str]] = None,
     cleared: Optional[Set[str]] = None,
@@ -76,13 +75,14 @@ def render(
     title: Optional[str] = None,
 ) -> None:
     """One frame: only the subgraph the agent has actually discovered so
-    far. See discovery/visualization/discovery_view.py's render() - the
-    rendering logic is identical, only build_networkx_graph()'s source of
-    truth (sensed, not read off a static field) differs."""
+    far. `known_edges` is the walk's own already-sensed data (see
+    build_networkx_graph()) - this function never senses anything itself,
+    unlike an earlier version that took `env` and re-sensed every node on
+    every frame."""
     visited = visited or set()
     cleared = visited if cleared is None else cleared
 
-    full_graph = build_networkx_graph(env)
+    full_graph = build_networkx_graph(known_edges)
     full_pos = _layered_layout(full_graph)
 
     graph = full_graph.subgraph(known).copy()
@@ -149,19 +149,29 @@ def render(
 Frame = Tuple[str, str, Set[str], Set[str], Set[str]]
 
 
-def _walk_frames(env: StatefulDiscoveryEnvironment, path: List[str]) -> List[Frame]:
+def _walk_frames(
+    env: StatefulDiscoveryEnvironment, path: List[str]
+) -> Tuple[List[Frame], Dict[str, Tuple[str, ...]]]:
     """Pure, render-free replay of `path`, identical in structure to
     discovery/'s own _walk_frames() - see that function's docstring for
     the full reasoning. sense_edges()/sense_requires() here are the real,
     subprocess-backed calls, not field reads, but the replay logic (what
     counts as a re-sense vs. a backtrack vs. a clearing event) is exactly
     the same deterministic rule DiscoveryAgent.walk() itself already
-    applied once to produce `path`."""
+    applied once to produce `path`.
+
+    Also returns `known_edges` - every node's notifies, recorded the one
+    time each is actually sensed during this replay (never more than
+    once per node, mirroring `path`'s own re-sense avoidance). This is
+    the *only* sensing this whole visualization module does; passed on to
+    render() via animate_walk() below so no frame ever re-senses anything,
+    let alone a node the walk itself never visited."""
     known: Set[str] = {path[0]}
     visited: Set[str] = set()
     cleared: Set[str] = set()
     sensed: Set[str] = set()
     known_requires: Dict[str, Tuple[str, ...]] = {}
+    known_edges: Dict[str, Tuple[str, ...]] = {}
     frames: List[Frame] = []
 
     for node_id in path:
@@ -169,6 +179,7 @@ def _walk_frames(env: StatefulDiscoveryEnvironment, path: List[str]) -> List[Fra
         if not was_sensed:
             notifies = env.sense_edges(node_id)
             known_requires[node_id] = env.sense_requires(node_id)
+            known_edges[node_id] = notifies
             sensed.add(node_id)
             known.update(notifies)
         visited.add(node_id)
@@ -188,7 +199,7 @@ def _walk_frames(env: StatefulDiscoveryEnvironment, path: List[str]) -> List[Fra
 
         frames.append((node_id, caption, set(known), set(visited), set(cleared)))
 
-    return frames
+    return frames, known_edges
 
 
 def animate_walk(
@@ -199,18 +210,19 @@ def animate_walk(
     title: Optional[str] = None,
 ) -> None:
     """Render one frame per position in `path` and combine into a GIF -
-    identical shape to discovery/'s own animate_walk()."""
+    identical shape to discovery/'s own animate_walk(). `_walk_frames()`
+    is called exactly once, up front, so every real sense happens exactly
+    once per node - render() itself never senses anything."""
     base_title = title or "Discovery (real, atomicguard-backed)"
+    frames, known_edges = _walk_frames(env, path)
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         frame_files = []
 
-        for i, (node_id, caption, known, visited, cleared) in enumerate(
-            _walk_frames(env, path)
-        ):
+        for i, (node_id, caption, known, visited, cleared) in enumerate(frames):
             frame_path = os.path.join(tmp_dir, f"frame_{i:03d}.png")
             render(
-                env,
+                known_edges,
                 known=known,
                 visited=visited,
                 cleared=cleared,

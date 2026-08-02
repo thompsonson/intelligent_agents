@@ -27,32 +27,53 @@ def gated_env():
 
 class TestBuildNetworkxGraph:
     def test_goal_node_flagged(self, env):
-        graph = build_networkx_graph(env)
+        result = DiscoveryAgent(env, start_id="commit").walk()
+        _, known_edges = _walk_frames(env, result.path)
+        graph = build_networkx_graph(known_edges)
         assert graph.nodes["deploy"]["is_goal"] is True
         assert graph.nodes["commit"]["is_goal"] is False
 
     def test_edges_point_from_node_to_what_it_notifies(self, env):
-        graph = build_networkx_graph(env)
+        result = DiscoveryAgent(env, start_id="commit").walk()
+        _, known_edges = _walk_frames(env, result.path)
+        graph = build_networkx_graph(known_edges)
         assert graph.has_edge("commit", "lint")
         assert graph.has_edge("commit", "unit-tests")
         assert graph.has_edge("merge-gate", "deploy")
+
+    def test_never_senses_a_node_outside_known_edges(self):
+        # The bug this replaces: build_networkx_graph() used to take `env`
+        # and sense every node in env.nodes, regardless of what was
+        # actually discovered. It's now pure - no env, no sensing.
+        graph = build_networkx_graph({"a": ("b",), "b": ()})
+        assert set(graph.nodes()) == {"a", "b"}
 
 
 class TestWalkFrames:
     def test_one_frame_per_path_position(self, env):
         result = DiscoveryAgent(env, start_id="commit").walk()
-        frames = _walk_frames(env, result.path)
+        frames, _ = _walk_frames(env, result.path)
         assert len(frames) == len(result.path)
 
     def test_first_frame_senses_the_start_node(self, env):
         result = DiscoveryAgent(env, start_id="commit").walk()
-        frames = _walk_frames(env, result.path)
+        frames, known_edges = _walk_frames(env, result.path)
         node_id, caption, known, visited, cleared = frames[0]
         assert node_id == "commit"
         assert caption == "sense_edges('commit') → ('lint', 'unit-tests')"
         assert known == {"commit", "lint", "unit-tests"}
         assert visited == {"commit"}
         assert cleared == {"commit"}
+        assert known_edges["commit"] == ("lint", "unit-tests")
+
+    def test_known_edges_records_each_node_at_most_once(self, gated_env):
+        # merge-gate is visited twice (sensed, then cleared on the
+        # resumed visit) - known_edges must still hold exactly one entry
+        # for it, the one real sense, not a second one on the revisit.
+        result = DiscoveryAgent(gated_env, start_id="commit").walk()
+        _, known_edges = _walk_frames(gated_env, result.path)
+        assert known_edges["merge-gate"] == ("deploy",)
+        assert len(known_edges) == 6  # every node in the topology, once each
 
 
 class TestNodeDisplayState:
@@ -85,7 +106,7 @@ class TestWalkFramesWithAndJoins:
     def test_merge_gate_is_blocked_on_first_sense(self, gated_env):
         result = DiscoveryAgent(gated_env, start_id="commit").walk()
         assert result.path[2] == "merge-gate"
-        frames = _walk_frames(gated_env, result.path)
+        frames, _ = _walk_frames(gated_env, result.path)
         node_id, caption, _, visited, cleared = frames[2]
         assert node_id == "merge-gate"
         assert "merge-gate" in visited
@@ -103,7 +124,7 @@ class TestWalkFramesWithAndJoins:
         assert len(merge_gate_indices) >= 2
         first, resumed = merge_gate_indices[0], merge_gate_indices[1]
 
-        frames = _walk_frames(gated_env, result.path)
+        frames, _ = _walk_frames(gated_env, result.path)
         assert "merge-gate" not in frames[first][4]
         assert "merge-gate" not in frames[resumed - 1][4]
         assert "merge-gate" in frames[resumed][4]
