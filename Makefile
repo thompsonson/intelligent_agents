@@ -7,7 +7,7 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live benchmark-gsm8k benchmark-gsm8k-reflection test-task-graph
+.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live benchmark-gsm8k benchmark-gsm8k-reflection test-task-graph test-maze-solver
 
 # Default target
 help:
@@ -15,6 +15,7 @@ help:
 	@echo "  install        - Install dependencies with uv"
 	@echo "  test          - Run tests with pytest"
 	@echo "  test-task-graph - Run task_graph_solver tests (see documentation/task-graph/)"
+	@echo "  test-maze-solver - Run maze_solver tests (see documentation/path-maintenance/)"
 	@echo "  test-verbose  - Run tests with verbose output"
 	@echo "  test-coverage - Run tests with coverage report"
 	@echo "  test-integration - Run integration tests with env vars"
@@ -106,6 +107,11 @@ test-enhanced:
 test-task-graph:
 	@echo "Running task_graph_solver tests..."
 	uv run pytest task_graph_solver/tests/ -v
+
+# Run maze_solver tests (see documentation/path-maintenance/)
+test-maze-solver:
+	@echo "Running maze_solver tests..."
+	uv run pytest maze_solver/tests/ -v
 
 # Enhanced agent demo with token confidence
 demo-enhanced:

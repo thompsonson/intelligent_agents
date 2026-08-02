@@ -98,7 +98,7 @@ class WalkResult:
 The "belief state" in this step is nothing more than:
 
 ```python
-belief_path: List[Tuple[int, int]] = AStarSearch(env, config).search(env.start, env.end).path
+belief_path: List[Tuple[int, int]] = AStarSearch(env).search(env.start, env.end).path
 ```
 
 computed once, before `inject_repairs()` is called, and handed to `PathMaintenanceAgent` unchanged. It is deliberately *not* a `Dict[str, float]`-style distribution (contrast `self_reflection.domain.ReflectionResult.answer_distribution`) — there's nothing probabilistic about it. Calling it a belief state at all is a nod toward the later, harder version of this problem (where the agent's model of the world can diverge from reality in ways worth representing explicitly), not a claim that any distribution is being tracked here.
@@ -106,7 +106,7 @@ computed once, before `inject_repairs()` is called, and handed to `PathMaintenan
 ## Sequence for one run
 
 1. `env = MazeEnvironment(config)` — generate the maze, as today.
-2. `belief_path = AStarSearch(env, config).search(env.start, env.end).path` — compute the route once.
+2. `belief_path = AStarSearch(env).search(env.start, env.end).path` — compute the route once.
 3. `env.inject_repairs(cells, belief_path)` — Driver picks a subset of open cells on `belief_path` and marks them `NEEDS_REPAIR`. One discrete event, not a schedule.
 4. `result = PathMaintenanceAgent(env, belief_path).walk()` — the agent walks `belief_path` exactly, repairing as it goes.
 5. Inspect `result.repairs_performed` against the cells injected in step 3 — every injected cell that was on `belief_path` should appear, in path order.

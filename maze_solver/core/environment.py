@@ -1,4 +1,5 @@
-from typing import Tuple, List, Optional, Set
+from enum import Enum
+from typing import Dict, Tuple, List, Optional, Set
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -9,6 +10,19 @@ from mazelib.generate.Sidewinder import Sidewinder
 from mazelib.solve.BacktrackingSolver import BacktrackingSolver
 
 from .config import Config
+
+
+class CellState(Enum):
+    """State of an already-open (non-wall) cell.
+
+    Walls are not a CellState - they stay encoded in `grid`/`graph` exactly
+    as before, permanent by construction. Only open cells can be OPEN or
+    NEEDS_REPAIR. See documentation/path-maintenance/environment_design.md.
+    """
+
+    OPEN = "open"
+    NEEDS_REPAIR = "needs_repair"
+
 
 class MazeEnvironment:
     """Handles maze generation, state management and visualization.
@@ -42,6 +56,7 @@ class MazeEnvironment:
         self.optimal_path = None
         self.optimal_path_length = None
         self.graph = None
+        self._cell_states: Dict[Tuple[int, int], CellState] = {}
         self.generate()
 
     def generate(self) -> None:
@@ -71,6 +86,9 @@ class MazeEnvironment:
 
         # Create graph representation for search algorithms
         self._create_graph()
+
+        # Every open cell starts OPEN; regenerating wipes any prior repairs
+        self._cell_states = {cell: CellState.OPEN for cell in self.graph}
 
     def _calculate_optimal_path(self) -> None:
         """Calculate optimal path using maze's solver.
@@ -242,3 +260,48 @@ class MazeEnvironment:
         """Calculate cost of moving from state1 to state2."""
         # For uniform cost in grid-based maze, return 1
         return 1
+
+    def get_cell_state(self, cell: Tuple[int, int]) -> CellState:
+        """Current state of an open cell.
+
+        Raises:
+            ValueError: if `cell` is a wall or out of bounds.
+        """
+        if cell not in self._cell_states:
+            raise ValueError(f"{cell} is not an open cell (wall or out of bounds)")
+        return self._cell_states[cell]
+
+    def inject_repairs(
+        self, cells: List[Tuple[int, int]], path: List[Tuple[int, int]]
+    ) -> None:
+        """One-time, discrete mutation: mark each of `cells` NEEDS_REPAIR.
+
+        Restricted to cells present in `path` so every injected repair is
+        guaranteed to be sensed and fixed by an agent walking that path -
+        see documentation/path-maintenance/environment_design.md.
+
+        Raises:
+            ValueError: if any cell is a wall, already NEEDS_REPAIR, or not
+                present in `path`.
+        """
+        for cell in cells:
+            if cell not in self._cell_states:
+                raise ValueError(f"{cell} is not an open cell (wall or out of bounds)")
+            if cell not in path:
+                raise ValueError(f"{cell} is not on the given path")
+            if self._cell_states[cell] == CellState.NEEDS_REPAIR:
+                raise ValueError(f"{cell} already needs repair")
+        for cell in cells:
+            self._cell_states[cell] = CellState.NEEDS_REPAIR
+
+    def repair_cell(self, cell: Tuple[int, int]) -> None:
+        """Deterministic repair: NEEDS_REPAIR -> OPEN. Always succeeds.
+
+        Raises:
+            ValueError: if `cell` is already OPEN or is a wall.
+        """
+        if cell not in self._cell_states:
+            raise ValueError(f"{cell} is not an open cell (wall or out of bounds)")
+        if self._cell_states[cell] == CellState.OPEN:
+            raise ValueError(f"{cell} is already open, nothing to repair")
+        self._cell_states[cell] = CellState.OPEN
