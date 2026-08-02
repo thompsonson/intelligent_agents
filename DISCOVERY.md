@@ -62,7 +62,13 @@ The validating claim: `discovery.agents.discovery_agent.DiscoveryAgent` runs **c
 
 **Design and scope**: [`documentation/discovery/atomicguard-bridge/environment_design.md`](documentation/discovery/atomicguard-bridge/environment_design.md) — the node-ownership resolution (local guard-checked state vs. cross-node `requires`/cleared bookkeeping, matching `atomicguard`'s own `WorkflowStep`/`WorkflowState` split), and the explicit "small steps" scope (no repair, no dynamic node discovery, `discovery/` itself untouched).
 
-**Testing**: `real_discovery/atomicguard_backed/tests/` (21 tests, all against real subprocess calls, no mocking).
+The gated walk over `pipeline_fanout_lite`, run for real: `deploy` reached last (6th of 6 senses), 14 moves — identical to experiment 3's own numbers, this time driven by real `cat`-over-fixture subprocess calls instead of dataclass fields.
+
+![Discovery walk over real, atomicguard-backed nodes](real_discovery/atomicguard_backed/animations/pipeline_fanout_real_discovery.gif)
+
+**Full write-up**: [`documentation/discovery/experiments/04_real_discovery_bridge.md`](documentation/discovery/experiments/04_real_discovery_bridge.md).
+
+**Testing**: `real_discovery/atomicguard_backed/tests/` (31 tests, all against real subprocess calls, no mocking).
 
 ## Related documents
 
@@ -73,6 +79,7 @@ The validating claim: `discovery.agents.discovery_agent.DiscoveryAgent` runs **c
 - [`documentation/discovery/and-joins/environment_design.md`](documentation/discovery/and-joins/environment_design.md) — step 3's `requires`, the three-state (known/visited/cleared) model, and why the reachability constraint is heavier this time than step 1's goal-ambiguity caveat.
 - [`documentation/discovery/and-joins/scenario.md`](documentation/discovery/and-joins/scenario.md) / [`algorithm_fit.md`](documentation/discovery/and-joins/algorithm_fit.md) — why `(lint, integration-tests)` specifically, and the readiness-sweep algorithm with its full worked trace.
 - [`documentation/discovery/atomicguard-bridge/environment_design.md`](documentation/discovery/atomicguard-bridge/environment_design.md) — `StatefulDiscoveryNode`/`StatefulDiscoveryEnvironment`, the node-ownership resolution, and the real, unmodified-`DiscoveryAgent` proof against `real_discovery/atomicguard_backed/`.
+- [`documentation/discovery/experiments/04_real_discovery_bridge.md`](documentation/discovery/experiments/04_real_discovery_bridge.md) — the bridge experiment run for real, frame-by-frame, with GIF: identical walk to experiment 3, this time driven by real subprocess sensing.
 - [`documentation/discovery/backtracking-exploration/algorithm_fit.md`](documentation/discovery/backtracking-exploration/algorithm_fit.md) — step 2: backtracking turns this into the "exploring an unknown graph" problem, DFS-vs-BFS-vs-learned-exploration compared directly.
 - [`documentation/discovery/experiments/02_pipeline_fanout_backtracking.md`](documentation/discovery/experiments/02_pipeline_fanout_backtracking.md) / [`03_pipeline_fanout_and_joins.md`](documentation/discovery/experiments/03_pipeline_fanout_and_joins.md) — steps 2 and 3 run for real, frame-by-frame, with GIFs.
 - [`TASK_GRAPH_SOLVER.md`](TASK_GRAPH_SOLVER.md) — the sibling document for the "environment already known" side of `task_graph_solver`: `TopologicalExecutor`, `AOStarExecutor`, `DStarLiteExecutor`.
