@@ -1,3 +1,5 @@
+from typing import Set
+
 from ..core.environment import DiscoveryEnvironment
 from ..core.results import DiscoveryWalkResult
 
@@ -20,7 +22,7 @@ class DiscoveryAgent:
     def walk(self) -> DiscoveryWalkResult:
         current = self._start_id
         path = [current]
-        visited: set = set()
+        visited: Set[str] = set()
         nodes_sensed = 0
 
         while True:
