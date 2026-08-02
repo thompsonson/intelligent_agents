@@ -91,5 +91,4 @@ Same package, `discovery/` — additive to `core/domain.py`, `core/environment.p
 
 ## Not decided
 
-- **The traversal algorithm itself.** Step 2's LIFO-parent-stack backtracking is not obviously sufficient once a node can be sensed-but-blocked and later become clearable *after* the walk has already backtracked past it entirely — worked through in detail in `algorithm_fit.md`, which is where this gets resolved, not here.
-- **Exact scenario `requires`** — left to `scenario.md`, including how it interacts with `pipeline_fanout_lite`'s existing three-parent fan-in at `merge-gate`.
+Nothing left open from this document's own scope. Both items originally listed here — the traversal algorithm (step 2's LIFO-parent-stack backtracking turned out not to be sufficient on its own) and the exact scenario `requires` — are resolved in `algorithm_fit.md` and `scenario.md` respectively.
