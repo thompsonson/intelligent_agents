@@ -30,15 +30,19 @@ LRTA* still starts each trial with the *node* it's learning about — and the wh
 
 **Scenario**: `pipeline_fanout_lite` (`discovery/scenarios/pipeline_fanout_lite.py`) — six nodes, two fan-out branch points, reconvergent at a single AND-free join (`merge-gate`), exactly one reachable node with no `notifies` (`deploy`, the goal). Reconvergence is load-bearing, not decorative: since the agent can never backtrack, a strict tree would let an unlucky branch choice permanently strand it from the goal.
 
-**Traversal**: forward-committed, lowest-id tie-break — not classical DFS/BFS, since both assume the ability to return to a skipped branch, which this environment's one-way movement rule denies. `DiscoveryAgent` walks `commit → lint → merge-gate → deploy` in 4 senses, leaving `unit-tests`/`integration-tests` known-but-never-visited — correct behavior, not an incomplete walk, since the goal condition is "reach a node with no `notifies`," not "visit everything you've heard of."
+**Traversal (step 1)**: forward-committed, lowest-id tie-break — not classical DFS/BFS, since both assume the ability to return to a skipped branch, which this environment's one-way movement rule denies. `DiscoveryAgent` walks `commit → lint → merge-gate → deploy` in 4 senses, leaving `unit-tests`/`integration-tests` known-but-never-visited — correct behavior, not an incomplete walk, since the goal condition is "reach a node with no `notifies`," not "visit everything you've heard of."
 
 ![Discovery walk](discovery/animations/pipeline_fanout_lite.gif)
 
-**Next (designed, not yet implemented): backtracking exploration.** The "no backtracking" line above is a real, structural limit of step 1's policy, not a permanent feature of the environment — it's what strands `unit-tests`/`integration-tests`. Letting the agent retrace an already-walked path (never a jump to a merely-known id) turns this into the classical "exploring an unknown graph" problem, where depth-first search with backtracking is the provably right answer once retracing is free — see [`documentation/discovery/backtracking-exploration/algorithm_fit.md`](documentation/discovery/backtracking-exploration/algorithm_fit.md) for the full comparison against BFS and learned/RL-style exploration. This is also the piece of groundwork the later `requires`/AND-joins step is blocked on.
-
 **Full write-up, including the frame-by-frame GIF walkthrough**: [`documentation/discovery/experiments/01_pipeline_fanout_lite.md`](documentation/discovery/experiments/01_pipeline_fanout_lite.md).
 
-**Testing**: `discovery/tests/` (23 tests). Runs alongside this repo's other suites — `make test-discovery` / `uv run pytest discovery/tests/ -v`.
+**Backtracking exploration (step 2)**: the "no backtracking" line above was a real, structural limit of step 1's policy, not a permanent feature of the environment — it's what stranded `unit-tests`/`integration-tests`. Letting `DiscoveryAgent` retrace an already-walked path (never a jump to a merely-known id, and never re-sensing an already-known node) turns this into the classical "exploring an unknown graph" problem, where depth-first search with backtracking is the provably right answer once retracing is free — see [`documentation/discovery/backtracking-exploration/algorithm_fit.md`](documentation/discovery/backtracking-exploration/algorithm_fit.md) for the full comparison against BFS and learned/RL-style exploration. On `pipeline_fanout_lite`, unchanged: `DiscoveryAgent` now visits all 6 nodes in 10 moves (6 senses, `total_cost == 10`), comfortably inside the `2×|edges| = 12` bound.
+
+![Discovery walk with backtracking](discovery/animations/pipeline_fanout_backtracking.gif)
+
+**Full write-up**: [`documentation/discovery/experiments/02_pipeline_fanout_backtracking.md`](documentation/discovery/experiments/02_pipeline_fanout_backtracking.md). This is also the piece of groundwork the later `requires`/AND-joins step was blocked on.
+
+**Testing**: `discovery/tests/` (25 tests). Runs alongside this repo's other suites — `make test-discovery` / `uv run pytest discovery/tests/ -v`.
 
 ## Related documents
 
@@ -46,5 +50,6 @@ LRTA* still starts each trial with the *node* it's learning about — and the wh
 - [`documentation/task-graph/environment_design.md`](documentation/task-graph/environment_design.md) — `TaskNode`/`TaskGraphEnvironment`, shared infrastructure between this document and `TASK_GRAPH_SOLVER.md`.
 - [`documentation/discovery/environment_design.md`](documentation/discovery/environment_design.md) — `DiscoveryNode`/`DiscoveryEnvironment`/`DiscoveryAgent`'s full design, including every resolved fork (arrival-gating, position-tracking, movement, deferred AND-joins, goal, cost).
 - [`documentation/discovery/scenario.md`](documentation/discovery/scenario.md) / [`algorithm_fit.md`](documentation/discovery/algorithm_fit.md) — `pipeline_fanout_lite`'s topology and the traversal-policy reasoning.
-- [`documentation/discovery/backtracking-exploration/algorithm_fit.md`](documentation/discovery/backtracking-exploration/algorithm_fit.md) — step 2 (designed, not yet implemented): backtracking turns this into the "exploring an unknown graph" problem, DFS-vs-BFS-vs-learned-exploration compared directly.
+- [`documentation/discovery/backtracking-exploration/algorithm_fit.md`](documentation/discovery/backtracking-exploration/algorithm_fit.md) — step 2: backtracking turns this into the "exploring an unknown graph" problem, DFS-vs-BFS-vs-learned-exploration compared directly.
+- [`documentation/discovery/experiments/02_pipeline_fanout_backtracking.md`](documentation/discovery/experiments/02_pipeline_fanout_backtracking.md) — step 2 run for real, frame-by-frame, with the GIF.
 - [`TASK_GRAPH_SOLVER.md`](TASK_GRAPH_SOLVER.md) — the sibling document for the "environment already known" side of `task_graph_solver`: `TopologicalExecutor`, `AOStarExecutor`, `DStarLiteExecutor`.

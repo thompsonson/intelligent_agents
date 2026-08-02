@@ -3,7 +3,7 @@ import pytest
 from discovery.agents.discovery_agent import DiscoveryAgent
 from discovery.core.environment import DiscoveryEnvironment
 from discovery.scenarios.pipeline_fanout_lite import build_pipeline_fanout_lite
-from discovery.visualization.discovery_view import build_networkx_graph, record_walk
+from discovery.visualization.discovery_view import _walk_frames, build_networkx_graph
 
 
 @pytest.fixture
@@ -24,25 +24,42 @@ class TestBuildNetworkxGraph:
         assert graph.has_edge("merge-gate", "deploy")
 
 
-class TestRecordWalk:
-    def test_produces_one_sense_event_per_node_sensed(self, env):
-        agent = DiscoveryAgent(env, start_id="commit")
-        result, events = record_walk(env, agent)
+class TestWalkFrames:
+    def test_one_frame_per_path_position(self, env):
+        result = DiscoveryAgent(env, start_id="commit").walk()
+        frames = _walk_frames(env, result.path)
+        assert len(frames) == len(result.path)
 
-        assert len(events) == result.nodes_sensed
-        assert all(kind == "sense" for kind, *_ in events)
+    def test_first_frame_senses_the_start_node(self, env):
+        result = DiscoveryAgent(env, start_id="commit").walk()
+        frames = _walk_frames(env, result.path)
+        node_id, caption, known, visited = frames[0]
+        assert node_id == "commit"
+        assert caption == "sense_edges('commit') → ('lint', 'unit-tests')"
+        assert known == {"commit", "lint", "unit-tests"}
+        assert visited == {"commit"}
 
-    def test_first_event_matches_start_node(self, env):
-        agent = DiscoveryAgent(env, start_id="commit")
-        _, events = record_walk(env, agent)
-        assert events[0] == ("sense", "commit", ("lint", "unit-tests"))
+    def test_revisiting_a_node_backtracks_without_resensing(self, env):
+        # merge-gate is reached twice (path index 2 and 4); the second
+        # arrival is a backtrack, not a fresh sense - see
+        # backtracking-exploration/algorithm_fit.md's worked example.
+        result = DiscoveryAgent(env, start_id="commit").walk()
+        assert result.path[2] == "merge-gate"
+        assert result.path[4] == "merge-gate"
 
-    def test_last_event_matches_goal(self, env):
-        agent = DiscoveryAgent(env, start_id="commit")
-        _, events = record_walk(env, agent)
-        assert events[-1] == ("sense", "deploy", ())
+        frames = _walk_frames(env, result.path)
+        assert frames[2][1] == "sense_edges('merge-gate') → ('deploy',)"
+        assert frames[4][1] == "backtrack to 'merge-gate'"
 
-    def test_events_restore_original_env_method(self, env):
-        original_sense = env.sense_edges
-        record_walk(env, DiscoveryAgent(env, start_id="commit"))
-        assert env.sense_edges == original_sense
+    def test_known_set_only_grows(self, env):
+        result = DiscoveryAgent(env, start_id="commit").walk()
+        frames = _walk_frames(env, result.path)
+        known_sizes = [len(known) for _, _, known, _ in frames]
+        assert known_sizes == sorted(known_sizes)
+        assert known_sizes[-1] == 6  # every node eventually known
+
+    def test_final_frame_has_every_node_visited(self, env):
+        result = DiscoveryAgent(env, start_id="commit").walk()
+        frames = _walk_frames(env, result.path)
+        _, _, _, visited = frames[-1]
+        assert visited == set(build_pipeline_fanout_lite().keys())
