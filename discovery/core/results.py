@@ -18,3 +18,6 @@ class DiscoveryWalkResult:
     # at the first one)
     total_cost: int  # sum of get_move_cost() over every move, forward and
     # backtrack alike - a real, counted move, not a free rewind
+    blocked_nodes: List[str]  # visited nodes whose requires never cleared -
+    # see and-joins/environment_design.md's "What a permanently-blocked
+    # node looks like in the result". Always [] for a well-formed scenario.

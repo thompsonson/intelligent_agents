@@ -82,3 +82,56 @@ class TestGetMoveCost:
     def test_always_one(self, env):
         assert env.get_move_cost("commit", "lint") == 1
         assert env.get_move_cost("merge-gate", "deploy") == 1
+
+
+class TestRequiresValidation:
+    def test_requires_referencing_unknown_node_is_rejected(self):
+        nodes = {"a": DiscoveryNode(id="a", requires=("does-not-exist",))}
+        with pytest.raises(ValueError, match="does-not-exist"):
+            DiscoveryEnvironment(nodes)
+
+    def test_cycle_in_requires_is_rejected(self):
+        # Unlike notifies, a requires-cycle can never clear regardless of
+        # exploration order - see and-joins/environment_design.md's "The
+        # reachability constraint".
+        nodes = {
+            "a": DiscoveryNode(id="a", requires=("b",)),
+            "b": DiscoveryNode(id="b", requires=("a",)),
+        }
+        with pytest.raises(ValueError, match="cycle"):
+            DiscoveryEnvironment(nodes)
+
+    def test_valid_requires_graph_accepted(self):
+        nodes = {
+            "a": DiscoveryNode(id="a"),
+            "b": DiscoveryNode(id="b", requires=("a",)),
+        }
+        env = DiscoveryEnvironment(nodes)
+        assert env.sense_requires("b") == ("a",)
+
+
+class TestSenseRequires:
+    def test_returns_requires_of_given_node(self):
+        nodes = {
+            "a": DiscoveryNode(id="a"),
+            "b": DiscoveryNode(id="b", requires=("a",)),
+        }
+        env = DiscoveryEnvironment(nodes)
+        assert env.sense_requires("b") == ("a",)
+
+    def test_node_with_no_requires_returns_empty_tuple(self, env):
+        assert env.sense_requires("commit") == ()
+
+    def test_unknown_node_raises(self, env):
+        with pytest.raises(ValueError, match="does-not-exist"):
+            env.sense_requires("does-not-exist")
+
+    def test_no_arrival_check_any_known_id_can_be_sensed(self):
+        # Same no-arrival-check contract as sense_edges() - see
+        # and-joins/environment_design.md's "Sensing: two queries, not one".
+        nodes = {
+            "a": DiscoveryNode(id="a"),
+            "b": DiscoveryNode(id="b", requires=("a",)),
+        }
+        env = DiscoveryEnvironment(nodes)
+        assert env.sense_requires("b") == ("a",)

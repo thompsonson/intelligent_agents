@@ -44,12 +44,24 @@ LRTA* still starts each trial with the *node* it's learning about — and the wh
 
 **Testing**: `discovery/tests/` (25 tests). Runs alongside this repo's other suites — `make test-discovery` / `uv run pytest discovery/tests/ -v`.
 
+**AND-joins (step 3)**: step 2's own walk shows the bug this step fixes: `deploy` got sensed at move 3, before `unit-tests`/`integration-tests` were ever touched. `DiscoveryNode` gains `requires` (pull-direction, mirroring `GraphNode`/`JobNode`), and `DiscoveryAgent` gains a third state — `cleared`, alongside `known`/`visited` — a node whose own `requires` are all themselves `cleared`. A `visited`-but-not-`cleared` node is blocked: treated as having no candidates, forcing an immediate backtrack. Plain backtracking alone isn't enough, though — a node can become clearable only *after* the walk has already backtracked past it entirely, which a naive "exclude only `cleared`" extension turns into a genuine non-termination bug (caught by hand-tracing before it became a runtime infinite loop). The fix: exploration stays exactly as step 2 built it, plus a Kahn-style readiness sweep between phases that resumes at a newly-clearable blocked node by replaying an already-known route — never a jump to an unvisited id. See [`documentation/discovery/and-joins/algorithm_fit.md`](documentation/discovery/and-joins/algorithm_fit.md) for the full derivation, the prior-art discussion (Kahn's algorithm / this repo's own `ready_nodes()`/`AOStarExecutor`, and the deliberate non-reuse of `task_graph_solver`'s parked, eager `PlanningExecutor._ensure()`).
+
+On `merge-gate.requires = (lint, integration-tests)`: `DiscoveryAgent` now reaches `deploy` last (6th of 6 senses) instead of 4th, in 14 moves against 6 senses.
+
+![Discovery walk with AND-joins](discovery/animations/pipeline_fanout_and_joins.gif)
+
+**Full write-up**: [`documentation/discovery/experiments/03_pipeline_fanout_and_joins.md`](documentation/discovery/experiments/03_pipeline_fanout_and_joins.md).
+
+**Testing**: `discovery/tests/` (54 tests, up from 25 — every step 1/2 test still passes unmodified, since `requires=()` clears instantly and the new gating logic is a structural no-op on graphs that don't use it).
+
 ## Related documents
 
 - [`documentation/lrta/beyond_the_maze.md`](documentation/lrta/beyond_the_maze.md) — the real-`atomicguard` stress test that motivated `retry_flavor`'s three-way split (sensing/generation/repair), and the repair-cost node LRTA*'s demo uses.
 - [`documentation/task-graph/environment_design.md`](documentation/task-graph/environment_design.md) — `TaskNode`/`TaskGraphEnvironment`, shared infrastructure between this document and `TASK_GRAPH_SOLVER.md`.
-- [`documentation/discovery/environment_design.md`](documentation/discovery/environment_design.md) — `DiscoveryNode`/`DiscoveryEnvironment`/`DiscoveryAgent`'s full design, including every resolved fork (arrival-gating, position-tracking, movement, deferred AND-joins, goal, cost).
+- [`documentation/discovery/environment_design.md`](documentation/discovery/environment_design.md) — `DiscoveryNode`/`DiscoveryEnvironment`/`DiscoveryAgent`'s full design, including every resolved fork (arrival-gating, position-tracking, movement, goal, cost) and the AND-joins deferral later resolved in `and-joins/`.
 - [`documentation/discovery/scenario.md`](documentation/discovery/scenario.md) / [`algorithm_fit.md`](documentation/discovery/algorithm_fit.md) — `pipeline_fanout_lite`'s topology and the traversal-policy reasoning.
+- [`documentation/discovery/and-joins/environment_design.md`](documentation/discovery/and-joins/environment_design.md) — step 3's `requires`, the three-state (known/visited/cleared) model, and why the reachability constraint is heavier this time than step 1's goal-ambiguity caveat.
+- [`documentation/discovery/and-joins/scenario.md`](documentation/discovery/and-joins/scenario.md) / [`algorithm_fit.md`](documentation/discovery/and-joins/algorithm_fit.md) — why `(lint, integration-tests)` specifically, and the readiness-sweep algorithm with its full worked trace.
 - [`documentation/discovery/backtracking-exploration/algorithm_fit.md`](documentation/discovery/backtracking-exploration/algorithm_fit.md) — step 2: backtracking turns this into the "exploring an unknown graph" problem, DFS-vs-BFS-vs-learned-exploration compared directly.
-- [`documentation/discovery/experiments/02_pipeline_fanout_backtracking.md`](documentation/discovery/experiments/02_pipeline_fanout_backtracking.md) — step 2 run for real, frame-by-frame, with the GIF.
+- [`documentation/discovery/experiments/02_pipeline_fanout_backtracking.md`](documentation/discovery/experiments/02_pipeline_fanout_backtracking.md) / [`03_pipeline_fanout_and_joins.md`](documentation/discovery/experiments/03_pipeline_fanout_and_joins.md) — steps 2 and 3 run for real, frame-by-frame, with GIFs.
 - [`TASK_GRAPH_SOLVER.md`](TASK_GRAPH_SOLVER.md) — the sibling document for the "environment already known" side of `task_graph_solver`: `TopologicalExecutor`, `AOStarExecutor`, `DStarLiteExecutor`.
