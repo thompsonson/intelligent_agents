@@ -1,6 +1,6 @@
 # Task Graph Solver: Documentation
 
-This is a sibling document to [`README.md`](README.md), in the same spirit and structure, for a different environment: **`task_graph_solver`**, a toy simulation of DS-PDDL-style guard-graph workflows (GitHub PR merges, disk checks, package repair — anything shaped like [`atomicguard`](https://github.com/thompsonson/atomicguard)'s `examples/sysadmin/`), built to run and watch D* Lite, LRTA*, and AO* actually execute, rather than only read about them.
+This is a sibling document to [`README.md`](README.md), in the same spirit and structure, for a different environment: **`task_graph_solver`**, a toy simulation of DS-PDDL-style guard-graph workflows (GitHub PR merges, disk checks, package repair — anything shaped like [`atomicguard`](https://github.com/thompsonson/atomicguard)'s `examples/sysadmin/`), built to run and watch D* Lite and AO* actually execute against a DAG rather than a grid, rather than only read about them in the abstract. (LRTA* also lives in this package's code, but is documented in [`DISCOVERY.md`](DISCOVERY.md) — it doesn't share this document's "environment already known" assumption.)
 
 Where `maze_solver`'s environment is a grid — an agent occupies one cell, choosing which neighbor to move to (an OR-choice) — `task_graph_solver`'s environment is a DAG of guarded tasks connected by **AND**-only `requires` edges: a task is ready only once *every* one of its dependencies has succeeded. That's the one structural feature the maze can't produce without deliberately constructing it, and it's the reason this whole module exists — see [`documentation/task-graph/environment_design.md`](documentation/task-graph/environment_design.md) for the full design rationale.
 
@@ -32,17 +32,17 @@ task_graph_solver/
 │   ├── topological.py      # TopologicalExecutor - baseline, no heuristic, no repair
 │   ├── ao_star.py           # AOStarExecutor - AND-composition cost tracking + OR-group pruning
 │   ├── d_star_lite.py       # DStarLiteExecutor - incremental repair via sensed breaks/fixes
-│   ├── lrta_star.py         # LRTAStarLearner - learns retry cost over repeated trials
-│   ├── guard_first.py       # GuardFirstExecutor - check invariant before paying for a repair
-│   └── planning.py          # PlanningExecutor - goal-directed, sense-then-plan (recursive ensure())
+│   ├── lrta_star.py         # LRTAStarLearner - see DISCOVERY.md, not this document
+│   ├── guard_first.py       # GuardFirstExecutor - parked, see "Parked" below
+│   └── planning.py          # PlanningExecutor - parked, see "Parked" below
 ├── scenarios/
 │   ├── disk_check_lite.py         # 1 node, no edges - the trivial baseline
 │   ├── repair_packages_lite.py    # 2-node linear chain - cleanest LRTA*/D* Lite demo
 │   ├── pr_merge_lite.py           # 8 nodes, two AND-joins - the motivating case
-│   └── pr_merge_with_variants.py  # pr_merge_lite + an OR-group (3 apply-actions variants) + a true orphan
+│   └── pr_merge_with_variants.py  # or-groups scenario - parked, see "Parked" below
 └── visualization/
     ├── graph_view.py        # DAG rendering + GIF animation (networkx + matplotlib + imageio)
-    └── learning_curve.py    # LRTA* convergence line chart
+    └── learning_curve.py    # LRTA* convergence line chart - see DISCOVERY.md
 ```
 
 Full build order and the algorithm-to-scenario mapping: [`documentation/task-graph/algorithm_fit.md`](documentation/task-graph/algorithm_fit.md).
@@ -70,7 +70,7 @@ class TaskNode:
             (absorbing transient infra flakiness), "generation" (an LLM
             output failed local format validation), or "repair" (a real
             world-mutating action was attempted and failed). Only "repair"
-            retries are real learnable cost for an LRTA*-style agent.
+            retries are real learnable cost - see DISCOVERY.md's LRTA* section.
         pass_probability: Per-attempt chance of a Guard pass.
         rmax: Total attempt budget before this node is declared FATAL.
         r_patience: Consecutive-failure threshold that escalates to FATAL
@@ -82,25 +82,8 @@ class TaskNode:
         invariant_pass_probability: Chance this node's invariant already
             holds, checkable for free before ever attempting a repair.
             Defaults to 0.0 ("never already satisfied"), so every scenario
-            built before this existed keeps its exact prior behavior. See
-            documentation/task-graph/guard-first/environment_design.md.
-    """
-```
-
-### GroupNode
-
-```python
-@dataclass
-class GroupNode:
-    """An OR-composition over existing TaskNodes: satisfied the instant any
-    one of `members` is satisfied. Not attempted directly - no Guard, no
-    pass_probability, no retry budget. Downstream nodes reference the
-    group's id in their own `requires` exactly as they would a node id.
-    See documentation/task-graph/or-groups/environment_design.md.
-
-    Attributes:
-        id: Unique identifier, must not collide with any TaskNode id.
-        members: ids of TaskNodes that satisfy this group - any one is enough.
+            built before this existed keeps its exact prior behavior. Used
+            by GuardFirstExecutor - parked, see "Parked" below.
     """
 ```
 
@@ -117,17 +100,17 @@ class TaskGraphEnvironment:
     nodes an agent has already satisfied - that's the algorithm's job.
 
     Constructor: TaskGraphEnvironment(nodes, config, groups=(), goal=None).
+    `groups`/`goal` support GroupNode (OR-groups) - parked, see "Parked" below;
+    every scenario in active use here passes neither.
 
     Methods:
         ready_nodes(satisfied): AND-gated frontier - nodes whose requires
-            are all satisfied (a group counts as satisfied once any one
-            member is) and aren't themselves satisfied yet. Group ids never
-            appear here - a GroupNode has no Guard, so it's never attempted.
+            are all satisfied and aren't themselves satisfied yet.
         is_goal_reached(satisfied): True once `goal` is satisfied; with no
             goal configured, falls back to "every node satisfied".
         check_invariant(node_id): A free sensor - draws from
-            `invariant_pass_probability`, consumes no retry budget, blocked
-            by break_task like attempt() is.
+            `invariant_pass_probability`, consumes no retry budget. Used by
+            GuardFirstExecutor - parked, see "Parked" below.
         attempt(node_id): One simulated attempt; consumes retry budget
             unless the node is Driver-broken.
         retries_spent(node_id): Attempts made so far.
@@ -138,7 +121,7 @@ class TaskGraphEnvironment:
     """
 ```
 
-Constructing one validates the graph up front: `requires` referencing an unknown node or group, an unknown `goal`, a group id colliding with a node id, an unknown group member, or any cycle (direct, self-referential, longer, or routed through a group's members) all raise `ValueError` rather than silently deadlocking.
+Constructing one validates the graph up front: `requires` referencing an unknown node or group, an unknown `goal`, a group id colliding with a node id, an unknown group member, or any cycle all raise `ValueError` rather than silently deadlocking.
 
 ### ExecutionResult
 
@@ -157,12 +140,9 @@ class ExecutionResult:
             itself, since these were never attempted at all.
         trace: Ordered (node_id, outcome) pairs for every paid attempt made
             (free checks never appear here).
-        not_needed: Losing OR-siblings never attempted because a different
-            group member already satisfied it first.
-        free_checks: Nodes satisfied via a free check_invariant() rather
-            than a paid attempt() - distinct from a plain `satisfied` entry
-            (a paid attempt occurred) and from `not_needed` (a different
-            node did the work; here the same node's own invariant held).
+        not_needed: OR-group bookkeeping - parked, see "Parked" below.
+        free_checks: Nodes satisfied via a free check_invariant() - parked
+            (GuardFirstExecutor), see "Parked" below.
     """
 ```
 
@@ -171,26 +151,23 @@ class ExecutionResult:
 | Class | What it adds over the baseline | Scenario it targets |
 |---|---|---|
 | `TopologicalExecutor` | Nothing - attempts whatever's ready, sorted by id, no learning, no repair | All scenarios; the smoke-test baseline |
-| `AOStarExecutor` | `h`, a cost-to-solve estimate per solved node, composed as `own_attempts + max(h(child) for child in requires)` — the AND-composition rule from [`search_algorithms/ao_star.md`](search_algorithms/ao_star.md). Also prunes a satisfied OR-group's other members, recorded in `not_needed` | `pr_merge_lite`'s `merged`/`released` joins; `pr_merge_with_variants`'s `actions-ready` group |
-| `DStarLiteExecutor` | Senses Driver `break_task`/`fix_task` calls via `drain_changed_tasks()` and returns a previously-FATAL node to consideration if it was fixed - the thing `TopologicalExecutor` structurally cannot do | `repair_packages_lite`, `pr_merge_lite`, and `pr_merge_with_variants` (recovery after every group member is exhausted), wherever a Driver break/fix is exercised |
-| `LRTAStarLearner` | Learns `h_table` for `retry_flavor="repair"` nodes only, over repeated trials via an `env_factory(trial_index)` callable | `repair_packages_lite`'s `repair` node - the cleanest isolation of the "repair-attempt retry is learnable cost" signal |
-| `GuardFirstExecutor` | `TopologicalExecutor` plus one addition: check `check_invariant()` for free before paying for a repair. Still walk-as-you-go - only checks the node it's currently standing on | `pr_merge_lite` with a node's invariant already true |
-| `PlanningExecutor` | Goal-directed, sense-then-plan: a recursive, backward-chaining `_ensure(node_id)` from `goal` down. Goal-directed scope (a true orphan is never visited at all), sense-then-plan short-circuiting, and OR-group pruning all fall out of one function | `pr_merge_lite` (goal already satisfied) and `pr_merge_with_variants` (goal-directed scope) |
+| `AOStarExecutor` | `h`, a cost-to-solve estimate per solved node, composed as `own_attempts + max(h(child) for child in requires)` — the AND-composition rule from [`search_algorithms/ao_star.md`](search_algorithms/ao_star.md) | `pr_merge_lite`'s `merged`/`released` joins |
+| `DStarLiteExecutor` | Senses Driver `break_task`/`fix_task` calls via `drain_changed_tasks()` and returns a previously-FATAL node to consideration if it was fixed - the thing `TopologicalExecutor` structurally cannot do | `repair_packages_lite`, `pr_merge_lite`, wherever a Driver break/fix is exercised |
 
-Each one's honest scope boundary is documented in its own docstring and in [`documentation/task-graph/algorithm_fit.md`](documentation/task-graph/algorithm_fit.md) - none of them claims to solve `pr_merge_lite` end to end by itself. `AOStarExecutor` and `PlanningExecutor` in particular are deliberately kept separate rather than one being a revision of the other - see the cross-reference note on `AOStarExecutor`'s own docstring.
+`GuardFirstExecutor`, `PlanningExecutor`, and `LRTAStarLearner` also exist in this package (`algorithms/guard_first.py`, `algorithms/planning.py`, `algorithms/lrta_star.py`) but aren't part of this document's active table — the first two are parked (see "Parked" below), the third belongs to [`DISCOVERY.md`](DISCOVERY.md). Each remaining algorithm's honest scope boundary is documented in its own docstring and in [`documentation/task-graph/algorithm_fit.md`](documentation/task-graph/algorithm_fit.md).
 
 ## Scenarios
 
 - **`disk_check_lite`** — 1 node, no edges, no repair path. Modeled on `atomicguard/examples/sysadmin/workflows-guard/disk_check.dspddl`.
-- **`repair_packages_lite`** — `repair` (acting, repair-flavor) → `verify` (sensing, requires `repair`). Modeled on `repair_packages.dspddl`.
-- **`pr_merge_lite`** — 8 nodes, two AND-joins (`merged` requires 2 children, `released` requires 3). Modeled on the `pr_merge` workflow family, with `released`'s fan-in deliberately made explicit (three `requires` edges) rather than hidden inside one opaque script the way the real system's `downstream-ci-passed` guard does — see [`documentation/lrta/beyond_the_maze.md`](documentation/lrta/beyond_the_maze.md).
-- **`pr_merge_with_variants`** — `pr_merge_lite`'s exact topology, with `apply-actions` split into three OR-grouped variant strategies (`actions-ready`), plus `disk_check_lite`'s `check-disk` reused unmodified as a true orphan. Goal: `released`. See [`documentation/task-graph/or-groups/scenario.md`](documentation/task-graph/or-groups/scenario.md).
+- **`repair_packages_lite`** — `repair` (acting, repair-flavor) → `verify` (sensing, requires `repair`). Modeled on `repair_packages.dspddl`. Shared with [`DISCOVERY.md`](DISCOVERY.md)'s LRTA* demo.
+- **`pr_merge_lite`** — 8 nodes, two AND-joins (`merged` requires 2 children, `released` requires 3). Modeled on the `pr_merge` workflow family, with `released`'s fan-in deliberately made explicit (three `requires` edges) rather than hidden inside one opaque script — see [`documentation/lrta/beyond_the_maze.md`](documentation/lrta/beyond_the_maze.md).
+- **`pr_merge_with_variants`** — parked (or-groups), see "Parked" below.
 
-Full detail: [`documentation/task-graph/scenarios.md`](documentation/task-graph/scenarios.md) (the original three) and [`documentation/task-graph/or-groups/scenario.md`](documentation/task-graph/or-groups/scenario.md) (`pr_merge_with_variants`).
+Full detail: [`documentation/task-graph/scenarios.md`](documentation/task-graph/scenarios.md).
 
 ## Visualization Examples
 
-Same idea as `README.md`'s animated graph GIFs for BFS/DFS/Greedy/A* — watching an algorithm's state evolve step by step, rather than reading a final answer. `task_graph_solver`'s DAG has two features the maze's grid doesn't: **AND-join nodes are drawn as squares** instead of circles, and node color reflects live status (white = pending, green = satisfied via a paid `attempt()`, cyan = satisfied via a free `check_invariant()`, red = fatal, gray = unreachable).
+Same idea as `README.md`'s animated graph GIFs for BFS/DFS/Greedy/A* — watching an algorithm's state evolve step by step, rather than reading a final answer. `task_graph_solver`'s DAG has two features the maze's grid doesn't: **AND-join nodes are drawn as squares** instead of circles, and node color reflects live status (white = pending, green = satisfied via a paid `attempt()`, red = fatal, gray = unreachable).
 
 ### AO* solving `pr_merge_lite`
 
@@ -208,73 +185,24 @@ The Driver breaks `apply-actions` *before* it's ever attempted. `ci-check` and `
 
 **Step-by-step walkthrough, including the Driver/Agent sequence diagram and the `TopologicalExecutor` contrast:** [`documentation/task-graph/experiments/02_d_star_lite_pr_merge_lite.md`](documentation/task-graph/experiments/02_d_star_lite_pr_merge_lite.md).
 
-### LRTA*: learning a node's true cost over repeated trials
-
-![LRTA* convergence](task_graph_solver/animations/lrta_star_convergence.png)
-
-**Trial-by-trial walkthrough of the update rule, including why trial 1 doesn't start at the true worst case:** [`documentation/task-graph/experiments/03_lrta_star_convergence.md`](documentation/task-graph/experiments/03_lrta_star_convergence.md).
-
-A node with `pass_probability=0.3` (rmax=8) run through `LRTAStarLearner` for 25 trials. `h(repair)` starts at 4 (an early, lucky sequence of failures), jumps to 7 the first time a worse trial is actually observed, and then holds — the `max` update rule (`h(s) ← max(h(s), retries_spent(s))`) means the estimate can only grow, never shrink, and it stops moving once the true worst case has been seen. This is the same node used throughout `documentation/lrta/beyond_the_maze.md`'s repair-cost discussion, now actually learned rather than only described.
-
-### Guard-first: check before you repair
-
-![GuardFirstExecutor: pr_merge_lite, released already true](task_graph_solver/animations/guard_first_pr_merge_lite.gif)
-
-`released` gets an `invariant_pass_probability` of `1.0` — the toy equivalent of "this workflow already completed in a previous, interrupted run." Every node turns green (a paid repair attempt) in frontier order, same as Experiment 1's animation, except `released`: it turns **cyan**, not green, satisfied via a free `check_invariant()` call instead of a paid `attempt()`. Grounded in a real gap in `atomicguard`'s own `ActionPair.execute()`, which always calls its generator unconditionally, with no phase that checks whether the invariant already holds first.
-
-**Step-by-step walkthrough and the `TopologicalExecutor` cost contrast:** [`documentation/task-graph/experiments/04_guard_first_pr_merge_lite.md`](documentation/task-graph/experiments/04_guard_first_pr_merge_lite.md).
-
-### Goal-directed planning: sense-then-plan and scope, from one recursive function
-
-![PlanningExecutor: sense-then-plan short-circuit](task_graph_solver/animations/planning_short_circuit.gif)
-
-Same scenario as the guard-first animation above, solved by a different executor: `PlanningExecutor` works backward from the goal, so checking `released` is the *first* thing that happens, not the last. Two frames, total — nothing upstream of `released` is ever visited at all, not even checked.
-
-![PlanningExecutor: goal-directed scope on pr_merge_with_variants](task_graph_solver/animations/planning_goal_directed_scope.gif)
-
-Same OR-groups scenario as below, solved by `PlanningExecutor`: `check-disk` (a true orphan) and two of the three `apply-actions-*` variants stay white for the entire run — never checked, never attempted, absent from every result set. Contrast with `AOStarExecutor` on the identical graph, which still attempts `check-disk` since it walks the forward frontier.
-
-**Both scenarios, with the full `_ensure()` walkthrough and the `AOStarExecutor`/`GuardFirstExecutor` contrasts:** [`documentation/task-graph/experiments/05_planning_executor_sense_and_scope.md`](documentation/task-graph/experiments/05_planning_executor_sense_and_scope.md).
-
 ### Real guards: the same executors against real `mypy`/`ruff`/`pytest`/`build`
 
 ![TopologicalExecutor: a real mypy failure blocks release-ready](task_graph_solver/animations/real_guards_topological_typing_broken.gif)
 
 Every animation above ran against a simulated `pass_probability`. This one runs `real_task_graph_solver`'s `release_pipeline` scenario — five real checks feeding one real AND-join, `release-ready` — using `TopologicalExecutor` completely unmodified. `type-check` turns red on an actual `mypy` type error (`typing_broken`'s one manufactured break); `release-ready` stays gray, blocked by a real fatal ancestor, never attempted.
 
-![PlanningExecutor: real short-circuit on release_pipeline](task_graph_solver/animations/real_guards_planning_short_circuit.gif)
+**Full walkthrough, the marker-file design correction:** [`documentation/task-graph/experiments/06_real_guards_release_pipeline.md`](documentation/task-graph/experiments/06_real_guards_release_pipeline.md).
 
-Same idea as the goal-directed-planning animation above, now backed by a real, measured cost instead of a hypothetical one: on the `released` fixture state (`.status/*.ok` markers already present for all five checks — "this pipeline already succeeded in a previous run"), `PlanningExecutor` checks `release-ready` first, finds it already true, and never runs `mypy`, `ruff`, either `pytest` invocation, or `python -m build` at all. Measured by hand on the identical state: `PlanningExecutor` — 0.00s; `TopologicalExecutor`, which still has to walk the whole chain — 2.37s.
+## Parked — revisit once `discovery` is built
 
-**Full walkthrough, the marker-file design correction, and why `GuardFirstExecutor` specifically doesn't get a demonstration here:** [`documentation/task-graph/experiments/06_real_guards_release_pipeline.md`](documentation/task-graph/experiments/06_real_guards_release_pipeline.md).
+Real, working, tested code — not removed, not broken — just not part of the active narrative right now. `or-groups/`, `guard-first/`, `goal-directed-planning/`, and `real_task_graph_solver/atomicguard_backed/` were all built as `task_graph_solver` extensions before `discovery` existed as a concept, and read in hindsight as getting ahead of the actual arc (search → maintenance → discovery). Revisit after `discovery` is done, since some of this (particularly the real-repair `atomicguard_backed` machinery) is exactly what `PATH_MAINTENANCE.md`'s own future steps will eventually need.
 
-### `atomicguard`-backed repair: `GuardFirstExecutor`'s free check, finally meaningful
+- **`GroupNode` / or-groups** (`task_graph_solver/algorithms/ao_star.py`'s pruning, `pr_merge_with_variants` scenario) — OR-composition: a group is satisfied the instant any one member is. See [`documentation/task-graph/or-groups/environment_design.md`](documentation/task-graph/or-groups/environment_design.md).
+- **`GuardFirstExecutor`** — `TopologicalExecutor` plus a free `check_invariant()` before paying for a repair. See [`documentation/task-graph/guard-first/environment_design.md`](documentation/task-graph/guard-first/environment_design.md).
+- **`PlanningExecutor`** — goal-directed, sense-then-plan: a recursive, backward-chaining `_ensure(node_id)` from `goal` down. See [`documentation/task-graph/goal-directed-planning/environment_design.md`](documentation/task-graph/goal-directed-planning/environment_design.md).
+- **`real_task_graph_solver/atomicguard_backed/`** — real, fallible repair via `atomicguard`'s `DualStateAgent`/`ActionPair`, including a live LLM-based repair confirmed against OpenRouter. See [`documentation/task-graph/atomicguard-variant/environment_design.md`](documentation/task-graph/atomicguard-variant/environment_design.md).
 
-![GuardFirstExecutor: lint (clean), a free check](task_graph_solver/animations/atomicguard_lint_clean_free_check.gif)
-
-Experiment 6's real checks had no repair action, so `GuardFirstExecutor`'s free check and a paid `attempt()` always ran the identical command. This closes that gap: `lint`'s Guard is now a real, production `atomicguard.ActionPair` (`ruff check src/`), with a second real `ActionPair` behind it (`ruff check --fix src/`) that genuinely repairs the problem when the first one fails. On `clean`, the check just passes — `attempt()` is never called.
-
-![GuardFirstExecutor: lint (lint_broken), a real repair](task_graph_solver/animations/atomicguard_lint_broken_real_repair.gif)
-
-On `lint_broken`, the free check genuinely fails first (a real F401 unused import), then `attempt()` runs the real repair — confirmed by hand, not just asserted: the unused import is actually gone from the file on disk afterward, not a declared pass.
-
-![GuardFirstExecutor: build-check (publish_broken), a real repair](task_graph_solver/animations/atomicguard_build_check_broken_real_repair.gif)
-
-A second, unrelated deterministic repair, same pattern: `build-check`'s Guard is `python -m build --no-isolation --sdist --wheel`, and its repair is a real `sed` edit inserting the missing `version` field into `pyproject.toml`. On `publish_broken`, the free check genuinely fails (a real `hatchling` `validate_fields()` error), the repair edits the real file, and the build then genuinely succeeds — real `.whl`/`.tar.gz` artifacts land in `dist/`. `lint`'s repair (a tool's own `--fix` flag) and this one (a config-file edit) share no mechanism beyond both being deterministic and LLM-free — two data points, not one, that "no-LLM repair" is a genuine category, not a trick that happened to work once.
-
-**Full walkthrough, including both repairs, the real `time_spent` measurements (a ~20x gap between `ruff` and `python -m build`), and what it means for the LLM-based repairs still to come:** [`documentation/task-graph/experiments/07_atomicguard_lint_repair.md`](documentation/task-graph/experiments/07_atomicguard_lint_repair.md).
-
-### `atomicguard`-backed repair: an LLM-based fix, confirmed live against OpenRouter
-
-![GuardFirstExecutor: type-check (clean), a free check](task_graph_solver/animations/atomicguard_type_check_clean_free_check.gif)
-
-![GuardFirstExecutor: type-check (typing_broken), a real live LLM repair](task_graph_solver/animations/atomicguard_type_check_broken_real_repair.gif)
-
-The first LLM-based repair, `type-check`: real `mypy` as the free check, atomicguard's real `LLMContainerFixGenerator` against OpenRouter as the repair, re-verified by a real `ContainerSubprocessGuard` re-running `mypy`. On `clean`, the check just passes, same shape as `lint`/`build-check` — real, tested, demonstrated. On `typing_broken`, the free check genuinely fails too, with real `mypy` feedback captured in the shared DAG. A dry run (dummy `OR_KEY`, deliberately, to exercise everything short of a real LLM response) caught a genuine bug before the network was ever reached — `PromptTemplate.render()` needs `feedback_wrapper` set whenever `feedback_history` is non-empty, which it always is here by design — fixed, and that session's own re-run reached the actual OpenRouter connection attempt cleanly, failing only there (that sandbox's own network policy blocked `openrouter.ai` outright).
-
-**A follow-up session with real network access crossed that boundary.** `deepseek/deepseek-v4-flash` (now `DEFAULT_MODEL`) repairs `typing_broken` for real and repeatedly: `AttemptOutcome.PASS`, real `mypy` genuinely passing afterward, `env.time_spent("type-check")` measuring **8-16s** per live call. `google/gemini-2.5-flash-lite` also produces a correct-looking fix but wraps it in a markdown code fence `LLMContainerFixGenerator` doesn't strip before writing the file — a real gap in `atomicguard`'s own generator, not this repo's bug, turning a correct fix into a syntax error and a false `FATAL`. A second finding: the successful repair itself is nondeterministic — sometimes it corrects the annotation, sometimes it coerces the return value instead, both `mypy`-passing but only one behavior-preserving, and nothing in this pipeline can tell the difference. A third finding, in this repo's own code: the live run exposed a bug in `AtomicGuardCheckEnvironment.time_spent()` — it was silently reporting only the last of `attempt()`'s two real sub-calls, discarding the repair's own duration on every success. Fixed.
-
-**Full walkthrough, including both real findings above, the live GIF, and the now-confirmed OpenRouter model slugs:** [`documentation/task-graph/experiments/08_atomicguard_type_check_llm_repair.md`](documentation/task-graph/experiments/08_atomicguard_type_check_llm_repair.md).
+All four have working GIFs (`guard_first_pr_merge_lite.gif`, `planning_short_circuit.gif`, `planning_goal_directed_scope.gif`, `real_guards_planning_short_circuit.gif`, `atomicguard_lint_*.gif`, `atomicguard_build_check_*.gif`, `atomicguard_type_check_*.gif`, all in `task_graph_solver/animations/`) and full experiment writeups (`documentation/task-graph/experiments/04` through `08`) — not deleted, just not linked from this document's active walkthrough. All their tests still run as part of the 138-test suite below.
 
 ## Testing
 
@@ -284,26 +212,18 @@ make test-task-graph
 uv run pytest task_graph_solver/tests/ -v
 ```
 
-138 tests as of this writing, covering: graph validation (unknown deps, cycles), AND-gating and unreachable propagation, cost composition (AO*), repair locality (D* Lite, including on AND-join siblings), learned-cost convergence (LRTA*), OR-groups and explicit-goal gating, guard-first free checks, goal-directed sense-then-plan execution, and the visualization/animation code itself (smoke tests against real algorithm runs, not just static assertions).
+138 tests as of this writing — covers everything above, active and parked alike: graph validation, AND-gating and unreachable propagation, cost composition (AO*), repair locality (D* Lite), learned-cost convergence (LRTA*, see `DISCOVERY.md`), OR-groups and explicit-goal gating, guard-first free checks, goal-directed sense-then-plan execution, and the visualization/animation code itself.
 
 ## Design documentation
 
 This module is design-doc-first, same discipline as the D* Lite maze work. **For the narrative version of everything below — what got built, in what order, why, and what's actually been proven versus still open — see [`documentation/task-graph/README.md`](documentation/task-graph/README.md).** The rest of this section is the technical index.
 
 - [`documentation/task-graph/environment_design.md`](documentation/task-graph/environment_design.md) — the core primitives
-- [`documentation/task-graph/scenarios.md`](documentation/task-graph/scenarios.md) — the three toy graphs
+- [`documentation/task-graph/scenarios.md`](documentation/task-graph/scenarios.md) — the active scenarios
 - [`documentation/task-graph/algorithm_fit.md`](documentation/task-graph/algorithm_fit.md) — which algorithm targets which scenario, and the explicit build order
 - [`search_algorithms/ao_star.md`](search_algorithms/ao_star.md) — the AO* algorithm reference (notation, pseudocode, properties)
-- [`documentation/d-star/`](documentation/d-star/) and [`documentation/lrta/`](documentation/lrta/) — the maze-side D* Lite/LRTA* design work and the real-`atomicguard` stress tests that motivated this whole module
-- [`documentation/path-maintenance/`](documentation/path-maintenance/) — **implemented.** A separate maze-side toy example, orthogonal to D* Lite: a fixed A*-computed path, walked as-is, with node-level (cell) repair rather than route repair. `PathMaintenanceAgent` (`maze_solver/agents/path_maintenance.py`) and `MazeEnvironment`'s new `CellState`/`get_cell_state()`/`inject_repairs()`/`repair_cell()`. No D* Lite/LPA*, no `DualStateAgent`, no escalation in this first step — see `environment_design.md`'s non-goals section for why, and [`documentation/task-graph/atomicguard-variant/`](documentation/task-graph/atomicguard-variant/) for where the two threads are expected to eventually converge.
-- [`documentation/task-graph/or-groups/`](documentation/task-graph/or-groups/) — **implemented.** Extends `pr_merge_lite` (same topology, not a new domain) with `GroupNode` (`apply-actions` split into three variant strategies sharing one slot, only one needs to pass) and an explicit `goal` distinct from "every node satisfied" — grounded in `atomicguard`'s own real proposal for fixing its "single-exit corridor" RL bottleneck (`docs/archive/notes/2026-02-25T18-multi-path-rl-design.md`). Gives `AOStarExecutor` a real OR-choice to prune; `DStarLiteExecutor` gets its existing repair-locality capability applied to a whole group instead of one node, not a new "reroute" capability — corrected in `or-groups/algorithm_fit.md` after an earlier overclaim. Scenario: `pr_merge_with_variants` (`task_graph_solver/scenarios/pr_merge_with_variants.py`).
-- [`documentation/task-graph/guard-first/`](documentation/task-graph/guard-first/) — **implemented.** Adds `TaskNode.invariant_pass_probability` and `env.check_invariant()` — a free, non-budget-consuming sensor, grounded in a real gap in `atomicguard`'s `ActionPair.execute()` (Phase 1 always generates unconditionally, with no phase that checks the live world state first). `GuardFirstExecutor`: `TopologicalExecutor` plus check-before-repair, still walk-as-you-go.
-- [`documentation/task-graph/goal-directed-planning/`](documentation/task-graph/goal-directed-planning/) — **implemented.** `PlanningExecutor`: a new, separately-named executor (`AOStarExecutor` is deliberately left unchanged, with a cross-reference note explaining why) implementing a recursive, backward-chaining `_ensure(node_id)` from the goal down. Goal-directed scope, sense-then-plan short-circuiting, and OR-group pruning all fall out of the one function, rather than needing three separate mechanisms.
-- [`documentation/task-graph/real-guards/`](documentation/task-graph/real-guards/) — **implemented (sensing only).** A new sibling environment, [`real_task_graph_solver/`](real_task_graph_solver/): the same node/DAG/executor machinery, but a node's Guard is a real, deterministic check (`mypy`, `ruff`, an architecture test, `python -m build`) run against `real_task_graph_solver/fixtures/example_pkg/` — a small, purpose-built example package with six manufactured states (`clean`, `typing_broken`, `lint_broken`, `architecture_broken`, `publish_broken`, `released`) — instead of a simulated `pass_probability` draw. Grounded in `atomicguard`'s own `ContainerSubprocessGuard` and `autonomous-goal-net`'s guard-determinism hierarchy (`Bounded-Indeterminacy-Theory.md`); `RealCheckNode` is a strict subset of `atomicguard`'s real Action Pair notation — the `a_guard_eff` slot alone, `a_gen`/`a_eff` both absent. `TopologicalExecutor`, `AOStarExecutor`, `DStarLiteExecutor`, and `PlanningExecutor` (all imported directly from `task_graph_solver.algorithms`, unmodified) run against this environment for real: `AOStarExecutor`'s `h` composes from real attempt counts alongside a new `time_spent()` instrumentation; `PlanningExecutor` checks the `release-ready` goal first and, on the `released` state, finishes in one free check with zero real subprocess calls, where `TopologicalExecutor` on the identical state still pays for all five. `GuardFirstExecutor` doesn't get a meaningful demonstration here, as predicted — check and attempt are the same operation without a repair to skip paying for. One design correction made while implementing, recorded rather than silently fixed: `release-ready` needed a genuinely non-vacuous check (marker files the other five touch on success) rather than a no-op `true`, since a vacuous goal check would make `PlanningExecutor` report success without ever running a real check. One real limitation surfaced and left open: `reset_to_state` swaps the whole working tree, so a Driver break/fix mid-run wipes every node's marker, not just the one changing — `DStarLiteExecutor`'s real recovery demonstration therefore uses a smaller subgraph without `release-ready` rather than overclaiming. One phase follows, not two: a second, `atomicguard`-backed variant of the identical example, where each node wraps a real `ActionPair` (Guard always; a real Generator+Effector for repair too, not deferred further) instead of re-deriving that machinery here.
-- [`documentation/task-graph/atomicguard-variant/`](documentation/task-graph/atomicguard-variant/) — **implemented (two deterministic repairs; one LLM-based repair, confirmed live against OpenRouter; a second LLM-based repair not yet built).** The second phase named above, resolved after two corrections recorded rather than smoothed over. Reading `atomicguard`'s real `WorkflowOrchestrator.add_step()` turned up a genuine convergence worth recording: it already has native `requires` (AND), `requires_any`/`group` (OR-groups), `goal`, and `required=False` (non-blocking steps) support — almost exactly `or-groups/` and `goal-directed-planning/`'s primitives, arrived at independently. Resolved in favor of keeping this repo's own executors doing the searching rather than handing traversal to `WorkflowOrchestrator`, which would replace the thing this project teaches rather than complement it — each node instead wraps a real, individually-callable `ActionPair` whose Guard can be checked for free and, if unsatisfied, repaired for real. Built as [`real_task_graph_solver/atomicguard_backed/`](real_task_graph_solver/atomicguard_backed/): `AtomicGuardCheckNode` (a real `check_action_pair` always, an optional real `repair_action_pair`) and `AtomicGuardCheckEnvironment`, the identical `ready_nodes()`/`attempt()`/`check_invariant()`/`is_goal_reached()` shape as `RealCheckEnvironment`. Two nodes wired end to end, each its own one-node scenario: `lint` (`check_action_pair` is a free `ruff check src/`, `repair_action_pair` is a real, deterministic `ruff check --fix src/`) against `lint_broken`, and `build-check` (`check_action_pair` is a free `python -m build --sdist --wheel`, `repair_action_pair` is a real `sed` edit inserting the missing `version` field) against `publish_broken` — two repairs sharing no mechanism beyond both being deterministic and LLM-free, evidence "no-LLM repair" is a real category rather than one trick. `GuardFirstExecutor`, imported unmodified, gets its first meaningful demonstration in this project on both: a free win on `clean`, and a genuine repair on the broken state (confirmed by hand each time - the unused import is actually gone; `pyproject.toml` actually gains `version = "0.1.0"` and the build produces real `.whl`/`.tar.gz` artifacts). One load-bearing difference from `RealCheckEnvironment` surfaced while building this: atomicguard's `SubprocessGenerator` bakes its `cwd` in at construction rather than resolving it lazily per check, so each scenario builder (`build_lint_repair(workdir)`, `build_build_check_repair(workdir)`) must be handed the workdir up front, before its `ActionPair`s are built. `type-check`/`architecture-test`'s repairs (the LLM-based paths sketched in the design doc) are not yet built - both need semantic judgement neither `ruff` nor `sed` can provide.
-
-**Revised since:** both `check_invariant()` and `attempt()` now wrap their `ActionPair`s in a real `atomicguard.DualStateAgent` rather than calling `ActionPair.execute()` bare, backed by one shared, persistent `FilesystemArtifactDAG` per environment (living outside `workdir`, since `reset_to_state()` would otherwise destroy it) - correcting an earlier misattribution of the real system's retry-with-feedback loop to `WorkflowOrchestrator` when it actually belongs to `DualStateAgent` (confirmed by reading `application/agent.py`/`application/workflow.py` directly). `check_action_pair` and `repair_action_pair` share one `action_pair_id` so a repair's `DualStateAgent` call automatically inherits the check's real failure feedback through the shared DAG. A real correctness bug was caught and fixed while implementing this, not before: `attempt()` cannot trust a repair's own `DualStateAgent`-reported success as final, since `build-check`'s `sed`-based repair's exit code only proves the text edit ran, not that the build now actually succeeds (unlike `ruff --fix`, empirically verified trustworthy) - `attempt()` always re-runs `check_action_pair` for the real, final verdict, proven by a new test using a synthetic repair that reports success while fixing nothing. Every existing test (28 total in `atomicguard_backed/`, three new) passes unmodified against the `DualStateAgent`-backed environment - no executor-visible behavior changed.
-
-**Extended since with the first LLM-based repair:** `type-check` (`scenarios/type_check_repair.py`) wires atomicguard's real `LLMContainerFixGenerator` (host mode) against **OpenRouter**, reading a short-term key from `OR_KEY` (`core/llm_config.py`). What's genuinely tested without network: the real `mypy` check (`TestRealMypyCheckWithoutNetwork` - no LLM involved at all) and every wiring detail of the repair's construction (10 tests, all passing). `ContainerSubprocessGuard` (used to re-verify `mypy` after the LLM writes a fix, since `LLMContainerFixGenerator` doesn't set the `exit_code` metadata `ExitCodeGuard` needs) has no `cwd` parameter, unlike `SubprocessGenerator` - worked around with the same `cd {workdir} &&` shell-prefix pattern `release_pipeline.py`'s marker commands already use.
-
-**Confirmed live since, by a session with real network access:** both named OpenRouter model slugs are real and resolvable - `google/gemini-2.5-flash-lite` and `deepseek/deepseek-v4-flash` each return genuine completions against the real `mypy` error. `DEFAULT_MODEL` is now `deepseek/deepseek-v4-flash`, because the live run is what actually distinguished them: `deepseek` repairs `typing_broken` cleanly and repeatedly (`AttemptOutcome.PASS`, confirmed by hand); `gemini-2.5-flash-lite` produces the same *kind* of correct fix but wraps it in a markdown code fence `LLMContainerFixGenerator` never strips before writing the file, turning a correct fix into a syntax error and a false `FATAL` - a real gap in `atomicguard`'s own generator, recorded rather than silently worked around. The live run also surfaced two findings no dry run could have: the successful repair itself is nondeterministic (sometimes fixes the annotation, sometimes coerces the return value instead - both `mypy`-passing, only one behavior-preserving, and nothing in this pipeline can tell the difference), and a real bug in this repo's own `AtomicGuardCheckEnvironment.time_spent()` (it silently reported only the last of `attempt()`'s two real sub-calls, discarding the repair's own duration on every success - fixed, and now sums both). A thirteenth test (`TestLiveOpenRouterRepair`, `skipif`-gated on `OR_KEY`) reproduces the live repair for anyone with a real key; the other twelve stay network-free. `architecture-test`'s LLM-based repair is not yet built - same pattern, deferred.
+- [`documentation/d-star/`](documentation/d-star/) — the maze-side D* Lite design work
+- [`DISCOVERY.md`](DISCOVERY.md) — LRTA*, and where the not-yet-built unknown-topology work will live
+- [`PATH_MAINTENANCE.md`](PATH_MAINTENANCE.md) / [`documentation/path-maintenance/`](documentation/path-maintenance/) — **implemented, three steps.** Orthogonal to D* Lite: a fixed path, walked as-is, with node-level repair rather than route repair. Step 1: a maze corridor. Step 2: an AND-only DAG, reusing this module's `requires`-validation/`ready_nodes()` as a pattern, not its retry-economics-shaped `attempt()`/executors. Step 3: nodes gained a `PENDING`/`IN_PROGRESS`/`SUCCEEDED`/`FAILED` lifecycle. No D* Lite/LPA*, no `DualStateAgent`, no escalation yet — the parked `atomicguard_backed/` machinery above is exactly where real repair is expected to come from once that step is picked back up.
+- [`documentation/task-graph/real-guards/`](documentation/task-graph/real-guards/) — sensing-only `real_task_graph_solver` design, **not parked**, still active (see "Real guards" above). Only its `atomicguard_backed/` extension is parked.
+- Parked (see "Parked" above for why): [`documentation/task-graph/or-groups/`](documentation/task-graph/or-groups/), [`documentation/task-graph/guard-first/`](documentation/task-graph/guard-first/), [`documentation/task-graph/goal-directed-planning/`](documentation/task-graph/goal-directed-planning/), [`documentation/task-graph/atomicguard-variant/`](documentation/task-graph/atomicguard-variant/).
