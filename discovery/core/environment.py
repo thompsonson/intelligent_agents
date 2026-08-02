@@ -85,8 +85,9 @@ class DiscoveryEnvironment:
 
     def get_move_cost(self, from_id: str, to_id: str) -> int:
         """Always 1. Same flat-for-now, concept-for-later precedent as
-        MazeEnvironment.get_step_cost(). Not yet consumed by DiscoveryAgent
-        or the visualization - DiscoveryWalkResult has no cost field in
-        this step; the method exists so a later step can vary the number
-        without changing the call site."""
+        MazeEnvironment.get_step_cost(). Called by DiscoveryAgent.walk()
+        on every move (forward, backtrack, and readiness-sweep route
+        replay alike) and summed into DiscoveryWalkResult.total_cost -
+        the method exists so a later step can vary the number without
+        changing any call site."""
         return 1
