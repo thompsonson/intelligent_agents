@@ -10,6 +10,8 @@ Classical DFS/BFS both assume the searcher can return to any previously-visited 
 
 So the real decision at a branch point isn't "which do I explore first, saving the other for later" — it's "which do I commit to, permanently, right now." That's a single deterministic tie-break rule, not a search algorithm with a frontier data structure behind it. Reconvergence (`scenario.md`'s "why this shape") is what makes this safe rather than reckless: because every branch out of `commit` eventually reaches `merge-gate` and then `deploy`, committing to one branch over another can only cost sensing effort, never cost reaching the goal at all. That's the same shape of claim `graph-topology/algorithm_fit.md` made about its own AND-join — "no real algorithm choice is being made" — arrived at for a different structural reason (there: the plan is fixed before the walk starts; here: every path converges, so no choice is wrong).
 
+**Superseded by step 2:** the "no backward edge" premise this section rests on is a property of *this step's* movement rule, not a permanent fact about the environment. [`backtracking-exploration/algorithm_fit.md`](backtracking-exploration/algorithm_fit.md) lifts it — retracing an already-walked path turns out not to be the teleport this section is ruling out — and once that's possible, "DFS vs. BFS" applies literally again, with DFS as the answer for reasons argued there.
+
 ## The policy: forward-committed, lowest-id tie-break
 
 At any node, `DiscoveryAgent` moves to the lexicographically smallest id in that node's sensed `notifies` — the same alphabetical tie-break `ready_nodes()`/`TopologicalExecutor` already use elsewhere in this repo, reused for consistency rather than because anything about discovery specifically calls for alphabetical order. No lookahead, no preference for branches that might reach more of the known set — just a fixed, reproducible rule, since (per above) no smarter rule is needed to *guarantee* reaching the goal on this graph.
@@ -55,4 +57,5 @@ Extending `task_graph_solver/visualization/graph_view.py`'s approach (a `network
 - [`../environment_design.md`](../environment_design.md) — the primitives and the movement/goal rules this document takes as given.
 - [`../scenario.md`](../scenario.md) — `pipeline_fanout_lite`'s topology and the reconvergence reasoning this document's "no real choice" claim depends on.
 - [`../../path-maintenance/graph-topology/algorithm_fit.md`](../../path-maintenance/graph-topology/algorithm_fit.md) — the precedent for a short `algorithm_fit.md` that concludes no real algorithm choice is being made, for a different structural reason.
+- [`backtracking-exploration/algorithm_fit.md`](backtracking-exploration/algorithm_fit.md) — step 2: backtracking, why it makes DFS the literal right answer, and the resulting full-exploration reframe.
 - [`../../../DISCOVERY.md`](../../../DISCOVERY.md) — where this step's finished write-up will be linked from, alongside LRTA*.

@@ -34,6 +34,8 @@ LRTA* still starts each trial with the *node* it's learning about — and the wh
 
 ![Discovery walk](discovery/animations/pipeline_fanout_lite.gif)
 
+**Next (designed, not yet implemented): backtracking exploration.** The "no backtracking" line above is a real, structural limit of step 1's policy, not a permanent feature of the environment — it's what strands `unit-tests`/`integration-tests`. Letting the agent retrace an already-walked path (never a jump to a merely-known id) turns this into the classical "exploring an unknown graph" problem, where depth-first search with backtracking is the provably right answer once retracing is free — see [`documentation/discovery/backtracking-exploration/algorithm_fit.md`](documentation/discovery/backtracking-exploration/algorithm_fit.md) for the full comparison against BFS and learned/RL-style exploration. This is also the piece of groundwork the later `requires`/AND-joins step is blocked on.
+
 **Full write-up, including the frame-by-frame GIF walkthrough**: [`documentation/discovery/experiments/01_pipeline_fanout_lite.md`](documentation/discovery/experiments/01_pipeline_fanout_lite.md).
 
 **Testing**: `discovery/tests/` (23 tests). Runs alongside this repo's other suites — `make test-discovery` / `uv run pytest discovery/tests/ -v`.
@@ -44,4 +46,5 @@ LRTA* still starts each trial with the *node* it's learning about — and the wh
 - [`documentation/task-graph/environment_design.md`](documentation/task-graph/environment_design.md) — `TaskNode`/`TaskGraphEnvironment`, shared infrastructure between this document and `TASK_GRAPH_SOLVER.md`.
 - [`documentation/discovery/environment_design.md`](documentation/discovery/environment_design.md) — `DiscoveryNode`/`DiscoveryEnvironment`/`DiscoveryAgent`'s full design, including every resolved fork (arrival-gating, position-tracking, movement, deferred AND-joins, goal, cost).
 - [`documentation/discovery/scenario.md`](documentation/discovery/scenario.md) / [`algorithm_fit.md`](documentation/discovery/algorithm_fit.md) — `pipeline_fanout_lite`'s topology and the traversal-policy reasoning.
+- [`documentation/discovery/backtracking-exploration/algorithm_fit.md`](documentation/discovery/backtracking-exploration/algorithm_fit.md) — step 2 (designed, not yet implemented): backtracking turns this into the "exploring an unknown graph" problem, DFS-vs-BFS-vs-learned-exploration compared directly.
 - [`TASK_GRAPH_SOLVER.md`](TASK_GRAPH_SOLVER.md) — the sibling document for the "environment already known" side of `task_graph_solver`: `TopologicalExecutor`, `AOStarExecutor`, `DStarLiteExecutor`.
