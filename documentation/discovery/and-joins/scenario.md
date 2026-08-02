@@ -31,8 +31,12 @@ No `requires` cycle exists either — `merge-gate` is the only node with a nonem
 
 - **The concrete case `environment_design.md`'s Purpose section names directly**: step 2's walk senses `deploy` at move 3, before `unit-tests`/`integration-tests` are touched at all. This scenario is built to make that impossible — `merge-gate` cannot clear, and therefore `deploy` cannot be reached, until both forks are actually done.
 - **Exercises the "arrived via a shortcut, still gated" case**: `unit-tests → merge-gate` directly, versus `unit-tests → integration-tests → merge-gate`. A traversal that reaches `merge-gate` the short way still has to go satisfy `integration-tests` before proceeding — proving the gate checks completion, not arrival path.
-- **A deterministic regression case**: fixed topology and fixed `requires`, only the traversal algorithm (still not decided — see `algorithm_fit.md`) varies what order things happen in.
+- **A deterministic regression case**: fixed topology and fixed `requires`, only the traversal algorithm (now settled — see `algorithm_fit.md`) varies what order things happen in.
+
+## Resolved: the reachability-violation variant
+
+`algorithm_fit.md`'s "Resolved: a scenario exercising a genuine reachability violation" works this graph plus one orphan node — `release-notes`, `notifies=()`, added to `merge-gate.requires` as a third dependency, never named in anyone's `notifies` — and verifies `blocked_nodes == ["merge-gate"]`, `goal_reached is False`, `deploy` never sensed at all. Documented there rather than duplicated here, since it's inseparable from the algorithm trace that demonstrates it.
 
 ## Not decided
 
-- **A second scenario demonstrating a genuine reachability violation** (a `requires` target never named in anyone's `notifies`) — to exercise `blocked_nodes` being non-empty on purpose, the mirror image of this scenario's "everything clears eventually" case. Not needed for this first cut; worth adding once the traversal algorithm (`algorithm_fit.md`) is settled and there's real code to test it against.
+Nothing left open from this document's own scope.

@@ -79,10 +79,38 @@ Parent stack empties again; readiness sweep finds nothing left blocked. Walk end
 
 **Totals:** `path` has 15 entries (14 moves). `nodes_sensed == 6` (every node, `deploy` last). `total_cost == 14`. `cleared == visited ==` all six nodes. `blocked_nodes == []`. `goal_reached is True` — and critically, `deploy` is the *last* node sensed, not the third of four the way step 2's ungated walk sensed it. That reordering is the entire point of this step.
 
+## Resolved: tie-break when more than one blocked node clears in the same sweep
+
+`pipeline_fanout_lite` only ever has one blocked node, so it can't exercise this. A minimal illustrative graph (not a shipped scenario — just enough structure to force the case) settles it:
+
+```
+root -> (a1, a2, b1, b2)
+a1 -> (gate-a,)      a2 -> (gate-a,)      gate-a: requires (a1, a2)
+b1 -> (gate-b,)      b2 -> (gate-b,)      gate-b: requires (b1, b2)
+```
+
+Two independent AND-gates, symmetric on purpose. Exploring from `root`, alphabetical tie-break sends the walk down `a1` first, hits `gate-a` blocked (`a2` not yet cleared), backtracks all the way to `root`, tries `a2` (dead end — `gate-a` already visited), backtracks to `root`, then does the identical dance down the `b` side. By the time exploration exhausts itself back at `root`, **both** `gate-a` and `gate-b` have all their requirements `cleared` — two blocked nodes becoming satisfiable in the same sweep, the case step 1's scenario can't produce.
+
+The rule: **the readiness sweep resolves one blocked node per outer-loop iteration, lowest id first, then loops back and re-sweeps** — it doesn't need to reason about batches at all. `gate-a` sorts before `gate-b`, so the walk resumes there first (replaying `root → a1 → gate-a`), exhausts that sub-walk, and only *then* re-sweeps — at which point `gate-b` is still exactly as clearable as it was a sweep ago (resolving `gate-a` didn't touch `b1`/`b2`), so it's picked up on the next iteration. No batching logic needed; "pick one, lowest id, repeat" already cascades through however many blocked nodes clear at once, one at a time, deterministically.
+
+Verified by direct simulation of the algorithm as specified (not hand arithmetic alone, after the phase-2 trace above caught a hand-tracing slip): 20 moves, `nodes_sensed == 7`, `total_cost == 20`, `blocked_nodes == []`, `goal_reached is True`. `path` shows the full shape — explore both branches to exhaustion, resume `gate-a` via `root → a1 → gate-a` and fully backtrack out, *then* resume `gate-b` via `root → b1 → gate-b` and backtrack out again:
+
+```
+root, a1, gate-a, a1, root, a2, root, b1, gate-b, b1, root, b2, root,
+a1, gate-a, a1, root, b1, gate-b, b1, root
+```
+
+## Resolved: a scenario exercising a genuine reachability violation
+
+Take `scenario.md`'s graph and add one node nobody notifies: `release-notes`, `notifies=()`, added to `merge-gate.requires` as a third dependency — `(lint, integration-tests, release-notes)`. `release-notes` is a real node (the environment's unknown-target validation at construction still passes), but it's never named in anyone's `notifies`, so it can never enter `known`, let alone `visited` or `cleared` — exactly the deadlock `environment_design.md`'s reachability constraint warns about.
+
+Exploration proceeds identically to `scenario.md`'s own trace for its first 8 moves — `release-notes` doesn't change anything about how `lint`/`unit-tests`/`integration-tests` get explored, since nothing walks toward a node nobody notifies. `merge-gate` ends the phase blocked, same as before. But this time the readiness sweep finds it permanently unsatisfiable: `lint` and `integration-tests` are both `cleared`, but `release-notes` never will be. No blocked node clears, the outer loop ends immediately, and `deploy` — the graph's only actual terminal — never gets sensed at all.
+
+Verified by simulation: `path` is exactly `scenario.md`'s own first 8 moves (`commit, lint, merge-gate, lint, commit, unit-tests, integration-tests, unit-tests, commit`), `nodes_sensed == 5` (`release-notes` never queried — nothing in `DiscoveryAgent` ever has a reason to target an id nobody notified), `total_cost == 8`, **`blocked_nodes == ["merge-gate"]`**, **`goal_reached is False`**. This is the scenario a future test should assert against directly, once there's code: a malformed scenario fails loudly and specifically, not silently.
+
 ## Not decided
 
-- **Tie-break when more than one blocked node clears in the same sweep** — doesn't arise on this scenario (`merge-gate` is the only blocked node), but the natural extension is the same lowest-id rule used everywhere else.
-- **A scenario exercising a genuine reachability violation**, so `blocked_nodes` comes back non-empty on purpose — `scenario.md`'s own "Not decided" flags this as the natural second scenario once this algorithm has real code to test against.
+Nothing left open from this document's own scope. Implementation (TDD) is next, not a design question.
 
 ## Related documents
 
