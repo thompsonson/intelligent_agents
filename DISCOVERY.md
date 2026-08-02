@@ -22,14 +22,26 @@ A node with `pass_probability=0.3` (`rmax=8`) run through `LRTAStarLearner` for 
 
 **Testing**: `task_graph_solver/tests/test_lrta_star.py`, `task_graph_solver/tests/test_learning_curve.py` (the convergence chart itself). Runs alongside `task_graph_solver`'s other tests — `make test-task-graph` / `uv run pytest task_graph_solver/tests/ -v`.
 
-## Not yet built: discovering the topology itself
+## Discovering the topology itself
 
-LRTA* still starts each trial with the *node* it's learning about — and the whole `task_graph_solver` graph structure — fully known; only the *retry cost* is unknown. A step further, not yet scoped: an environment where the agent doesn't know what comes next at all, and has to sense it from the current node rather than reading it off a pre-built graph — the "should we make the environment unknown, agent finds the next node from information in the current node" question raised while working on `path_maintenance/`'s job-lifecycle step, and deliberately deferred there as out of scope for node-repair.
+LRTA* still starts each trial with the *node* it's learning about — and the whole `task_graph_solver` graph structure — fully known; only the *retry cost* is unknown. `discovery/` is a step further: an environment where the agent doesn't know what comes next at all, and has to sense it from the current node rather than reading it off a pre-built graph — the "should we make the environment unknown, agent finds the next node from information in the current node" question raised while working on `path_maintenance/`'s job-lifecycle step, and deliberately deferred there as out of scope for node-repair.
 
-This is where that work will land once it's actually designed — nothing built here yet, this section exists so the deferral has a home to point to rather than getting lost.
+**`DiscoveryNode`/`DiscoveryEnvironment`/`DiscoveryAgent`**, in `discovery/` (a new top-level package, sibling to `maze_solver/`, `task_graph_solver/`, `path_maintenance/`, sharing no code with any of them). The edge direction flips relative to every prior environment: a node carries `notifies` — who it tells, push-direction — rather than `requires` — what it depends on, pull-direction — mirroring how a real CI pipeline only knows who it notifies when it finishes, not who depends on it. The environment exposes exactly one query, `sense_edges(node_id)`, and holds no position state at all: the agent tracks its own current position and start id, the same convention every prior environment already used. Movement is constrained to the current node's already-sensed `notifies` — no teleporting to a merely-known-but-unvisited id, and (since there's no backward edge either) no backtracking once a branch is committed to. AND-joins (`requires`) are deferred to a later step.
+
+**Scenario**: `pipeline_fanout_lite` (`discovery/scenarios/pipeline_fanout_lite.py`) — six nodes, two fan-out branch points, reconvergent at a single AND-free join (`merge-gate`), exactly one reachable node with no `notifies` (`deploy`, the goal). Reconvergence is load-bearing, not decorative: since the agent can never backtrack, a strict tree would let an unlucky branch choice permanently strand it from the goal.
+
+**Traversal**: forward-committed, lowest-id tie-break — not classical DFS/BFS, since both assume the ability to return to a skipped branch, which this environment's one-way movement rule denies. `DiscoveryAgent` walks `commit → lint → merge-gate → deploy` in 4 senses, leaving `unit-tests`/`integration-tests` known-but-never-visited — correct behavior, not an incomplete walk, since the goal condition is "reach a node with no `notifies`," not "visit everything you've heard of."
+
+![Discovery walk](discovery/animations/pipeline_fanout_lite.gif)
+
+**Full write-up, including the frame-by-frame GIF walkthrough**: [`documentation/discovery/experiments/01_pipeline_fanout_lite.md`](documentation/discovery/experiments/01_pipeline_fanout_lite.md).
+
+**Testing**: `discovery/tests/` (23 tests). Runs alongside this repo's other suites — `make test-discovery` / `uv run pytest discovery/tests/ -v`.
 
 ## Related documents
 
 - [`documentation/lrta/beyond_the_maze.md`](documentation/lrta/beyond_the_maze.md) — the real-`atomicguard` stress test that motivated `retry_flavor`'s three-way split (sensing/generation/repair), and the repair-cost node LRTA*'s demo uses.
 - [`documentation/task-graph/environment_design.md`](documentation/task-graph/environment_design.md) — `TaskNode`/`TaskGraphEnvironment`, shared infrastructure between this document and `TASK_GRAPH_SOLVER.md`.
+- [`documentation/discovery/environment_design.md`](documentation/discovery/environment_design.md) — `DiscoveryNode`/`DiscoveryEnvironment`/`DiscoveryAgent`'s full design, including every resolved fork (arrival-gating, position-tracking, movement, deferred AND-joins, goal, cost).
+- [`documentation/discovery/scenario.md`](documentation/discovery/scenario.md) / [`algorithm_fit.md`](documentation/discovery/algorithm_fit.md) — `pipeline_fanout_lite`'s topology and the traversal-policy reasoning.
 - [`TASK_GRAPH_SOLVER.md`](TASK_GRAPH_SOLVER.md) — the sibling document for the "environment already known" side of `task_graph_solver`: `TopologicalExecutor`, `AOStarExecutor`, `DStarLiteExecutor`.
