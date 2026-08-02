@@ -71,12 +71,13 @@ Phase 1 ends back at `commit`, parent stack empty. `visited = {commit, lint, mer
 | — | `merge-gate` | — | `requires` now satisfied — clears, unlocking `deploy` |
 | 11 | `merge-gate` | `deploy` | first time — never visited before |
 | — | `deploy` | — | sensed for the first time; no `notifies` — dead end |
-| 12 | `deploy` | `lint` | backtrack |
-| 13 | `lint` | `commit` | backtrack |
+| 12 | `deploy` | `merge-gate` | backtrack — `deploy`'s immediate parent on the stack is `merge-gate`, pushed there by move 11 |
+| 13 | `merge-gate` | `lint` | backtrack |
+| 14 | `lint` | `commit` | backtrack |
 
 Parent stack empties again; readiness sweep finds nothing left blocked. Walk ends.
 
-**Totals:** `path` has 14 entries (13 moves). `nodes_sensed == 6` (every node, `deploy` last). `total_cost == 13`. `cleared == visited ==` all six nodes. `blocked_nodes == []`. `goal_reached is True` — and critically, `deploy` is the *last* node sensed, not the fourth move out of thirteen the way step 2's ungated walk sensed it third out of ten. That reordering is the entire point of this step.
+**Totals:** `path` has 15 entries (14 moves). `nodes_sensed == 6` (every node, `deploy` last). `total_cost == 14`. `cleared == visited ==` all six nodes. `blocked_nodes == []`. `goal_reached is True` — and critically, `deploy` is the *last* node sensed, not the third of four the way step 2's ungated walk sensed it. That reordering is the entire point of this step.
 
 ## Not decided
 
