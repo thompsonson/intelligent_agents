@@ -1,6 +1,19 @@
 from dataclasses import dataclass, field
 from typing import Tuple, List, Optional, Dict, Any
 
+
+@dataclass(frozen=True)
+class WalkResult:
+    """Result of a PathMaintenanceAgent's walk along a fixed belief-state path.
+
+    See documentation/path-maintenance/environment_design.md.
+    """
+
+    path: List[Tuple[int, int]]
+    repairs_performed: List[Tuple[int, int]]
+    success: bool
+
+
 @dataclass
 class SearchResult:
     """Enhanced container for search algorithm results with educational metrics.

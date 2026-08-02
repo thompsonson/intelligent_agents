@@ -2,7 +2,9 @@
 
 This project implements a comprehensive system for exploring, visualizing, and comparing different search algorithms in maze environments, with a focus on providing educational insights into algorithm behavior.
 
-**Sibling environment:** for the same algorithms (D* Lite, LRTA*, AO*) applied to a DAG of guarded tasks instead of a grid — AND/OR composition, repair locality, learned retry cost, and guard-first/goal-directed execution — see [`TASK_GRAPH_SOLVER.md`](TASK_GRAPH_SOLVER.md).
+**Sibling environments:**
+- For the same algorithms (D* Lite, LRTA*, AO*) applied to a DAG of guarded tasks instead of a grid — AND/OR composition, repair locality, learned retry cost, and guard-first/goal-directed execution — see [`TASK_GRAPH_SOLVER.md`](TASK_GRAPH_SOLVER.md).
+- For an agent that commits to a path once and then keeps the nodes along it healthy — repairing what's broken rather than routing around it — see [`PATH_MAINTENANCE.md`](PATH_MAINTENANCE.md).
 
 ## Environment Setup Details
 
