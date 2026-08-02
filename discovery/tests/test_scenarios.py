@@ -9,12 +9,15 @@ class TestPipelineFanoutLite:
         terminals = [n.id for n in nodes.values() if not n.notifies]
         assert terminals == ["deploy"]
 
-    def test_matches_algorithm_fit_md_worked_example(self):
+    def test_matches_backtracking_algorithm_fit_md_worked_example(self):
+        # See documentation/discovery/backtracking-exploration/
+        # algorithm_fit.md's 17-row trace table.
         env = DiscoveryEnvironment(build_pipeline_fanout_lite())
         result = DiscoveryAgent(env, start_id="commit").walk()
-        assert result.path == ["commit", "lint", "merge-gate", "deploy"]
-        assert result.nodes_sensed == 4
+        assert set(result.path) == set(build_pipeline_fanout_lite().keys())
+        assert result.nodes_sensed == 6
         assert result.goal_reached is True
+        assert result.total_cost == 10
 
     def test_every_branch_reconverges_regardless_of_first_choice(self):
         # Simulates the "always highest-id" alternative policy discussed

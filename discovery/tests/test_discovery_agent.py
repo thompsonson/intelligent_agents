@@ -22,18 +22,41 @@ def make_pipeline_fanout_lite():
 
 
 class TestWalkOnPipelineFanoutLite:
-    def test_matches_algorithm_fit_md_worked_example(self):
+    def test_matches_backtracking_algorithm_fit_md_worked_example(self):
+        # See documentation/discovery/backtracking-exploration/
+        # algorithm_fit.md's 17-row trace table: 10 moves, 6 senses.
         env = DiscoveryEnvironment(make_pipeline_fanout_lite())
         result = DiscoveryAgent(env, start_id="commit").walk()
-        assert result.path == ["commit", "lint", "merge-gate", "deploy"]
-        assert result.nodes_sensed == 4
+        assert result.path == [
+            "commit",
+            "lint",
+            "merge-gate",
+            "deploy",
+            "merge-gate",
+            "lint",
+            "commit",
+            "unit-tests",
+            "integration-tests",
+            "unit-tests",
+            "commit",
+        ]
+        assert result.nodes_sensed == 6
         assert result.goal_reached is True
+        assert result.total_cost == 10
 
-    def test_never_visits_nodes_left_unvisited_by_the_tie_break(self):
+    def test_visits_every_reachable_node(self):
+        # Step 1's agent stranded unit-tests/integration-tests; the whole
+        # point of backtracking is that full exploration reaches them too.
         env = DiscoveryEnvironment(make_pipeline_fanout_lite())
         result = DiscoveryAgent(env, start_id="commit").walk()
-        assert "unit-tests" not in result.path
-        assert "integration-tests" not in result.path
+        assert set(result.path) == set(make_pipeline_fanout_lite().keys())
+
+    def test_revisiting_a_node_during_backtrack_does_not_resense_it(self):
+        env = DiscoveryEnvironment(make_pipeline_fanout_lite())
+        result = DiscoveryAgent(env, start_id="commit").walk()
+        assert result.path.count("merge-gate") == 2
+        assert result.path.count("commit") == 3
+        assert result.nodes_sensed == 6  # not 6 + however many revisits
 
 
 class TestWalkEdgeCases:
@@ -44,8 +67,9 @@ class TestWalkEdgeCases:
         assert result.path == ["solo"]
         assert result.nodes_sensed == 1
         assert result.goal_reached is True
+        assert result.total_cost == 0  # no moves at all, one sense only
 
-    def test_linear_chain_walks_straight_through(self):
+    def test_linear_chain_walks_out_and_fully_backtracks(self):
         nodes = {
             "a": DiscoveryNode(id="a", notifies=("b",)),
             "b": DiscoveryNode(id="b", notifies=("c",)),
@@ -53,18 +77,22 @@ class TestWalkEdgeCases:
         }
         env = DiscoveryEnvironment(nodes)
         result = DiscoveryAgent(env, start_id="a").walk()
-        assert result.path == ["a", "b", "c"]
+        assert result.path == ["a", "b", "c", "b", "a"]
+        assert result.nodes_sensed == 3
         assert result.goal_reached is True
+        assert result.total_cost == 4  # a->b, b->c, c->b, b->a
 
-    def test_cycle_with_no_reachable_terminal_reports_stuck(self):
+    def test_cycle_with_no_reachable_terminal_backtracks_and_stops(self):
         nodes = {
             "a": DiscoveryNode(id="a", notifies=("b",)),
             "b": DiscoveryNode(id="b", notifies=("a",)),
         }
         env = DiscoveryEnvironment(nodes)
         result = DiscoveryAgent(env, start_id="a").walk()
-        assert result.path == ["a", "b"]
+        assert result.path == ["a", "b", "a"]
+        assert result.nodes_sensed == 2
         assert result.goal_reached is False
+        assert result.total_cost == 2  # a->b, then backtrack b->a
 
     def test_unknown_start_id_raises(self):
         env = DiscoveryEnvironment({"a": DiscoveryNode(id="a")})

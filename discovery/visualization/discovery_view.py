@@ -1,20 +1,12 @@
 import os
 import tempfile
-from typing import List, Optional, Protocol, Set, Tuple
+from typing import List, Optional, Set, Tuple
 
 import imageio.v2 as imageio
 import matplotlib.pyplot as plt
 import networkx as nx
 
-from ..agents.discovery_agent import DiscoveryAgent
 from ..core.environment import DiscoveryEnvironment
-from ..core.results import DiscoveryWalkResult
-
-# An event is always ("sense", node_id, notifies) - env.sense_edges(node_id)
-# was called and returned notifies. No separate "move" event, for the same
-# reason path_maintenance/visualization/graph_view.py has none:
-# DiscoveryAgent.walk() only ever calls this one environment method.
-Event = Tuple[str, str, Tuple[str, ...]]
 
 NODE_COLORS = {
     "known": "lightgray",  # named in a sensed node's notifies, not yet visited
@@ -151,51 +143,74 @@ def render(
         plt.show()
 
 
-def _apply_event(known: set, visited: set, event: Event) -> Tuple[str, str]:
-    _, node_id, notifies = event
-    visited.add(node_id)
-    known.update(notifies)
-    caption = f"sense_edges({node_id!r}) → {notifies!r}"
-    return node_id, caption
+# A frame is (node_id, caption, known-as-of-this-frame, visited-as-of-this-frame).
+Frame = Tuple[str, str, Set[str], Set[str]]
+
+
+def _walk_frames(env: DiscoveryEnvironment, path: List[str]) -> List[Frame]:
+    """Pure, render-free replay of `path` - DiscoveryAgent.walk()'s own
+    move-by-move record, backtracks included (backtracking-exploration/
+    algorithm_fit.md's "Not decided" -> resolved: path is the full move
+    log, not first-visit order). One frame per position in `path`.
+
+    Backtracking means walk() itself no longer calls sense_edges() once
+    per move - a revisited node is answered from its own cache, so
+    nodes_sensed can be smaller than len(path) (see backtracking-
+    exploration/algorithm_fit.md's worked example: 6 senses, 10 moves).
+    A per-move-event instrumentation trace would therefore have fewer
+    entries than frames needed. Simpler and just as honest: replay `path`
+    directly, and re-query sense_edges() the first time this replay sees
+    a given node - env.sense_edges() has no arrival gate and is
+    deterministic (environment_design.md), so re-asking it here for
+    rendering doesn't touch walk()'s own already-fixed nodes_sensed
+    accounting in the DiscoveryWalkResult this is replaying.
+    """
+    known: Set[str] = {path[0]}
+    visited: Set[str] = set()
+    sensed: Set[str] = set()
+    frames: List[Frame] = []
+
+    for node_id in path:
+        if node_id not in sensed:
+            notifies = env.sense_edges(node_id)
+            sensed.add(node_id)
+            known.update(notifies)
+            caption = f"sense_edges({node_id!r}) → {notifies!r}"
+        else:
+            caption = f"backtrack to {node_id!r}"
+        visited.add(node_id)
+        frames.append((node_id, caption, set(known), set(visited)))
+
+    return frames
 
 
 def animate_walk(
     env: DiscoveryEnvironment,
-    start_id: str,
-    events: List[Event],
+    path: List[str],
     save_path: str,
     fps: float = 1.0,
     title: Optional[str] = None,
 ) -> None:
-    """Render one frame per sense_edges() call and combine into a GIF -
-    the discovery analogue of path_maintenance's own animate_walk()."""
-    known: Set[str] = {start_id}
-    visited: Set[str] = set()
+    """Render one frame per position in `path` (see `_walk_frames`) and
+    combine into a GIF - the discovery analogue of path_maintenance's own
+    animate_walk(). Callers get `path` from `DiscoveryAgent.walk().path`
+    directly; there's no separate instrumented-recording step here the
+    way path_maintenance's graph_view.record_walk() has, since `path`
+    already is the real move-by-move record."""
     base_title = title or "Discovery"
-    agent_position = start_id
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         frame_files = []
 
-        initial_path = os.path.join(tmp_dir, "frame_000.png")
-        render(
-            env,
-            known=set(known),
-            visited=set(visited),
-            agent_position=agent_position,
-            save_path=initial_path,
-            title=base_title,
-        )
-        frame_files.append(initial_path)
-
-        for i, event in enumerate(events, start=1):
-            agent_position, caption = _apply_event(known, visited, event)
+        for i, (node_id, caption, known, visited) in enumerate(
+            _walk_frames(env, path)
+        ):
             frame_path = os.path.join(tmp_dir, f"frame_{i:03d}.png")
             render(
                 env,
-                known=set(known),
-                visited=set(visited),
-                agent_position=agent_position,
+                known=known,
+                visited=visited,
+                agent_position=node_id,
                 save_path=frame_path,
                 title=f"{base_title}\n{caption}",
             )
@@ -204,30 +219,3 @@ def animate_walk(
         with imageio.get_writer(save_path, mode="I", duration=1000 / fps) as writer:
             for frame_file in frame_files:
                 writer.append_data(imageio.imread(frame_file))
-
-
-class _CanWalk(Protocol):
-    def walk(self) -> DiscoveryWalkResult: ...
-
-
-def record_walk(
-    env: DiscoveryEnvironment, agent: DiscoveryAgent
-) -> Tuple[DiscoveryWalkResult, List[Event]]:
-    """Run `agent.walk()` while instrumenting `env.sense_edges` to record
-    every call, in the order it actually happened. Same explicit-env-
-    parameter shape as path_maintenance.visualization.graph_view.record_walk()."""
-    events: List[Event] = []
-    original_sense = env.sense_edges
-
-    def sense_and_record(node_id: str) -> Tuple[str, ...]:
-        notifies = original_sense(node_id)
-        events.append(("sense", node_id, notifies))
-        return notifies
-
-    env.sense_edges = sense_and_record
-    try:
-        result = agent.walk()
-    finally:
-        del env.sense_edges
-
-    return result, events
