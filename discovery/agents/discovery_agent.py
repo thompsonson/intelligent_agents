@@ -28,8 +28,9 @@ class DiscoveryAgent:
         path = [current]
         visited: Set[str] = set()
         known_edges: Dict[str, Tuple[str, ...]] = {}
-        parents: List[str] = []  # LIFO stack - backtrack always goes to
-        # the immediate parent, the node the agent arrived from
+        # LIFO stack - backtrack always goes to the immediate parent, the
+        # node the agent arrived from.
+        parents: List[str] = []
         nodes_sensed = 0
         total_cost = 0
 
