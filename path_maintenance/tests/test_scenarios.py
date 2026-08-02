@@ -6,10 +6,12 @@ from path_maintenance.scenarios.deploy_chain_lite import (
 
 
 def compute_topological_order(env: PathGraphEnvironment) -> list:
-    """Standard ready_nodes()-driven topo-sort, ties broken by id - the
-    same tie-break TopologicalExecutor uses. Independent of
-    deploy_chain_lite_order()'s hand-written list, so this test actually
-    catches a hand-computation mistake instead of just repeating it."""
+    """A second, independently-written ready_nodes()-driven topo-sort,
+    ties broken by id - the same tie-break TopologicalExecutor uses.
+    deploy_chain_lite_order() now does its own real computation too (see
+    PR #11 review - it used to be a hardcoded list), so this cross-checks
+    two separate implementations of the same algorithm against each
+    other, rather than checking one against a hand-written value."""
     satisfied: set = set()
     order = []
     all_nodes = set(env.nodes.keys())
@@ -22,7 +24,17 @@ def compute_topological_order(env: PathGraphEnvironment) -> list:
 
 
 class TestDeployChainLiteOrder:
-    def test_hand_written_order_matches_computed_topological_order(self):
+    def test_matches_expected_order(self):
+        # Regression value, locking in the real computed result.
+        assert deploy_chain_lite_order() == [
+            "pre-commit",
+            "lint",
+            "unit-tests",
+            "merge",
+            "deploy",
+        ]
+
+    def test_matches_independently_computed_topological_order(self):
         env = PathGraphEnvironment(build_deploy_chain_lite())
         assert deploy_chain_lite_order() == compute_topological_order(env)
 
