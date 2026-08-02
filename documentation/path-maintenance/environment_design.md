@@ -56,13 +56,13 @@ class MazeEnvironment:
     def get_cell_state(self, cell: Tuple[int, int]) -> CellState:
         """Current state of an open cell. Raises if `cell` is a wall or out of bounds."""
 
-    def inject_repairs(self, cells: List[Tuple[int, int]]) -> None:
+    def inject_repairs(self, cells: List[Tuple[int, int]], path: List[Tuple[int, int]]) -> None:
         """One-time, discrete mutation: mark each of `cells` NEEDS_REPAIR.
         Called once, by the Driver, before the agent starts walking — not a
-        scheduled or continuous process. Raises if any cell is a wall or
-        already NEEDS_REPAIR. Cells not on the belief-state path are legal to
-        pass here but will never be sensed or repaired, since the agent only
-        checks cells it walks through (see open question below)."""
+        scheduled or continuous process. Raises if any cell is a wall,
+        already NEEDS_REPAIR, or not present in `path` — step 1 restricts
+        injection to the belief-state path so every injected repair is
+        guaranteed to be sensed and fixed during the walk."""
 
     def repair_cell(self, cell: Tuple[int, int]) -> None:
         """Deterministic repair: NEEDS_REPAIR -> OPEN. Always succeeds — no
@@ -107,15 +107,15 @@ computed once, before `inject_repairs()` is called, and handed to `PathMaintenan
 
 1. `env = MazeEnvironment(config)` — generate the maze, as today.
 2. `belief_path = AStarSearch(env, config).search(env.start, env.end).path` — compute the route once.
-3. `env.inject_repairs(cells)` — Driver picks a subset of open cells on `belief_path` (see open question) and marks them `NEEDS_REPAIR`. One discrete event, not a schedule.
+3. `env.inject_repairs(cells, belief_path)` — Driver picks a subset of open cells on `belief_path` and marks them `NEEDS_REPAIR`. One discrete event, not a schedule.
 4. `result = PathMaintenanceAgent(env, belief_path).walk()` — the agent walks `belief_path` exactly, repairing as it goes.
 5. Inspect `result.repairs_performed` against the cells injected in step 3 — every injected cell that was on `belief_path` should appear, in path order.
 
-## Open questions (explicitly undecided)
+## Resolved (were "Open questions")
 
-- **Which cells are eligible for `inject_repairs()`?** Restricting the Driver to cells already on `belief_path` makes step 3 guaranteed-observable (the agent will definitely walk over every injected cell) and keeps the demo legible. Allowing off-path cells too is closer to "real" — a Kubernetes node can drift whether or not anything is currently routing through it — but means some injected repairs are never noticed in this step, since the agent has no reason to look anywhere but the path it's walking. Leaning toward path-only for step 1, with off-path drift as a natural extension once there's a reason for the agent to sense beyond its immediate route.
-- **Does `inject_repairs()` live on `MazeEnvironment` directly, or on a thin Driver-facing wrapper**, so that "the environment mutates itself" and "an external actor mutates the environment" stay visibly distinct, matching `agent_changes.md`'s Driver/agent separation even though no replanning is involved here? Leaning toward keeping it a plain method for step 1 — the separation matters more once escalation exists and there's a human on the other end of it.
-- **Where does `PathMaintenanceAgent` live in the module tree?** — `maze_solver/agents/` (new), alongside `maze_solver/algorithms/`? Or does it belong closer to `real_task_graph_solver/atomicguard_backed/`, since a later step is explicitly meant to swap `repair_cell()` for a real `ActionPair`? Leaning toward `maze_solver/`, since step 1 has no atomicguard dependency at all — move it later if and when that dependency actually gets introduced.
+- **Which cells are eligible for `inject_repairs()`?** Path-only, for step 1: the Driver may only mark cells that are on `belief_path` as `NEEDS_REPAIR`. This keeps step 3 of the sequence above guaranteed-observable — every injected repair is one the agent will actually walk over and fix — and matches the user's framing that random breakage on the belief path is exactly what this step is for. `inject_repairs()` should validate this (raise if a passed cell isn't on the path handed to the agent, or simply take the path as a parameter to check against) rather than silently accepting off-path cells that would never be sensed. Off-path drift stays a natural extension for a later step, once there's a reason for the agent to sense beyond its immediate route.
+- **Does `inject_repairs()` live on `MazeEnvironment` directly, or on a thin Driver-facing wrapper?** Directly on `MazeEnvironment`, as a plain method — no separate Driver abstraction for step 1. This also fits a distinction worth stating plainly: the environment's `inject_repairs()` moving a cell to `NEEDS_REPAIR` is the environment's own state, separate from and unknown to the agent until it senses that specific cell — the agent's belief (`belief_path`, computed before the injection) never contains cell-state information at all, so there's no risk of the two silently drifting out of sync in a way that needs a wrapper to guard against. A dedicated Driver boundary is worth introducing once escalation exists and there's a human on the other end of it.
+- **Where does `PathMaintenanceAgent` live in the module tree?** `maze_solver/agents/`, alongside `maze_solver/algorithms/` and `maze_solver/core/`. No atomicguard dependency in step 1, so no reason to place it under `real_task_graph_solver/atomicguard_backed/` yet — move it later if and when `repair_cell()` is actually swapped for a real `ActionPair`.
 
 ## Non-goals for this step
 
