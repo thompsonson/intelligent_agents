@@ -6,7 +6,7 @@ This project's documentation is organized around what an agent can know about it
 
 - **Search** (this document) — the agent knows the environment; it's finding or re-finding a route through it. BFS/DFS/Greedy/A* here; D* Lite and AO* applied to a DAG of guarded tasks instead of a grid in [`TASK_GRAPH_SOLVER.md`](TASK_GRAPH_SOLVER.md).
 - **Maintenance** — the agent knows the environment and has committed to a path; its job is keeping the nodes along that path healthy, not finding routes. See [`PATH_MAINTENANCE.md`](PATH_MAINTENANCE.md).
-- **Discovery** — the agent doesn't know the environment; it has to build that knowledge from bounded lookahead and experience (LRTA*), not read it off a graph. See [`DISCOVERY.md`](DISCOVERY.md).
+- **Discovery** — the agent doesn't know the environment; it has to build that knowledge incrementally, from bounded lookahead and experience, rather than reading it off a graph given up front. Covers both learning a cost estimate on an otherwise-known graph (LRTA*) and building the graph's topology itself by sensing one node at a time. See [`DISCOVERY.md`](DISCOVERY.md).
 
 ## Environment Setup Details
 
