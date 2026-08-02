@@ -128,29 +128,6 @@ class SearchResult:
 
 ```python
 class SearchAlgorithmBase(ABC):
-    """Abstract base class for search algorithms.
-
-    This class provides a common interface and shared functionality for all search
-    algorithms. It handles common tasks such as error handling, timing, and basic
-    visualization capabilities. Specific search algorithms should inherit from this
-    class and implement the abstract search method.
-
-    Attributes:
-        env (MazeEnvironment): Reference to maze environment being searched.
-        config (Config): Configuration parameters for the search algorithm.
-        name (str): Algorithm name, derived from class name.
-
-    Methods:
-        search(start, goal): Search for path (to be implemented by subclasses).
-        run(start, goal): Run with timing and error handling.
-        visualize_search(result, delay): Visualize the search process.
-    """
-```
-
-### SearchAlgorithmBase
-
-```python
-class SearchAlgorithmBase(ABC):
     """Abstract base class for search algorithms with enhanced shared functionality.
 
     This class provides a common interface and shared functionality for all search
