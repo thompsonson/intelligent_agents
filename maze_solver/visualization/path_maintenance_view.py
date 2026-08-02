@@ -23,7 +23,8 @@ CELL_COLORS = {
     "wall": "black",
     "off_path": "white",
     "future": "palegreen",  # on the belief path, not yet walked
-    "clear": "green",  # walked, and either was always OPEN or has been repaired
+    "clear": "limegreen",  # walked, was always OPEN - never needed repair
+    "repaired": "darkgreen",  # walked, was NEEDS_REPAIR, then fixed
     "needs_repair": "red",  # sensed and not yet repaired
     "start": "blue",
     "goal": "purple",
@@ -37,6 +38,7 @@ def _plot_maze(
     path: List[Tuple[int, int]],
     walked: Set[Tuple[int, int]],
     needs_repair: Set[Tuple[int, int]],
+    repaired: Set[Tuple[int, int]],
     agent_position: Optional[Tuple[int, int]],
     title: str,
 ) -> None:
@@ -59,6 +61,8 @@ def _plot_maze(
         r, c = cell
         if cell in needs_repair:
             viz_grid[r][c] = codes["needs_repair"]
+        elif cell in repaired:
+            viz_grid[r][c] = codes["repaired"]
         elif cell in walked:
             viz_grid[r][c] = codes["clear"]
         else:
@@ -113,6 +117,7 @@ def render(
     path: List[Tuple[int, int]],
     walked: Optional[Set[Tuple[int, int]]] = None,
     needs_repair: Optional[Set[Tuple[int, int]]] = None,
+    repaired: Optional[Set[Tuple[int, int]]] = None,
     agent_position: Optional[Tuple[int, int]] = None,
     save_path: Optional[str] = None,
     title: Optional[str] = None,
@@ -126,6 +131,7 @@ def render(
         path,
         walked or set(),
         needs_repair or set(),
+        repaired or set(),
         agent_position,
         title or "Path Maintenance",
     )
@@ -137,7 +143,7 @@ def render(
 
 
 def _apply_event(
-    walked: set, needs_repair: set, event: Event
+    walked: set, needs_repair: set, repaired: set, event: Event
 ) -> Tuple[Tuple[int, int], str]:
     kind = event[0]
     if kind == "arrive":
@@ -149,6 +155,7 @@ def _apply_event(
     if kind == "repair":
         _, cell = event
         needs_repair.discard(cell)
+        repaired.add(cell)
         return cell, f"repair_cell({cell})"
     raise ValueError(f"unknown event kind: {kind!r}")
 
@@ -166,6 +173,7 @@ def animate_walk(
     walk unfold frame by frame rather than a single static end state."""
     walked: Set[Tuple[int, int]] = set()
     needs_repair: Set[Tuple[int, int]] = set()
+    repaired: Set[Tuple[int, int]] = set()
     base_title = title or "Path Maintenance"
     agent_position = path[0]
 
@@ -178,6 +186,7 @@ def animate_walk(
             path,
             walked=set(walked),
             needs_repair=set(needs_repair),
+            repaired=set(repaired),
             agent_position=agent_position,
             save_path=initial_path,
             title=base_title,
@@ -185,13 +194,16 @@ def animate_walk(
         frame_files.append(initial_path)
 
         for i, event in enumerate(events, start=1):
-            agent_position, caption = _apply_event(walked, needs_repair, event)
+            agent_position, caption = _apply_event(
+                walked, needs_repair, repaired, event
+            )
             frame_path = os.path.join(tmp_dir, f"frame_{i:03d}.png")
             render(
                 env,
                 path,
                 walked=set(walked),
                 needs_repair=set(needs_repair),
+                repaired=set(repaired),
                 agent_position=agent_position,
                 save_path=frame_path,
                 title=f"{base_title}\n{caption}",

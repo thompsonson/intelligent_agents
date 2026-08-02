@@ -40,9 +40,9 @@ Nineteen frames: an initial frame with the whole belief path traced in light gre
 
 - **Frame 0**: the full 17-cell path already visible in light green — this is the belief state, committed before the first step, exactly as `environment_design.md`'s "belief state, precisely" section describes. Nothing red yet: the agent hasn't sensed anything, so nothing it hasn't arrived at is shown as needing repair, even though the environment already has two cells marked that way. The visualization deliberately doesn't leak information the agent doesn't have.
 - **Frame 6** (`arrive (1, 7) → needs_repair`): the first injected cell turns red the moment the agent senses it — not before.
-- **Frame 7** (`repair_cell((1, 7))`): red → green, immediately.
-- **Frame 11** (`arrive (6, 7) → needs_repair`) → **frame 12** (`repair_cell((6, 7))`): the same red-then-green pair, second occurrence.
-- **Final frame**: every path cell green except the last (goal, purple) — the corridor walked clean, agent one step from the end.
+- **Frame 7** (`repair_cell((1, 7))`): red → dark green, immediately — a distinct shade from the lighter green cells the agent walked without ever needing to touch, so a repaired cell stays visually marked as "was broken, now fixed" rather than blending back into "was always fine."
+- **Frame 11** (`arrive (6, 7) → needs_repair`) → **frame 12** (`repair_cell((6, 7))`): the same red-then-dark-green pair, second occurrence.
+- **Final frame**: every path cell green except the last (goal, purple) — the two repaired cells still dark green against the lighter green of the rest of the corridor, agent one step from the end.
 
 Cell color (state) and the agent's star marker (position) are deliberately independent visual channels — the same separation `environment_design.md`'s resolved "environment mutates itself" open question draws between the environment's own state and what the agent currently knows.
 
