@@ -40,13 +40,34 @@ Using the same canonical AIMA property list `CLAUDE.md`'s own PEAS analyses and 
 | **Known/Unknown** | Known (full topology exposed from the start) | **Known** | The *rule* governing a job's resolution is configured and known to the scenario, even though `PathMaintenanceAgent` itself never reads that configuration — it only polls |
 | **Observable** | Fully, but lazily | **Unchanged** | The agent could still query any node's current lifecycle state at any time; it still chooses to only check what it's about to act on. Multi-agent-ness changed *who* causes state change, not *what's visible* when asked |
 
+## Resolved: who calls `advance_jobs()`, and how a job's lifecycle actually progresses
+
+The original sketch of this design had a real gap, worth recording rather than quietly fixing: `get_job_state()` was specified as a pure sense (never mutates), and `advance_jobs()` was specified as "not something `PathMaintenanceAgent` calls itself" — but `walk()` is a single, blocking call, the same shape as steps 1-2's. If nothing calls `advance_jobs()` while the agent is waiting inside that one call, a `PENDING`/`IN_PROGRESS` node would never resolve and `walk()` would spin forever. Something has to call it, from inside the loop the agent is already running.
+
+**Resolution:** `walk()`'s wait loop calls `advance_jobs()` itself, between senses:
+
+```python
+state = env.get_job_state(node_id)
+while state in (JobState.PENDING, JobState.IN_PROGRESS):
+    env.advance_jobs()
+    state = env.get_job_state(node_id)
+```
+
+This corrects the earlier claim directly — the agent *does* call `advance_jobs()`. It doesn't contradict the multi-agent framing: `advance_jobs()` represents time passing, during which other agents (CI, k8s, pre-commit) do their own work, entirely outside the agent's control — which node resolves, when, and to what outcome is fixed by each `JobNode`'s own configuration, not chosen by `PathMaintenanceAgent`. The agent calling the method that lets time pass is a mechanical necessity of a single-threaded, deterministic simulation (the same reason a test fakes and manually advances a clock, without implying the code under test controls real time) — not a claim that the agent is doing the other agents' work. `get_job_state()` stays genuinely pure: it never changes what `advance_jobs()` hasn't already caused.
+
+**Worth being honest about:** this toy simulation measures time in ticks-per-`advance_jobs()`-call, not wall-clock concurrency — a known simplification, the same category as `task_graph_solver`'s deterministic-but-seeded `pass_probability` standing in for real nondeterminism. The `Dynamic`/`Multi-agent` properties below describe what the design is modeling and motivated by, not a claim that this simulation is genuinely concurrent.
+
+## Resolved: `FAILED` is in scope
+
+Included, not deferred to a later step: the repair path already exists (steps 1-2 built it), reusing it here costs nothing new, and exercising both branches (`SUCCEEDED` and `FAILED`) is the only way the GIF shows more than one kind of frame.
+
 ## Proposed lifecycle and API surface (signatures only — no implementation yet)
 
-Builds directly on step 2's `PathGraphEnvironment`/`GraphNode` — same `requires`/`ready_nodes()`, node state generalized from `CellState`'s two values to `JobState`'s four:
+Builds directly on step 2's `PathGraphEnvironment`/`GraphNode` — same `requires`/`ready_nodes()` pattern, node state generalized from `CellState`'s two values to `JobState`'s four. Additive to `path_maintenance/`, not a modification of step 2's already-shipped `CellState`/`GraphNode`/`PathGraphEnvironment`/`PathMaintenanceAgent` — those stay exactly as they are, the same way step 1's maze code stayed untouched when step 2 was built:
 
 ```python
 class JobState(Enum):
-    PENDING = "pending"          # not yet started
+    PENDING = "pending"          # not yet started (ticks_elapsed == 0)
     IN_PROGRESS = "in_progress"  # started, not yet resolved
     SUCCEEDED = "succeeded"      # steps 1-2's OPEN
     FAILED = "failed"            # steps 1-2's NEEDS_REPAIR
@@ -57,16 +78,18 @@ class JobState(Enum):
 class JobNode:
     id: str
     requires: Tuple[str, ...] = ()
-    # same shape as step 2's GraphNode - deliberately no pass_probability/
-    # rmax/r_patience. This step is deterministic and known; there is no
-    # retry budget to track.
+    ticks_to_resolve: int = 0    # 0 = resolves on the very first sense, no waiting
+    resolves_to: JobState = JobState.SUCCEEDED  # must be SUCCEEDED or FAILED
+    # deliberately no pass_probability/rmax/r_patience - see graph-topology/
+    # environment_design.md. Deterministic and known: resolves_to and
+    # ticks_to_resolve are fixed per node, not drawn from a distribution.
 ```
 
 ```python
 class JobGraphEnvironment:
     nodes: Dict[str, JobNode]
 
-    def __init__(self, nodes: Dict[str, JobNode], config: JobGraphConfig):
+    def __init__(self, nodes: Dict[str, JobNode]):
         """Same requires-validation shape as step 2's PathGraphEnvironment -
         reused as a pattern, not imported."""
 
@@ -75,48 +98,54 @@ class JobGraphEnvironment:
         all satisfied and haven't themselves resolved yet."""
 
     def get_job_state(self, node_id: str) -> JobState:
-        """Current lifecycle state. Never mutates anything, consumes no
-        budget - a pure sense, same contract as step 2's get_node_state(),
-        just returning JobState instead of CellState."""
+        """Current lifecycle state, purely a function of ticks elapsed vs.
+        ticks_to_resolve (and whether repair_node() has been called) -
+        never mutates anything itself."""
 
-    def advance_jobs(self) -> None:
-        """Moves every PENDING/IN_PROGRESS node one step through its
-        configured, deterministic lifecycle. Represents the other agents
-        (CI, k8s, pre-commit) doing their own work between our agent's
-        senses - not something PathMaintenanceAgent calls itself. Exactly
-        who calls this (scenario setup stepping through a script, or
-        something that stands for the other agents more literally) is
-        open - see below."""
+    def advance_jobs(self, satisfied: Set[str]) -> None:
+        """Increments the tick counter for every ready-and-unresolved node
+        (ready_nodes(satisfied), the same AND-gating frontier
+        PathGraphEnvironment uses) - not every node in the graph. A node
+        whose requires aren't satisfied yet can't be "in progress" in any
+        real pipeline, and ticking it anyway let a downstream node
+        silently resolve during an upstream node's wait loop - caught by
+        a test while implementing, not designed in from the start. Called
+        by PathMaintenanceAgent.walk()'s wait loop, not by scenario
+        setup - see "Resolved" above."""
 
     def repair_node(self, node_id: str) -> None:
         """Deterministic repair of a FAILED node: same no-op-that-always-
-        succeeds contract as steps 1-2's repair."""
+        succeeds contract as steps 1-2's repair. Raises if the node is not
+        currently FAILED."""
 ```
 
 ```python
-class PathMaintenanceAgent:
-    def walk(self) -> WalkResult:
-        """Same walk as step 2, with one change: before treating a node as
-        SUCCEEDED or FAILED, keep sensing (get_job_state()) while it's
-        PENDING or IN_PROGRESS. Processes `order` strictly one node at a
-        time, sequentially - no concurrent handling of multiple in-progress
-        nodes in this step (see "Not decided"). Still never starts a job,
-        never recomputes or deviates from `order`."""
+class PathMaintenanceAgent:  # new module: agents/job_maintenance.py -
+    def walk(self) -> JobWalkResult:  # not a modification of step 2's class
+        """Senses each node in `order` (except order[0], same start-cell
+        convention as steps 1-2); while PENDING/IN_PROGRESS, calls
+        advance_jobs() and senses again. Once resolved, repairs if FAILED.
+        Processes `order` strictly one node at a time, sequentially - no
+        concurrent handling of multiple in-progress nodes in this step (see
+        "Not decided"). Still never recomputes or deviates from `order`."""
 ```
 
-`WalkResult` likely needs a new field recording how many senses were spent waiting per node, the same way `task_graph_solver`'s `ExecutionResult` tracks retry cost — proposed, not settled.
+```python
+@dataclass(frozen=True)
+class JobWalkResult:
+    path: List[str]
+    repairs_performed: List[str]
+    senses_performed: Dict[str, int]  # per node, how many get_job_state() calls it took to resolve
+    success: bool
+```
+
+New result type, not a modification of step 1-2's `WalkResult` - same reasoning as keeping `PathMaintenanceAgent` a new class in a new module.
 
 ## Where this lives
 
-Inside `path_maintenance/`, the same package step 2 establishes — this step adds a new module alongside step 2's, it does not need its own top-level package.
+Inside `path_maintenance/`, the same package step 2 establishes — new modules (`core/domain.py`/`core/environment.py` gain additive classes, `agents/job_maintenance.py` and `core/results.py`'s `JobWalkResult` are new files/additions), not modifications to step 2's classes.
 
 ## Not decided
 
-- **What exactly resolves `advance_jobs()`, and who calls it.** For a deterministic, known lifecycle, the simplest version is scenario config saying "this job takes exactly N senses to leave `IN_PROGRESS`" — but whether that's driven by scenario setup stepping a script (step 1's `inject_repairs()` shape) or something modeling the other agents more literally is unresolved.
-- **Whether `FAILED` exists yet, or only `SUCCEEDED`.** Reusing the existing repair pattern for a sensed `FAILED` outcome costs nothing new to build and exercises both branches in a demo — but if the goal for this step is narrowly "prove the wait loop," `SUCCEEDED`-only might be the smaller, more honest slice. Leaning toward including `FAILED` since the repair path already exists and not exercising it would leave the GIF one-note, but flagging this as a real scope choice, not an obvious one.
 - **Sequential-but-single-threaded walk, confirmed for this step only.** `walk()` processes `order` one node at a time even though the DAG can have several ready nodes at once — deliberately not dispatching/polling multiple in-progress nodes concurrently yet, since that needs real time-modeling (whose poll happens when) this step doesn't have a reason to build.
-- **`WalkResult`'s new field(s) for wait/poll cost** — shape TBD, see above.
-
-## Explicitly out of scope for this document right now
-
-This is step 3's design, written ahead of step 2's implementation. Nothing here should be built before step 2 (`../graph-topology/`) has its own `scenario.md`/`algorithm_fit.md` and a working `PathGraphEnvironment` — this document exists to record the shape of the next step, not to be started early.
+- **Exact scenario numbers** (which nodes get which `ticks_to_resolve`/`resolves_to`) — left to `scenario.md`.

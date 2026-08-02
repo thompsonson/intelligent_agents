@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List
 
 
 @dataclass(frozen=True)
@@ -13,4 +13,17 @@ class WalkResult:
 
     path: List[str]
     repairs_performed: List[str]
+    success: bool
+
+
+@dataclass(frozen=True)
+class JobWalkResult:
+    """Result of a job-lifecycle-aware walk. New type, not a modification
+    of WalkResult - see
+    documentation/path-maintenance/job-lifecycle/environment_design.md.
+    """
+
+    path: List[str]
+    repairs_performed: List[str]
+    senses_performed: Dict[str, int]
     success: bool
