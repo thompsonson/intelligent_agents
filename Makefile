@@ -7,7 +7,7 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live benchmark-gsm8k benchmark-gsm8k-reflection test-task-graph test-maze-solver
+.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live benchmark-gsm8k benchmark-gsm8k-reflection test-task-graph test-maze-solver test-path-maintenance
 
 # Default target
 help:
@@ -16,6 +16,7 @@ help:
 	@echo "  test          - Run tests with pytest"
 	@echo "  test-task-graph - Run task_graph_solver tests (see documentation/task-graph/)"
 	@echo "  test-maze-solver - Run maze_solver tests (see documentation/path-maintenance/)"
+	@echo "  test-path-maintenance - Run path_maintenance tests (see documentation/path-maintenance/graph-topology/)"
 	@echo "  test-verbose  - Run tests with verbose output"
 	@echo "  test-coverage - Run tests with coverage report"
 	@echo "  test-integration - Run integration tests with env vars"
@@ -112,6 +113,11 @@ test-task-graph:
 test-maze-solver:
 	@echo "Running maze_solver tests..."
 	uv run pytest maze_solver/tests/ -v
+
+# Run path_maintenance tests (see documentation/path-maintenance/graph-topology/)
+test-path-maintenance:
+	@echo "Running path_maintenance tests..."
+	uv run pytest path_maintenance/tests/ -v
 
 # Enhanced agent demo with token confidence
 demo-enhanced:

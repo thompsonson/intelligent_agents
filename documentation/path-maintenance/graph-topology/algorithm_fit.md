@@ -10,11 +10,11 @@ Unmodified from step 1 in every way except the domain type of one element (`Tupl
 
 | Step | Node | Sensed state | Action |
 |---|---|---|---|
-| 1 | `pre-commit` | `OPEN` | move on |
-| 2 | `lint` | `NEEDS_REPAIR` | `repair_node("lint")`, then move on |
-| 3 | `unit-tests` | `OPEN` | move on |
-| 4 | `merge` | `OPEN` | move on |
-| 5 | `deploy` | `NEEDS_REPAIR` | `repair_node("deploy")`, then move on |
+| — | `pre-commit` | *not sensed* | `order[0]` is where the agent starts, not something it arrives at — same convention as step 1's maze start cell |
+| 1 | `lint` | `NEEDS_REPAIR` | `repair_node("lint")`, then move on |
+| 2 | `unit-tests` | `OPEN` | move on |
+| 3 | `merge` | `OPEN` | move on |
+| 4 | `deploy` | `NEEDS_REPAIR` | `repair_node("deploy")`, then move on |
 
 `result.repairs_performed == ["lint", "deploy"]`, `result.success is True`. Note what `walk()` does *not* do at step 4: it never checks whether `merge`'s two parents are "genuinely" both resolved before treating `merge` as reachable — it doesn't need to, because `order` was already computed to respect `requires` (`merge` only appears after both `lint` and `unit-tests`). The AND-join is enforced once, when `order` is computed, not re-checked at every step — the same division of labor step 1 had between "A* computes a valid route" and "the agent just walks it."
 
