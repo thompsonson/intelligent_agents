@@ -1,6 +1,6 @@
 import os
 import tempfile
-from typing import List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 import imageio.v2 as imageio
 import matplotlib.pyplot as plt
@@ -10,8 +10,14 @@ from ..core.environment import DiscoveryEnvironment
 
 NODE_COLORS = {
     "known": "lightgray",  # named in a sensed node's notifies, not yet visited
-    "visited": "limegreen",  # sensed, has its own notifies (not the goal)
-    "goal": "darkgreen",  # sensed, no notifies - the walk's terminal
+    "blocked": "gold",  # visited, but requires aren't all cleared yet - see
+    # documentation/discovery/and-joins/environment_design.md's "Three
+    # states, not two". Doesn't exist before this step - a node with
+    # requires=() clears the instant it's sensed, so this color never
+    # appears in step 1/2 GIFs.
+    "cleared": "limegreen",  # visited and requires satisfied - notifies
+    # walkable (not the goal). Named "visited" before this step.
+    "goal": "darkgreen",  # cleared, no notifies - the walk's terminal
 }
 AGENT_MARKER_COLOR = "orange"
 
@@ -52,16 +58,21 @@ def _layered_layout(graph: nx.DiGraph) -> dict:
         return nx.spring_layout(graph, seed=0)
 
 
-def _node_display_state(node_id: str, visited: Set[str], is_goal: bool) -> str:
-    if node_id in visited:
-        return "goal" if is_goal else "visited"
-    return "known"
+def _node_display_state(
+    node_id: str, visited: Set[str], cleared: Set[str], is_goal: bool
+) -> str:
+    if node_id not in visited:
+        return "known"
+    if node_id not in cleared:
+        return "blocked"
+    return "goal" if is_goal else "cleared"
 
 
 def render(
     env: DiscoveryEnvironment,
     known: Set[str],
     visited: Optional[Set[str]] = None,
+    cleared: Optional[Set[str]] = None,
     agent_position: Optional[str] = None,
     save_path: Optional[str] = None,
     title: Optional[str] = None,
@@ -70,8 +81,14 @@ def render(
     discovered so far (`known` - nodes named in some already-sensed
     node's notifies, plus the start id) - not the full environment. Edges
     shown are only those whose source has been visited (sensed), since an
-    edge is only known once its source node has actually been queried."""
+    edge is only known once its source node has actually been queried.
+
+    `cleared` defaults to `visited` when omitted - step 1/2 callers never
+    had a blocked concept at all (every node's requires=() clears
+    instantly), so leaving it unset reproduces their exact old coloring
+    rather than painting everything "blocked"."""
     visited = visited or set()
+    cleared = visited if cleared is None else cleared
 
     full_graph = build_networkx_graph(env)
     full_pos = _layered_layout(full_graph)
@@ -86,7 +103,7 @@ def render(
 
     colors = [
         NODE_COLORS[
-            _node_display_state(n, visited, full_graph.nodes[n]["is_goal"])
+            _node_display_state(n, visited, cleared, full_graph.nodes[n]["is_goal"])
         ]
         for n in graph.nodes()
     ]
@@ -143,8 +160,9 @@ def render(
         plt.show()
 
 
-# A frame is (node_id, caption, known-as-of-this-frame, visited-as-of-this-frame).
-Frame = Tuple[str, str, Set[str], Set[str]]
+# A frame is (node_id, caption, known, visited, cleared) - each a
+# snapshot as of that position in path.
+Frame = Tuple[str, str, Set[str], Set[str], Set[str]]
 
 
 def _walk_frames(env: DiscoveryEnvironment, path: List[str]) -> List[Frame]:
@@ -159,27 +177,48 @@ def _walk_frames(env: DiscoveryEnvironment, path: List[str]) -> List[Frame]:
     exploration/algorithm_fit.md's worked example: 6 senses, 10 moves).
     A per-move-event instrumentation trace would therefore have fewer
     entries than frames needed. Simpler and just as honest: replay `path`
-    directly, and re-query sense_edges() the first time this replay sees
-    a given node - env.sense_edges() has no arrival gate and is
-    deterministic (environment_design.md), so re-asking it here for
+    directly, and re-query sense_edges()/sense_requires() the first time
+    this replay sees a given node - neither has an arrival gate and both
+    are deterministic (environment_design.md), so re-asking them here for
     rendering doesn't touch walk()'s own already-fixed nodes_sensed
     accounting in the DiscoveryWalkResult this is replaying.
+
+    Also replays the requires-gating computation itself (and-joins/
+    algorithm_fit.md's "The algorithm"), in lockstep with `path`, to know
+    which nodes are `cleared` at each frame - a second, independent replay
+    of the same deterministic rule walk() already applied once, not a
+    second source of truth: given the same `path`, it always agrees.
     """
     known: Set[str] = {path[0]}
     visited: Set[str] = set()
+    cleared: Set[str] = set()
     sensed: Set[str] = set()
+    known_requires: Dict[str, Tuple[str, ...]] = {}
     frames: List[Frame] = []
 
     for node_id in path:
-        if node_id not in sensed:
+        was_sensed = node_id in sensed
+        if not was_sensed:
             notifies = env.sense_edges(node_id)
+            known_requires[node_id] = env.sense_requires(node_id)
             sensed.add(node_id)
             known.update(notifies)
+        visited.add(node_id)
+
+        was_cleared = node_id in cleared
+        if not was_cleared and all(r in cleared for r in known_requires[node_id]):
+            cleared.add(node_id)
+
+        if not was_sensed:
             caption = f"sense_edges({node_id!r}) → {notifies!r}"
+            if known_requires[node_id]:
+                caption += f", requires {known_requires[node_id]!r}"
+        elif not was_cleared and node_id in cleared:
+            caption = f"{node_id!r} requires satisfied - cleared"
         else:
             caption = f"backtrack to {node_id!r}"
-        visited.add(node_id)
-        frames.append((node_id, caption, set(known), set(visited)))
+
+        frames.append((node_id, caption, set(known), set(visited), set(cleared)))
 
     return frames
 
@@ -202,7 +241,7 @@ def animate_walk(
     with tempfile.TemporaryDirectory() as tmp_dir:
         frame_files = []
 
-        for i, (node_id, caption, known, visited) in enumerate(
+        for i, (node_id, caption, known, visited, cleared) in enumerate(
             _walk_frames(env, path)
         ):
             frame_path = os.path.join(tmp_dir, f"frame_{i:03d}.png")
@@ -210,6 +249,7 @@ def animate_walk(
                 env,
                 known=known,
                 visited=visited,
+                cleared=cleared,
                 agent_position=node_id,
                 save_path=frame_path,
                 title=f"{base_title}\n{caption}",
