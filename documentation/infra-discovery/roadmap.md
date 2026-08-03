@@ -8,6 +8,21 @@
 
 Every other arc in this repo's history got to start small because the *next* step reused the *previous* step's algorithm unmodified - `real_discovery/atomicguard_backed/`'s whole validating claim was that `DiscoveryAgent` needed zero changes to run against real, subprocess-backed nodes. `algorithm_fit.md` already closed that door for this environment: `DiscoveryAgent`'s DFS-with-retrace depends on an adjacency/position constraint this ontology doesn't have at all, and there's no fixed, finite graph to prove full-exploration-in-bounded-moves over even if it did. Step 1 here has to be a genuinely new loop - the `AGENT-FUNCTION`/`pending`/`SELECT-NEXT` shape from `atomicguard`'s own document, not a variant of anything already built - which is exactly why it needs to be kept as small as the discipline below can make it.
 
+## Testing discipline: fixtures for behavior, properties for universal claims
+
+Prompted by `atomicguard`'s own `a241844` (naming `D1`-`D4` as falsifiable invariants and recommending property-based testing for two of them) and the `roadmap.md` review that followed it - both worth generalizing beyond where they were first raised, not applied only there.
+
+Both real bugs found in this design so far - `CLEARED`'s cycle-unsafety, the bidirectional-propagation gap - share a shape: each is a **universal claim over an unbounded class of graphs** (any `requires` graph, including cyclic ones; any edge direction, not just the one every worked example happened to use), and each slipped past every hand-traced fixture built so far, because a fixture only proves a property for the one graph its author thought to draw. That weakness isn't specific to `requires`/`CLEARED` - it's specific to *this kind of claim*, and this kind of claim shows up starting at Step 1, not first at Step 2.
+
+**The criterion, applied per-claim, not per-step:** does this property claim to hold for *one specific, named scenario* (fine with a hand-fixture, the same worked-example discipline this whole repo already uses - exact move counts, exact walk traces, exact GIFs), or does it claim to hold for *the whole class of shapes the design is supposed to handle* (needs property-based testing - generate random instances of that class, including adversarial ones like cycles, and assert the property directly)? Concretely, starting from Step 1:
+
+- **Step 1's bidirectional propagation** (`RESOLVE-BRIDGES` discovering novelty via either `edge.to` or `edge.from`) is exactly this shape - a claim about *any* edge/node configuration, not just the `ReplicaSet`/`Pod` example. Property-based testing (generating random small node/edge graphs, asserting propagation reaches whichever end is new regardless of direction) belongs in Step 1's own test suite from the start, alongside its hand-traced worked examples, not deferred until Step 2.
+- **Step 2's `D1`/`D2`** (monotonic clearance, cycle-safe clearance) are `atomicguard`'s own named instances of the same pattern - generate random `requires` graphs, including cycles, and assert `cleared` only grows and a cycle always resolves to permanent non-clearance rather than a crash or hang.
+- **`D3`** (acting-catalogue allowlist) is a structural/boundary claim, not a property over random input - fits this repo's existing boundary-test style (the kind `test_effector_boundaries.py` and siblings already use in `atomicguard`), whenever Step 5 introduces it.
+- **`D4`** (acting freshness) needs a real clock and real re-sensing behavior to mean anything - doesn't fit either pattern cleanly until Step 5 has actual acting DSAs to check it against.
+
+Worth naming honestly, not just applying forward: `discovery/`'s own merged, already-shipped "full exploration, bounded moves" claim (`backtracking-exploration/algorithm_fit.md`'s `2×|E|` bound) is a universal claim of exactly this shape too, and was only ever fixture-tested against `pipeline_fanout_lite` - one graph. Not proposed for retrofit here (that work is done, merged, out of scope); named so this arc is understood as the first place this gets done right from the start, not the first place the gap existed. `hypothesis` is not currently a dependency of this repo either (checked, matching the same finding on the `atomicguard` side) - adding it is part of Step 1's own setup, not a later addition.
+
 ## Step 0: two decisions, not builds
 
 Both cheap to decide now, expensive to retrofit once code exists on top of the wrong one - settle before Step 1 starts, not during it.
@@ -30,7 +45,7 @@ Both cheap to decide now, expensive to retrofit once code exists on top of the w
 
 ## Step 2: `requires`/`SWEEP-CLEARED`, re-validated under the flat loop
 
-`discovery/`'s step 3 already proved the readiness-sweep mechanism once, inside a two-phase, adjacency-driven structure. Proving it again *without* that structure - `SWEEP-CLEARED` as an iterative fixed-point pass running every turn of a flat loop, not between exploration phases - is genuinely separate work, not a rerun. A fixture scenario reusing an AND-join shape (mirroring `and-joins/scenario.md`'s `(lint, integration-tests)` pattern, translated into this ontology's typed nodes) is the natural test case.
+`discovery/`'s step 3 already proved the readiness-sweep mechanism once, inside a two-phase, adjacency-driven structure. Proving it again *without* that structure - `SWEEP-CLEARED` as an iterative fixed-point pass running every turn of a flat loop, not between exploration phases - is genuinely separate work, not a rerun. A fixture scenario reusing an AND-join shape (mirroring `and-joins/scenario.md`'s `(lint, integration-tests)` pattern, translated into this ontology's typed nodes) is the natural worked example - plus `D1`/`D2` property-based tests per "Testing discipline," above, since a hand-fixture alone is exactly the methodology that let the original `CLEARED` recursion bug through.
 
 ## Step 3: `IN-SCOPE` boundedness
 
@@ -60,4 +75,4 @@ Dry-run-as-its-own-sensing-shaped-`DSA-CATALOGUE`-entry, the acting-catalogue-ha
 - [`schema.md`](schema.md) - the field-level types and registered vocabulary Step 1 implements against; the `Edge` shape Step 0's second decision is about.
 - [`algorithm_fit.md`](algorithm_fit.md) - why `DiscoveryAgent` doesn't transfer (the reason this roadmap exists at all), `SWEEP-CLEARED`, and `IN-SCOPE`.
 - [`examples.md`](examples.md) - the `ReplicaSet`/`Pod` worked example Step 4 is built to formalize.
-- `atomicguard`'s `docs/design/notes/topology_agent_function_requires_and_discovery_validation.md` - `AGENT-FUNCTION`'s pseudocode (the loop Step 1 implements a minimal version of) and the "Blue-sky extensions worth writing down" section this roadmap sequences.
+- `atomicguard`'s `docs/design/notes/topology_agent_function_requires_and_discovery_validation.md` - `AGENT-FUNCTION`'s pseudocode (the loop Step 1 implements a minimal version of), the "Blue-sky extensions worth writing down" section this roadmap sequences, and the `D1`-`D4` invariants (commit `a241844`) "Testing discipline," above, generalizes beyond Steps 2/3.
