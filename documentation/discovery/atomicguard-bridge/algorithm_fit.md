@@ -10,6 +10,52 @@
 
 `tests/test_discovery_agent_integration.py` is that claim tested, not just argued: both environments' walks produce identical `DiscoveryWalkResult`s (`path`, `nodes_sensed`, `total_cost`, `blocked_nodes`, `goal_reached`) over the identical topology, ungated and gated.
 
+## The real call sequence, one `sense_edges()` call
+
+`DiscoveryAgent.walk()` itself never sees any of this - it's exactly one call to `sense_edges(node_id)` from its point of view, same as calling `discovery/`'s own field read. What's actually behind that one call, traced class by class against real `atomicguard` source (`application/agent.py`'s `DualStateAgent.execute()`, `application/action_pair.py`'s `ActionPair.execute()`):
+
+```mermaid
+sequenceDiagram
+    participant Walk as DiscoveryAgent.walk()
+    participant Env as StatefulDiscoveryEnvironment
+    participant DSA as DualStateAgent
+    participant AP as ActionPair
+    participant Gen as SubprocessGenerator
+    participant Guard as ExitCodeGuard
+    participant DAG as InMemoryArtifactDAG
+
+    Walk->>Env: sense_edges(node_id)
+    Env->>DSA: DualStateAgent(check_action_pair, dag, rmax=0).execute(specification="")
+    DSA->>AP: execute(context, dependencies, action_pair_id, workflow_id)
+    AP->>Gen: generate(context, prompt_template, action_pair_id, workflow_id)
+    Gen->>Gen: subprocess.run(["cat", fixture_path])
+    Gen-->>AP: Artifact(content=stdout, metadata={exit_code})
+    AP->>Guard: validate(artifact)
+    Guard-->>AP: GuardResult(passed=True)
+    AP-->>DSA: ActionPairResult(artifact, guard_result)
+    DSA->>DAG: store(artifact)
+    DSA-->>Env: Artifact (accepted, rmax=0 - no retry loop entered)
+    Env->>Env: json.loads(artifact.content)["notifies"]
+    Env-->>Walk: (target_ids, ...)
+```
+
+`sense_requires(node_id)` is the direct contrast, worth seeing right next to this rather than only described in prose: no `DualStateAgent`, no `ActionPair`, no subprocess - `StatefulDiscoveryEnvironment` just returns `node.requires` the same one-line field read `discovery/`'s own environment does. `requires` is declared node config (see `environment_design.md`'s "Who owns what"); only `notifies` goes through the real chain above.
+
+```mermaid
+sequenceDiagram
+    participant Walk as DiscoveryAgent.walk()
+    participant Env as StatefulDiscoveryEnvironment
+
+    Walk->>Env: sense_requires(node_id)
+    Env-->>Walk: node.requires
+    Note over Walk,Env: A field read, same as discovery/'s own environment - no DSA involved
+```
+
+Two details load-bearing enough to name explicitly, not just visible in the diagram:
+
+- **The whole real chain runs once per newly-discovered node id, never once per frame or once per move.** `DiscoveryAgent.walk()`'s own `sense()` closure only calls `sense_edges()`/`sense_requires()` the first time a node is reached - a revisit or backtrack costs zero real calls. This is the property `real_discovery/`'s first visualization violated (see below) and the reason `nodes_sensed` in every worked example (6, for `pipeline_fanout_lite`) is smaller than `len(path)`.
+- **`rmax=0` means the retry loop in `DualStateAgent.execute()` is entered exactly once.** A failing check (`ExitCodeGuard` returns `passed=False`) would raise `RmaxExhausted` immediately rather than retrying - see "What a failing sense means for the walk," below, for why that's still an open question, not a resolved one.
+
 ## Sensing has real cost now - and the algorithm's discipline around that turned out to matter for real
 
 `discovery/`'s own `sense()` closure inside `walk()` already never re-senses a node once it's in `known_edges` - a discipline that cost nothing to get right when sensing was a free field read, so nothing ever tested whether it actually mattered. It does now: `sense_edges()` is a real subprocess round-trip through `DualStateAgent`. `DiscoveryAgent.walk()` itself has always respected this (it's the reason `nodes_sensed` can be smaller than `len(path)` at all, since step 2), so the algorithm didn't need to change here either - but `real_discovery/atomicguard_backed/visualization/discovery_view.py`'s *first* version didn't inherit that discipline, and paid for it: `build_networkx_graph(env)` re-sensed every node in `env.nodes` on every single frame render, 90 real subprocess calls for a 15-frame/6-node walk that needed only 6 (caught in PR #15's review, fixed by threading `_walk_frames()`'s own already-sensed data through instead of reading the environment directly - and the same bug, cost aside, turned out to be present in `discovery/`'s own visualization too, see [`../experiments/04_real_discovery_bridge.md`](../experiments/04_real_discovery_bridge.md) for the full account).
