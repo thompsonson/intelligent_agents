@@ -81,3 +81,4 @@ Not decided which. Worth keeping visible as a real design fork this one worked e
 - [`environment_design.md`](environment_design.md) - "Discovery is bidirectional," the finding Example 3 works through concretely.
 - [`algorithm_fit.md`](algorithm_fit.md) - `SWEEP-CLEARED`/`RELEVANT`/`IN-SCOPE`, the mechanisms these examples' edges and facets feed into.
 - `thompsonson/atomicguard` PR #369 - the `BRIDGE-CATALOGUE`/`edge.from` type-mismatch finding Example 3's "where this gets genuinely hard" section makes concrete.
+- [`roadmap.md`](roadmap.md) - Example 3's fork resolved as Step 4 (`RECORD-UNCATALOGUED`), not left open indefinitely.

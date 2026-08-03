@@ -52,6 +52,7 @@ This isn't a hypothetical import for this environment - it's a live one. Real in
 - [`environment_design.md`](environment_design.md) - the node/edge shape and environment properties this fit argument is checked against.
 - [`schema.md`](schema.md) - the field-level reference for `belief_state`'s own operations (`RECORD`, `RECORD-EDGE`, `cleared`) this document's `SWEEP-CLEARED` discussion assumes.
 - [`examples.md`](examples.md) - Example 3's `ReplicaSet`/`Pod` case works through exactly the `BRIDGE-CATALOGUE`/`RELEVANT` gap named in "Open, not resolved," below, concretely.
+- [`roadmap.md`](roadmap.md) - why this document's own "no adjacency, no reused loop" finding means Step 1 has to be built from scratch, and where `IN-SCOPE`/`SWEEP-CLEARED` land in the build sequence.
 - `atomicguard`'s `docs/design/notes/topology_sensing_dsa_belief_state_and_agent_function.md` - the LRTA*/D*-Lite/frontier-exploration literature survey, the `AGENT-FUNCTION` pseudocode, and the full cost-feature enumeration this document defers to rather than repeats.
 - `atomicguard`'s `docs/design/notes/topology_agent_function_requires_and_discovery_validation.md` - `IN-SCOPE`/`SELECT-NEXT` soundness, and the `CLEARED` recursion the cycle-safety gap above was found in.
 - [`../discovery/backtracking-exploration/algorithm_fit.md`](../discovery/backtracking-exploration/algorithm_fit.md) - the DFS-with-retrace bound this document argues does not transfer, and why.

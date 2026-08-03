@@ -156,5 +156,6 @@ Illustrative only - not generated from any running code, since none exists yet. 
 - [`environment_design.md`](environment_design.md) - the properties table and node-ownership reasoning this schema is the field-level reference for.
 - [`algorithm_fit.md`](algorithm_fit.md) - `SWEEP-CLEARED`, `RECORD-UNKNOWABLE`/`RECORD-BLOCKED` propagation, and why `cleared` has to be iterative, not recursive.
 - [`examples.md`](examples.md) - these types and this vocabulary, instantiated and diagrammed.
+- [`roadmap.md`](roadmap.md) - Step 0's `Edge`-shape decision (plain tuple vs. `Facet`-style accumulated evidence) and where `belief_state`'s own schema gets implemented.
 - `atomicguard`'s `docs/design/notes/platform_topology_peas_and_cli_actions.md` §5 - the real `DSA-CATALOGUE`/CLI action catalogue this document's vocabulary table is reused from verbatim.
 - `atomicguard`'s `docs/design/notes/topology_sensing_dsa_belief_state_and_agent_function.md` - `BRIDGE-CATALOGUE`'s `applies-to` rule and the ontology's own field definitions.
