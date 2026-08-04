@@ -37,15 +37,18 @@ file for what's actually there now.
 | `algorithm_fit.md` | `step4_algorithm_fit.md` (Step 4) | Extraction only - `CLEARED` finding moved to `findings.md`, "Open, not resolved" moved to `open_questions.md`; everything else unchanged, already correctly filed |
 | *(none)* | `step3_agent_function.md` (Step 3) | Originally net-new/stub; now filled - the `AGENT-FUNCTION` pseudocode translated from `atomicguard`'s revision document into this track's own file. See the update note above |
 | `roadmap.md` | `step5_agent_program.md` (Step 5) | Rename + extraction - "Testing discipline" moved to `decisions.md`; "Step 0" and "Not decided" moved to `open_questions.md` |
-| `schema.md` | `step0_schema.md` (Step 0) | Copy, unchanged |
-| `ubiquitous_language.md` | `step0_ubiquitous_language.md` (Step 0) | Copy, unchanged |
-| `examples.md` | `examples.md` | Copy, unchanged - **no home in the scheme; see "Left unresolved," below** |
+| `schema.md` | `step0_schema.md` (Step 0) | Copy, cross-links updated for the rename - content otherwise unchanged |
+| `ubiquitous_language.md` | `step0_ubiquitous_language.md` (Step 0) | Copy, cross-links updated for the rename - content otherwise unchanged |
+| `examples.md` | `examples.md` | Copy, cross-links updated - **no home in the scheme; see "Left unresolved," below** |
 | *(scattered across 5 files)* | `decisions.md` | Consolidation - 4 entries |
 | *(scattered across 2 files)* | `findings.md` | Consolidation - 2 entries, both already resolved |
-| *(scattered across 5 files)* | `open_questions.md` | Consolidation - 14 entries |
+| *(scattered across 5 files)* | `open_questions.md` | Consolidation - 16 entries (14 from the original consolidation pass, plus `OQ-015`/`OQ-016`, found missing on a later review pass - see below) |
 | *(none)* | `blue_sky.md` | **Not created** - see below |
 
-6 files became 10 (not 11 - `blue_sky.md` doesn't exist).
+6 files became 11 (12 counting this sizing document itself, which isn't
+part of the retrofit's own output). An earlier version of this document
+miscounted this as 10 - corrected on review; see "Errors found on review,"
+below.
 
 ## What sizing this for real found, that estimating it wouldn't have
 
@@ -115,27 +118,58 @@ copied. Whether that's the right boundary, or whether a track's register
 files should absorb everything relevant regardless of which repo it was
 decided in, isn't decided here either.
 
+## Errors found on review
+
+A second pass, checking this exercise's own output rather than trusting
+the first pass, found four real mistakes - listed here rather than
+silently corrected, since a sizing document that hides its own errors
+undermines the case it's making for consolidation in the first place:
+
+1. **This document's own file count was wrong.** "6 files became 10" -
+   actually 11 (12 counting this document). The Verdict below undercounted
+   the mechanical bucket by one for the same reason (7, not the correct 8).
+2. **A promise made in three places, kept in none.** `findings.md`,
+   `examples.md`, and this track's `algorithm_fit.md` each stated that the
+   `ReplicaSet`/unregistered-`kind` gap "is tracked in `open_questions.md`"
+   - it wasn't. Added as `OQ-015`.
+3. **A referenced-but-never-filed open question.** `decisions.md`'s `D-003`
+   and `step2_environment_analysis.md` (twice) both say acting-DSA
+   selection "stays open" without it ever getting its own entry. Added as
+   `OQ-016`.
+4. **A misattributed cross-reference.** `step3_agent_function.md` cited
+   "`algorithm_fit.md`'s Mermaid sequence diagrams" as a model to follow -
+   this track's own `algorithm_fit.md` has no Mermaid content; the actual
+   diagrams are in `../discovery/atomicguard-bridge/algorithm_fit.md`, a
+   different file in a different track. Predates the retrofit; carried
+   forward uncaught until this pass.
+
+All four are fixed in this pass, not left as a separate TODO - the point of
+finding them was to correct them, not just to note they exist.
+
 ## Verdict
 
-**Updated** after Steps 1 and 3 were filled (see the note at the top; the
-original verdict, written when both were stubs, undercounted how much of
-the real content already existed on `atomicguard` PR #369 rather than
-needing fresh design work here).
+**Updated twice** after the original pass: once when Steps 1 and 3 were
+filled (see the note at the top - both turned out to be translation work
+sourced from content that already existed on `atomicguard` PR #369, not
+fresh design), and once after a second, skeptical review pass over this
+document's own output caught four further mistakes, listed in "Errors
+found on review," above - including this section's own file count, which
+was wrong.
 
-Of 10 resulting files: **2 required real, track-owned work to fill**
+Of 11 resulting files: **2 required real, track-owned translation work**
 (`step1_environment_specification.md` - combining three per-domain PEAS
 tables and a CLI catalogue into one cross-domain statement;
-`step3_agent_function.md` - translating already-complete pseudocode into
-this track's own vocabulary), **1 is copied unresolved** (`examples.md` -
-no home in the scheme), and **7 are mechanical** - extraction,
-consolidation, and renaming of content that already existed, with three
-concrete corrections surfacing only because the consolidation forced a
-side-by-side read (the triple-duplicated `belief_state` question, the
-mislabeled "Step 0" section, the `blue_sky.md` non-file). The register-file
-consolidation paid for itself on this one track before any code changed as
-a result. With Steps 1 and 3 filled and `step0_schema.md`'s two dead links
-(`environment_design.md`/`roadmap.md`, pre-dating the rename) fixed, the
-retrofit folder is a faithful, complete reorganization of everything the
-original six files contained - not a claim that the underlying design work
-(`IN-SCOPE` boundedness, `SCORE`'s feature set, and the rest of
-`open_questions.md`) is any more finished than it was before.
+`step3_agent_function.md` - reproducing already-complete pseudocode in this
+track's own vocabulary; neither needed fresh design), **1 is copied
+unresolved** (`examples.md` - no home in the scheme), and **8 are
+mechanical** - extraction, consolidation, and renaming of content that
+already existed, with three concrete corrections surfacing only because
+the consolidation forced a side-by-side read (the triple-duplicated
+`belief_state` question, the mislabeled "Step 0" section, the
+`blue_sky.md` non-file), plus the four further errors caught on the later
+review pass (this document's original "10 resulting files" among them).
+The register-file consolidation paid for itself on this one track before
+any code changed as a result - and needed two further passes past the
+first, not just the first, to actually deliver on that: one to fill in
+what the original pass wrongly called unscoped synthesis work, one to
+catch what the original pass got wrong about itself.

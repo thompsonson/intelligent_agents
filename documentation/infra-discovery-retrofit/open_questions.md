@@ -17,6 +17,14 @@ decided" sections at the bottom of five separate documents. That's a
 concrete sizing data point in favor of consolidation, not just a
 convenience.
 
+**A second payoff, found on a later review pass, not the first:**
+`OQ-015` and `OQ-016` below were added after `findings.md`, `examples.md`,
+and `step4_algorithm_fit.md` were each found to claim this content already
+lived here - it didn't. A consolidated file only earns "check here first"
+if it's actually complete; the gap survived the original consolidation
+pass and was only caught by checking those claims against this file
+directly, not by trusting them.
+
 ## OQ-001: Node identity stability
 
 Does an `id` reliably name the same real-world thing across sensing calls?
@@ -148,8 +156,41 @@ Linting variable/class names against `ubiquitous_language.md`, vs. relying
 on review discipline alone, the way this repo's other packages do today.
 **Source:** `ubiquitous_language.md`.
 
+## OQ-015: What `RELEVANT` does when a lookup hits an unregistered `kind`
+
+Concretely: `examples.md` Example 3 - `ReplicaSet` is discovered as
+`edge.from` via a `Pod`'s real `ownerReferences`, but
+`DSA-CATALOGUE[(kubernetes, ReplicaSet)]` doesn't exist, so
+`RELEVANT(BRIDGE-CATALOGUE[owns](edge.from), edge.from, Ψ, belief_state)`
+has nowhere to go. Two ways this could go, neither decided: (a) discovery
+genuinely stops one hop short, `ReplicaSet` recorded as an edge endpoint
+but never itself sensed; (b) the sensing DSA is authored to resolve past
+unregistered intermediate kinds itself, so the edge discovered skips
+`ReplicaSet` entirely. **This is the gap `RECORD-UNCATALOGUED` (blue-sky,
+`db07eec`) is meant to eventually make a visible status instead of a silent
+`RELEVANT() = ∅`** - scheduled as `step5_agent_program.md` Step 4.
+**Gap found during review, not originally captured here:** `findings.md`
+(F-001), `examples.md`, and `step4_algorithm_fit.md` all state that this
+question "is tracked... in `open_questions.md`" - it wasn't, until this
+entry. **Source:** `examples.md` Example 3, "Where this gets genuinely
+hard."
+
+## OQ-016: Acting-DSA selection, when more than one applies to a subject
+
+`D-003` in [`decisions.md`](decisions.md) settles the sensing half
+(aggregation - enqueue all applicable sensing DSAs at once); the
+genuine-selection reading (multiple *acting* DSAs compete for the same
+subject, a real scoring problem) stays open, deferred along with acting
+generally (sensing-first scope, every source document). **Gap found during
+review:** referenced twice in `step2_environment_analysis.md` ("the
+genuine-selection reading stays open for acting DSAs") and once in
+`decisions.md`'s own `D-003` status line, but never previously given its
+own entry here. **Source:** `step2_environment_analysis.md`'s "`legal_actions`:
+a catalogue lookup, not a node field" section, inherited from
+`atomicguard-bridge/algorithm_fit.md`'s original "DSA selection" open item.
+
 ## Related documents
 
 - [`decisions.md`](decisions.md) - settled decisions; two items here (`OQ-010`, `OQ-011`) were originally mislabeled as belonging there.
 - [`findings.md`](findings.md) - resolved gaps/bugs, distinct from these still-open questions.
-- [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md), [`step0_schema.md`](step0_schema.md), [`step5_agent_program.md`](step5_agent_program.md), [`step0_ubiquitous_language.md`](step0_ubiquitous_language.md) - the analysis documents these questions were extracted from.
+- [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md), [`step0_schema.md`](step0_schema.md), [`step5_agent_program.md`](step5_agent_program.md), [`step0_ubiquitous_language.md`](step0_ubiquitous_language.md), [`examples.md`](examples.md) - the analysis documents these questions were extracted from.

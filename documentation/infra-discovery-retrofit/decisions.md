@@ -32,7 +32,7 @@ catalogue, not declared per instance.
 
 ## D-003: Sensing-DSA aggregation, not per-node selection
 
-**Status:** Decided (sensing DSAs only - acting DSA selection stays an open question)
+**Status:** Decided (sensing DSAs only - acting DSA selection stays open, `OQ-016` in [`open_questions.md`](open_questions.md))
 **Decision:** when more than one sensing DSA applies to a newly-discovered
 subject, all of them get enqueued into `pending` at once
 (`RELEVANT(DSA-CATALOGUE[subject.domain, subject.kind], ...)`) - selection
