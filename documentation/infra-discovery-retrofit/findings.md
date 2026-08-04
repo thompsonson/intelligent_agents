@@ -50,4 +50,4 @@ only, matching the safe pattern above rather than the unsafe recursive one.
 
 - [`decisions.md`](decisions.md) - settled decisions, distinct from findings.
 - [`open_questions.md`](open_questions.md) - genuinely undecided items, including duplicate mentions of both findings' surrounding context (e.g. `algorithm_fit.md`'s original "Open, not resolved" section referenced `CLEARED`'s fix as still-relevant context, not as an unresolved item itself - consolidated here to avoid the same content appearing as both a finding and an open question).
-- [`environment_analysis.md`](environment_analysis.md), [`algorithm_fit.md`](algorithm_fit.md) - the analysis documents these findings were extracted from.
+- [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md) - the analysis documents these findings were extracted from.

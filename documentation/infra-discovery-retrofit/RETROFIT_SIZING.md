@@ -13,13 +13,13 @@ on one track turned up.
 
 | Original file | Became | Kind of work |
 |---|---|---|
-| `environment_design.md` | `environment_analysis.md` (Step 2) | Extraction - properties table and ontology-adjacent analysis kept; "Nodes and edges, translated" dropped (superseded by `schema.md`); "Discovery is bidirectional" moved to `findings.md`; "Resolved design questions" moved to `decisions.md`; "Not decided" moved to `open_questions.md` |
-| *(none)* | `environment_specification.md` (Step 1) | **Net-new.** No owned PEAS content existed for this track - see below |
-| `algorithm_fit.md` | `algorithm_fit.md` (Step 4) | Extraction only - `CLEARED` finding moved to `findings.md`, "Open, not resolved" moved to `open_questions.md`; everything else unchanged, already correctly filed |
-| *(none)* | `agent_function.md` (Step 3) | **Net-new.** No owned agent-function content existed for this track - see below |
-| `roadmap.md` | `agent_program.md` (Step 5) | Rename + extraction - "Testing discipline" moved to `decisions.md`; "Step 0" and "Not decided" moved to `open_questions.md` |
-| `schema.md` | `schema.md` (Step 0) | Copy, unchanged |
-| `ubiquitous_language.md` | `ubiquitous_language.md` (Step 0) | Copy, unchanged |
+| `environment_design.md` | `step2_environment_analysis.md` (Step 2) | Extraction - properties table and ontology-adjacent analysis kept; "Nodes and edges, translated" dropped (superseded by `step0_schema.md`); "Discovery is bidirectional" moved to `findings.md`; "Resolved design questions" moved to `decisions.md`; "Not decided" moved to `open_questions.md` |
+| *(none)* | `step1_environment_specification.md` (Step 1) | **Net-new.** No owned PEAS content existed for this track - see below |
+| `algorithm_fit.md` | `step4_algorithm_fit.md` (Step 4) | Extraction only - `CLEARED` finding moved to `findings.md`, "Open, not resolved" moved to `open_questions.md`; everything else unchanged, already correctly filed |
+| *(none)* | `step3_agent_function.md` (Step 3) | **Net-new.** No owned agent-function content existed for this track - see below |
+| `roadmap.md` | `step5_agent_program.md` (Step 5) | Rename + extraction - "Testing discipline" moved to `decisions.md`; "Step 0" and "Not decided" moved to `open_questions.md` |
+| `schema.md` | `step0_schema.md` (Step 0) | Copy, unchanged |
+| `ubiquitous_language.md` | `step0_ubiquitous_language.md` (Step 0) | Copy, unchanged |
 | `examples.md` | `examples.md` | Copy, unchanged - **no home in the scheme; see "Left unresolved," below** |
 | *(scattered across 5 files)* | `decisions.md` | Consolidation - 4 entries |
 | *(scattered across 2 files)* | `findings.md` | Consolidation - 2 entries, both already resolved |
@@ -31,8 +31,8 @@ on one track turned up.
 ## What sizing this for real found, that estimating it wouldn't have
 
 **Two of five steps have no owned content anywhere in this track - not a
-filing problem.** `environment_specification.md` (Step 1) and
-`agent_function.md` (Step 3) are stubs, not because content was misfiled
+filing problem.** `step1_environment_specification.md` (Step 1) and
+`step3_agent_function.md` (Step 3) are stubs, not because content was misfiled
 elsewhere and needed moving, but because it was checked directly against
 the original documents and genuinely doesn't exist for this track. Both
 steps' real content lives only in `atomicguard`, cited by name repeatedly
@@ -81,7 +81,7 @@ instance). This is a gap in the proposal itself, already flagged on the
 `agent_design_process_extensions.md` side; sizing this retrofit didn't
 resolve it, just confirmed it's a real, not theoretical, gap.
 
-**Step 0's file count** - `schema.md` + `ubiquitous_language.md` stayed two
+**Step 0's file count** - `step0_schema.md` + `step0_ubiquitous_language.md` stayed two
 files, per the proposal's own "Not decided" item on this - not resolved
 here.
 
@@ -97,8 +97,8 @@ decided in, isn't decided here either.
 
 ## Verdict
 
-Of 10 resulting files: **2 are real new-content work** (`environment_specification.md`,
-`agent_function.md` - both stubs stating what's missing, not drafts of the
+Of 10 resulting files: **2 are real new-content work** (`step1_environment_specification.md`,
+`step3_agent_function.md` - both stubs stating what's missing, not drafts of the
 content itself), **1 is copied unresolved** (`examples.md` - no home in the
 scheme), and **7 are mechanical** - extraction, consolidation, and renaming
 of content that already existed, with three concrete corrections

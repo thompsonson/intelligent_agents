@@ -14,7 +14,7 @@ written.
 gives real, checked PEAS analyses - but **per domain**: one table each for
 `github_actions`, `kubernetes`, `gcp`. Each is genuinely useful and already
 cited throughout this track's other documents (the Single/Multi-agent row in
-`environment_analysis.md` defers to it directly).
+`step2_environment_analysis.md` defers to it directly).
 
 What doesn't exist anywhere is a PEAS table **at the level this track is
 actually designing an agent for** - not "an agent sensing GitHub" or "an
@@ -42,13 +42,13 @@ mechanical split, unlike most of this retrofit:
 - **Actuators** - `gh`/`kubectl`/`gcloud` CLI invocations, unified under
   `DSA-CATALOGUE`'s dispatch rather than restated per domain.
 - **Sensors** - the same CLI JSON output, unified under the `Facet`
-  accumulation model `schema.md` (Step 0) already defines - this is the one
+  accumulation model `step0_schema.md` (Step 0) already defines - this is the one
   row where Step 0's existence actually does most of Step 1's work already,
   worth noting as a real efficiency the retrofit surfaced, not just cost.
 
 ## Related documents
 
-- [`environment_analysis.md`](environment_analysis.md) - Step 2; written, unlike this file.
-- [`schema.md`](schema.md) / [`ubiquitous_language.md`](ubiquitous_language.md) - Step 0; the vocabulary a real Step 1 write-up would use.
+- [`step2_environment_analysis.md`](step2_environment_analysis.md) - Step 2; written, unlike this file.
+- [`step0_schema.md`](step0_schema.md) / [`step0_ubiquitous_language.md`](step0_ubiquitous_language.md) - Step 0; the vocabulary a real Step 1 write-up would use.
 - `atomicguard`'s `docs/design/notes/platform_topology_peas_and_cli_actions.md` - the three per-domain PEAS tables this file's synthesis would draw from; §4's "cross-domain composite PEAS" section is the closest existing precedent.
 - `RETROFIT_SIZING.md` - this stub counted as net-new work, not a mechanical move, in the overall sizing.

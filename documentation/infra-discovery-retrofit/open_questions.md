@@ -54,7 +54,7 @@ actually be built against. **Source:** `environment_design.md`.
 fixed six-node topology, one implicit domain. Partially narrowed by
 `topology_source_comparison_cartography_fix_bespoke.md`: bespoke DSAs
 against the catalogued domains, not Cartography/Fix Inventory wholesale.
-`agent_program.md`'s own build sequence says what property each step's
+`step5_agent_program.md`'s own build sequence says what property each step's
 scenario needs to exercise (AND-joins for Step 2, an unregistered kind for
 Step 4, ...) without picking concrete fixture files, domains, or node
 counts - each step's own `scenario.md`, written when that step starts, per
@@ -70,7 +70,7 @@ idempotency/blast-radius/dry-run costs, known-in-advance vs. learned,
 subject-dependent variance within one DSA type - already enumerated in the
 source document's own "Cost features" section, not re-derived, still
 entirely undemonstrated in any code in either repo. **Source:**
-`algorithm_fit.md`; also named in `agent_program.md`'s "What doesn't get
+`algorithm_fit.md`; also named in `step5_agent_program.md`'s "What doesn't get
 its own step" as Step-5-adjacent.
 
 ## OQ-007: `IN-SCOPE(subject, Ψ)` boundedness
@@ -85,7 +85,7 @@ open" section.
 
 ## OQ-008: What a genuinely failing/flaky DSA invocation does to `pending`/`SELECT-NEXT`
 
-This track's own properties table (`environment_analysis.md`) already
+This track's own properties table (`step2_environment_analysis.md`) already
 declares `Deterministic/Stochastic: Stochastic` - a failing sense is the
 expected case, not an edge case - and nothing in the source document's
 `RECORD-UNKNOWABLE`/`RECORD-BLOCKED` propagation has been checked against a
@@ -97,10 +97,11 @@ Whether that registration reuses OpenTelemetry Resource Semantic Convention
 terms per-property where one already exists. **Source:** raised in both
 `schema.md` (about its own `@context`) and `ubiquitous_language.md` (about
 whether the glossary itself should become a `@context`) - related but not
-identical: `schema.md`'s structural notation question is now answered (it
-is JSON-LD-shaped, per `D-...` - actually a decision recorded on the
-`atomicguard` side, not this track's `decisions.md`); `ubiquitous_language.md`'s
-own glossary-as-`@context` question is still fully open.
+identical: `step0_schema.md`'s structural notation question is now answered
+(it is JSON-LD-shaped) - a decision recorded on the `atomicguard` side of
+this design conversation, not as an entry in this track's own
+`decisions.md`; `ubiquitous_language.md`'s own glossary-as-`@context`
+question is still fully open.
 
 ## OQ-010: `belief_state`'s implementation strategy - mutable store vs. `σ = proj(R)`
 
@@ -151,4 +152,4 @@ on review discipline alone, the way this repo's other packages do today.
 
 - [`decisions.md`](decisions.md) - settled decisions; two items here (`OQ-010`, `OQ-011`) were originally mislabeled as belonging there.
 - [`findings.md`](findings.md) - resolved gaps/bugs, distinct from these still-open questions.
-- [`environment_analysis.md`](environment_analysis.md), [`algorithm_fit.md`](algorithm_fit.md), [`schema.md`](schema.md), [`agent_program.md`](agent_program.md), [`ubiquitous_language.md`](ubiquitous_language.md) - the analysis documents these questions were extracted from.
+- [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md), [`step0_schema.md`](step0_schema.md), [`step5_agent_program.md`](step5_agent_program.md), [`step0_ubiquitous_language.md`](step0_ubiquitous_language.md) - the analysis documents these questions were extracted from.

@@ -63,4 +63,4 @@ explicitly not proposed for retrofit.
 
 - [`findings.md`](findings.md) - things discovered broken or missing, distinct from decisions.
 - [`open_questions.md`](open_questions.md) - genuinely undecided items, including two that were originally mislabeled as decisions (`roadmap.md`'s "Step 0").
-- [`environment_analysis.md`](environment_analysis.md), [`algorithm_fit.md`](algorithm_fit.md), [`agent_program.md`](agent_program.md) - the analysis documents these decisions were extracted from.
+- [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md), [`step5_agent_program.md`](step5_agent_program.md) - the analysis documents these decisions were extracted from.

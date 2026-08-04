@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`schema.md` gives the types and the registered vocabulary; this document instantiates them - concrete `NodeId`/`Edge`/`Facet` examples, diagrammed. **Illustrative only.** No `infra-discovery` implementation exists yet - unlike `discovery/`'s GIFs (real `DiscoveryAgent.walk()` output, rendered frame by frame) or `atomicguard-bridge/`'s (real subprocess-backed sensing), every diagram below is hand-authored from the schema and the real `atomicguard` ontology document's own worked trace, not generated from a running walk. Treat these as "what the shape looks like," not "what was observed."
+`step0_schema.md` gives the types and the registered vocabulary; this document instantiates them - concrete `NodeId`/`Edge`/`Facet` examples, diagrammed. **Illustrative only.** No `infra-discovery` implementation exists yet - unlike `discovery/`'s GIFs (real `DiscoveryAgent.walk()` output, rendered frame by frame) or `atomicguard-bridge/`'s (real subprocess-backed sensing), every diagram below is hand-authored from the schema and the real `atomicguard` ontology document's own worked trace, not generated from a running walk. Treat these as "what the shape looks like," not "what was observed."
 
 ## Example 1: the canonical `applies-to` trace
 
@@ -25,7 +25,7 @@ Both edges here are the *forward* case - the sensed node (`Job`, then `Dep`) is 
 
 ## Example 2: multi-facet state, accumulated over separate sense calls
 
-One node, two facets, sensed by two different DSAs at two different times - not one call learning everything, the property `environment_design.md`'s "Observable: Partially, and now partially *within* a node too" row is about.
+One node, two facets, sensed by two different DSAs at two different times - not one call learning everything, the property `step2_environment_analysis.md`'s "Observable: Partially, and now partially *within* a node too" row is about.
 
 ```mermaid
 graph TD
@@ -41,7 +41,7 @@ Between `T1` and `T2`, this node is "known and partially observed" - a state `di
 
 ## Example 3: bidirectional discovery, made concrete (and where it gets genuinely hard)
 
-`environment_design.md`'s central finding, worked through with a real, well-documented Kubernetes mechanism rather than a guessed one - PR #16's own review correctly flagged uncertainty about an earlier illustration (whether a `Service` object really reveals its own `Ingress`); `metadata.ownerReferences` is standard, universally-present Kubernetes API behavior, not a guess, and `owns` is one of the ontology's own named example verbs (`domain, kind, id, state, legal_actions`'s edge_type bullet: *"a domain's own native verb (`owns`, `selects`, `contains`)"*).
+`findings.md`'s F-001, worked through with a real, well-documented Kubernetes mechanism rather than a guessed one - PR #16's own review correctly flagged uncertainty about an earlier illustration (whether a `Service` object really reveals its own `Ingress`); `metadata.ownerReferences` is standard, universally-present Kubernetes API behavior, not a guess, and `owns` is one of the ontology's own named example verbs (`domain, kind, id, state, legal_actions`'s edge_type bullet: *"a domain's own native verb (`owns`, `selects`, `contains`)"*).
 
 **Before** - a `Pod` is already known (surfaced some other way, e.g. from an alert), not yet sensed:
 
@@ -68,7 +68,7 @@ graph LR
 
 Here the sensed node (`Pod`) is `edge.to`, and the newly-discovered node (`ReplicaSet`) is `edge.from` - the exact case `RESOLVE-BRIDGES`/`RELEVANT`'s original, unfixed propagation (`edge.to` only) would have silently missed. This is genuinely how the real chain works: `ownerReferences` points *up* (child names its owner), so sensing the child reveals the parent, backward relative to the top-down `Job → Deployment` direction Example 1 walked.
 
-**Where this gets genuinely hard, not just a clean win:** `ReplicaSet` is not a registered `kind` in this environment's own `DSA-CATALOGUE[kubernetes]` (`schema.md` - Pods are grouped directly under `Deployment` via `DSA-K8S-PODSET`, matching the source catalogue's own choice not to give `ReplicaSet` a separate entry). So once `ReplicaSet` is discovered as `edge.from` here, `RELEVANT(BRIDGE-CATALOGUE[owns](edge.from), edge.from, Ψ, belief_state)` has nowhere to go - `DSA-CATALOGUE[(kubernetes, ReplicaSet)]` doesn't exist. This is a sharper, deeper version of the finding originally raised on `atomicguard` PR #369 - not the same problem, and now the distinction matters concretely, not just rhetorically: PR #369's own finding ("the *wrong* catalogue might get selected for the new end" - `BRIDGE-CATALOGUE[edge_type]` reused unchanged for both ends, offering `edge.to`'s DSAs as candidates for `edge.from`'s subject) is **fixed** as of commit `fdc0f51` - `BRIDGE-CATALOGUE[edge_type]` is now a function of the end being resolved, so it never again offers the wrong domain/kind's DSAs. That fix does **not** touch this example's problem: "no catalogue may exist for the new end's kind *at all*," for a real, standard Kubernetes relationship, not a contrived one. `BRIDGE-CATALOGUE[owns](edge.from)` now correctly evaluates to `DSA-CATALOGUE[(kubernetes, ReplicaSet)]` - which still isn't a registered key, and nothing in the fixed pseudocode says what a lookup against an unregistered kind actually does. Two ways this could still go, illustrated here rather than resolved:
+**Where this gets genuinely hard, not just a clean win:** `ReplicaSet` is not a registered `kind` in this environment's own `DSA-CATALOGUE[kubernetes]` (`step0_schema.md` - Pods are grouped directly under `Deployment` via `DSA-K8S-PODSET`, matching the source catalogue's own choice not to give `ReplicaSet` a separate entry). So once `ReplicaSet` is discovered as `edge.from` here, `RELEVANT(BRIDGE-CATALOGUE[owns](edge.from), edge.from, Ψ, belief_state)` has nowhere to go - `DSA-CATALOGUE[(kubernetes, ReplicaSet)]` doesn't exist. This is a sharper, deeper version of the finding originally raised on `atomicguard` PR #369 - not the same problem, and now the distinction matters concretely, not just rhetorically: PR #369's own finding ("the *wrong* catalogue might get selected for the new end" - `BRIDGE-CATALOGUE[edge_type]` reused unchanged for both ends, offering `edge.to`'s DSAs as candidates for `edge.from`'s subject) is **fixed** as of commit `fdc0f51` - `BRIDGE-CATALOGUE[edge_type]` is now a function of the end being resolved, so it never again offers the wrong domain/kind's DSAs. That fix does **not** touch this example's problem: "no catalogue may exist for the new end's kind *at all*," for a real, standard Kubernetes relationship, not a contrived one. `BRIDGE-CATALOGUE[owns](edge.from)` now correctly evaluates to `DSA-CATALOGUE[(kubernetes, ReplicaSet)]` - which still isn't a registered key, and nothing in the fixed pseudocode says what a lookup against an unregistered kind actually does. Two ways this could still go, illustrated here rather than resolved:
 
 - **(a) Discovery genuinely stops one hop short.** `RELEVANT` returns empty; `ReplicaSet` gets recorded as an edge endpoint but never itself becomes a sensed node, and the real owning `Deployment` (one more `ownerReferences` hop up) is never reached this way.
 - **(b) The `Pod`-sensing DSA is authored to resolve past unregistered intermediate kinds itself** - package "owning `Deployment`" directly as evidence (following the `ReplicaSet → Deployment` chain internally, the same way `DSA-K8S-PODSET` already treats `Deployment` as pod-set's effective parent rather than exposing `ReplicaSet` at all), so the edge discovered is `Deployment --owns--> Pod` directly, skipping `ReplicaSet` as a node entirely.
@@ -77,9 +77,9 @@ Not decided which. Worth keeping visible as a real design fork this one worked e
 
 ## Related documents
 
-- [`ubiquitous_language.md`](ubiquitous_language.md) - the canonical definition of every term used above.
-- [`schema.md`](schema.md) - the types and registered vocabulary these examples instantiate.
-- [`environment_design.md`](environment_design.md) - "Discovery is bidirectional," the finding Example 3 works through concretely.
-- [`algorithm_fit.md`](algorithm_fit.md) - `SWEEP-CLEARED`/`RELEVANT`/`IN-SCOPE`, the mechanisms these examples' edges and facets feed into.
+- [`step0_ubiquitous_language.md`](step0_ubiquitous_language.md) - the canonical definition of every term used above.
+- [`step0_schema.md`](step0_schema.md) - the types and registered vocabulary these examples instantiate.
+- [`findings.md`](findings.md) - F-001, "Discovery is bidirectional," the finding Example 3 works through concretely.
+- [`step4_algorithm_fit.md`](step4_algorithm_fit.md) - `SWEEP-CLEARED`/`RELEVANT`/`IN-SCOPE`, the mechanisms these examples' edges and facets feed into.
 - `thompsonson/atomicguard` PR #369 - the `BRIDGE-CATALOGUE`/`edge.from` type-mismatch finding Example 3's "where this gets genuinely hard" section distinguishes itself from. Fixed there (commit `fdc0f51`); Example 3's own "no catalogue at all" problem is not the same finding and is not fixed by it.
-- [`roadmap.md`](roadmap.md) - Example 3's still-open fork ((a) vs. (b), above) scheduled as Step 4 (`RECORD-UNCATALOGUED`), not left open indefinitely.
+- [`step5_agent_program.md`](step5_agent_program.md) - Example 3's still-open fork ((a) vs. (b), above) scheduled as Step 4 (`RECORD-UNCATALOGUED`), not left open indefinitely.

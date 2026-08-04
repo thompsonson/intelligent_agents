@@ -15,7 +15,7 @@ summary rather than left to infer.
 
 ## Purpose
 
-`environment_analysis.md`, `schema.md`, `algorithm_fit.md`, and `examples.md`
+`step2_environment_analysis.md`, `step0_schema.md`, `step4_algorithm_fit.md`, and `examples.md`
 have accumulated a real amount of open work - inherited open questions,
 findings from cross-repo review, and (via `atomicguard`'s "Blue-sky
 extensions worth writing down") nine candidate directions, none of it
@@ -31,13 +31,13 @@ Every other arc in this repo's history got to start small because the
 *next* step reused the *previous* step's algorithm unmodified -
 `real_discovery/atomicguard_backed/`'s whole validating claim was that
 `DiscoveryAgent` needed zero changes to run against real, subprocess-backed
-nodes. `algorithm_fit.md` already closed that door for this environment:
+nodes. `step4_algorithm_fit.md` already closed that door for this environment:
 `DiscoveryAgent`'s DFS-with-retrace depends on an adjacency/position
 constraint this ontology doesn't have at all, and there's no fixed, finite
 graph to prove full-exploration-in-bounded-moves over even if it did. Step
 1 here has to be a genuinely new loop - the `AGENT-FUNCTION`/`pending`/
 `SELECT-NEXT` shape from `atomicguard`'s own document (this process's Step
-3; see [`agent_function.md`](agent_function.md), currently a stub), not a
+3; see [`step3_agent_function.md`](step3_agent_function.md), currently a stub), not a
 variant of anything already built - which is exactly why it needs to be
 kept as small as the discipline below can make it.
 
@@ -68,7 +68,7 @@ one-line pointer rather than silently dropped.
 `Facet` accumulation (multiple senses of the same subject contributing
 different facets over time), and `RESOLVE-BRIDGES` checking *both*
 `edge.to` and `edge.from` for novelty - the fix `atomicguard` shipped in
-response to `environment_analysis.md`'s own finding (see `F-001` in
+response to `step2_environment_analysis.md`'s own finding (see `F-001` in
 [`findings.md`](findings.md)), proven here in code for the first time
 rather than only in pseudocode. A new, minimal flat pending-pool loop
 (`pending`, `RELEVANT`, `INVOKE`) replaces `DiscoveryAgent` entirely - no
@@ -89,7 +89,7 @@ LIFO stack, no phases, no notion of "current position."
 - **Real Stochastic/Dynamic behavior** - `cat`-over-JSON fixtures again,
   matching `real_discovery/`'s own precedent: deterministic by scenario
   choice, not because the environment guarantees it
-  (`environment_analysis.md`'s own properties-table distinction). Real
+  (`step2_environment_analysis.md`'s own properties-table distinction). Real
   `gh`/`kubectl`/`gcloud` DSAs, and everything `RmaxExhausted`-propagation
   implies, are out of scope until a later step deliberately picks them up.
 
@@ -161,11 +161,11 @@ from everything above already being proven first.
 
 ## Related documents
 
-- [`ubiquitous_language.md`](ubiquitous_language.md) - the canonical definition of every term used above (Step 0).
-- [`environment_analysis.md`](environment_analysis.md) - Step 2; the properties and node-ownership reasoning every step above builds on.
-- [`schema.md`](schema.md) - Step 0; the field-level types and registered vocabulary Step 1 implements against.
-- [`algorithm_fit.md`](algorithm_fit.md) - Step 4; why `DiscoveryAgent` doesn't transfer, `SWEEP-CLEARED`, and `IN-SCOPE`.
-- [`agent_function.md`](agent_function.md) - Step 3; currently a stub, but the loop this document's Step 1 implements a minimal version of belongs there once written.
+- [`step0_ubiquitous_language.md`](step0_ubiquitous_language.md) - the canonical definition of every term used above (Step 0).
+- [`step2_environment_analysis.md`](step2_environment_analysis.md) - Step 2; the properties and node-ownership reasoning every step above builds on.
+- [`step0_schema.md`](step0_schema.md) - Step 0; the field-level types and registered vocabulary Step 1 implements against.
+- [`step4_algorithm_fit.md`](step4_algorithm_fit.md) - Step 4; why `DiscoveryAgent` doesn't transfer, `SWEEP-CLEARED`, and `IN-SCOPE`.
+- [`step3_agent_function.md`](step3_agent_function.md) - Step 3; currently a stub, but the loop this document's Step 1 implements a minimal version of belongs there once written.
 - [`examples.md`](examples.md) - the `ReplicaSet`/`Pod` worked example Step 4 (of the build sequence) is built to formalize.
 - [`decisions.md`](decisions.md) / [`findings.md`](findings.md) / [`open_questions.md`](open_questions.md) - the register files this document's "Testing discipline," "Step 0," and "Not decided" sections were extracted into.
 - `atomicguard`'s `docs/design/notes/topology_agent_function_requires_and_discovery_validation.md` - `AGENT-FUNCTION`'s pseudocode, the "Blue-sky extensions worth writing down" section this document sequences, and the `D1`-`D4` invariants.

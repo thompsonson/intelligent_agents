@@ -6,7 +6,7 @@
 proposed one-file-per-step convention. The original document bundled Steps
 1 (PEAS) and 2 (properties) together; on inspection it turned out to
 contain no owned Step 1 content at all - see
-[`environment_specification.md`](environment_specification.md) for that
+[`step1_environment_specification.md`](step1_environment_specification.md) for that
 finding. This file keeps everything that actually *is* Step 2 (environment
 properties) plus the ontology-adjacent analysis that doesn't cleanly sort
 elsewhere - flagged inline, not silently kept.
@@ -24,7 +24,7 @@ This document analyzes the properties of a genuinely different, harder
 environment: what would an environment actually look like for a genuine
 **Infra Discovery Agent** - one built against the real ontology
 `atomicguard`'s own design work has already settled
-([`schema.md`](schema.md)/[`ubiquitous_language.md`](ubiquitous_language.md)
+([`step0_schema.md`](step0_schema.md)/[`step0_ubiquitous_language.md`](step0_ubiquitous_language.md)
 - this track's Step 0), not a simplified stand-in for it.
 
 ## Why `real_discovery/`'s node shape doesn't generalize
@@ -69,7 +69,7 @@ making.
 ## `legal_actions`: a catalogue lookup, not a node field - and what that means for DSA selection
 
 **Retrofit note:** borderline between this file and Step 0
-(`schema.md`/`ubiquitous_language.md`) - it's explaining an ontology term's
+(`step0_schema.md`/`step0_ubiquitous_language.md`) - it's explaining an ontology term's
 behavior via reading the agent function's mechanism, which is arguably Step
 3 territory. Kept here for now rather than forced into a single step; flagged
 in the sizing summary as a real instance of content that doesn't sort
@@ -122,13 +122,13 @@ the same toy's arc.
 
 ## Related documents
 
-- [`ubiquitous_language.md`](ubiquitous_language.md) - the canonical definition of every term used above (Step 0).
-- [`environment_specification.md`](environment_specification.md) - Step 1 (PEAS); currently a stub - see the finding recorded there.
-- [`agent_function.md`](agent_function.md) - Step 3; currently a stub.
-- [`algorithm_fit.md`](algorithm_fit.md) - Step 4: whether `discovery/`'s DFS-with-retrace could ever fit this shape.
-- [`schema.md`](schema.md) - the field-level `NodeId`/`Facet`/`Edge` reference and the registered `DSA-CATALOGUE`/`BRIDGE-CATALOGUE` vocabulary.
+- [`step0_ubiquitous_language.md`](step0_ubiquitous_language.md) - the canonical definition of every term used above (Step 0).
+- [`step1_environment_specification.md`](step1_environment_specification.md) - Step 1 (PEAS); currently a stub - see the finding recorded there.
+- [`step3_agent_function.md`](step3_agent_function.md) - Step 3; currently a stub.
+- [`step4_algorithm_fit.md`](step4_algorithm_fit.md) - Step 4: whether `discovery/`'s DFS-with-retrace could ever fit this shape.
+- [`step0_schema.md`](step0_schema.md) - the field-level `NodeId`/`Facet`/`Edge` reference and the registered `DSA-CATALOGUE`/`BRIDGE-CATALOGUE` vocabulary.
 - [`examples.md`](examples.md) - the schema instantiated and diagrammed.
-- [`agent_program.md`](agent_program.md) - Step 5: the buildable sequence this document's own open items are ordered into.
+- [`step5_agent_program.md`](step5_agent_program.md) - Step 5: the buildable sequence this document's own open items are ordered into.
 - [`decisions.md`](decisions.md) / [`findings.md`](findings.md) / [`open_questions.md`](open_questions.md) - the register files this document's original "Resolved design questions," findings, and "Not decided" sections were extracted into.
 - `atomicguard`'s `docs/design/notes/topology_sensing_dsa_belief_state_and_agent_function.md` - the ontology, PEAS grounding, and `AGENT-FUNCTION` pseudocode this document translates and checks against.
 - `atomicguard`'s `docs/design/notes/platform_topology_peas_and_cli_actions.md` - the actual per-domain PEAS analysis this document's properties table is checked against.
