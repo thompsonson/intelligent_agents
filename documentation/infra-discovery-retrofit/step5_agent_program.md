@@ -15,7 +15,7 @@ summary rather than left to infer.
 
 ## Purpose
 
-`step2_environment_analysis.md`, `step0_schema.md`, `step4_algorithm_fit.md`, and `examples.md`
+`step2_environment_analysis.md`, `step0_schema.md`, `step4_algorithm_fit.md`, and `worked_examples.md`
 have accumulated a real amount of open work - inherited open questions,
 findings from cross-repo review, and (via `atomicguard`'s "Blue-sky
 extensions worth writing down") nine candidate directions, none of it
@@ -126,7 +126,7 @@ silently reporting as if the search were exhaustive.
 ## Step 4: `RECORD-UNCATALOGUED`
 
 Needs a scenario with a deliberately-unregistered kind to have anything to
-prove against - `examples.md`'s `ReplicaSet` case (discovered as
+prove against - `worked_examples.md`'s `WE-003` `ReplicaSet` case (discovered as
 `edge.from` via a `Pod`'s real `ownerReferences`, no
 `DSA-CATALOGUE[(kubernetes, ReplicaSet)]` entry) is the concrete worked
 example already on record. Makes a catalogue gap a visible, reportable
@@ -166,6 +166,6 @@ from everything above already being proven first.
 - [`step0_schema.md`](step0_schema.md) - Step 0; the field-level types and registered vocabulary Step 1 implements against.
 - [`step4_algorithm_fit.md`](step4_algorithm_fit.md) - Step 4; why `DiscoveryAgent` doesn't transfer, `SWEEP-CLEARED`, and `IN-SCOPE`.
 - [`step3_agent_function.md`](step3_agent_function.md) - Step 3; the loop this document's Step 1 implements a minimal version of.
-- [`examples.md`](examples.md) - the `ReplicaSet`/`Pod` worked example Step 4 (of the build sequence) is built to formalize.
+- [`worked_examples.md`](worked_examples.md) - `WE-003`, the `ReplicaSet`/`Pod` worked example Step 4 (of the build sequence) is built to formalize.
 - [`decisions.md`](decisions.md) / [`findings.md`](findings.md) / [`open_questions.md`](open_questions.md) - the register files this document's "Testing discipline," "Step 0," and "Not decided" sections were extracted into.
 - `atomicguard`'s `docs/design/notes/topology_agent_function_requires_and_discovery_validation.md` - `AGENT-FUNCTION`'s pseudocode, the "Blue-sky extensions worth writing down" section this document sequences, and the `D1`-`D4` invariants.

@@ -24,7 +24,7 @@ both ends, when its only grounded rule (`applies-to`) was defined
 specifically in terms of `edge.to` - was found and fixed separately in
 commit `fdc0f51` (`BRIDGE-CATALOGUE[edge_type]` made a function of the end
 being resolved).
-**Worked example:** [`examples.md`](examples.md) Example 3 (`ReplicaSet`/`Pod`) - and its own further, still-open finding (no `DSA-CATALOGUE` entry exists for `ReplicaSet` at all) is tracked separately as `OQ-015` in [`open_questions.md`](open_questions.md), not conflated with this one.
+**Worked example:** [`worked_examples.md`](worked_examples.md) `WE-003` (`ReplicaSet`/`Pod`) - and its own further, still-open finding (no `DSA-CATALOGUE` entry exists for `ReplicaSet` at all) is tracked separately as `OQ-015` in [`open_questions.md`](open_questions.md), not conflated with this one.
 
 ## F-002: `CLEARED`'s recursive pseudocode is cycle-unsafe
 

@@ -121,7 +121,7 @@ untested case is the default case here, not an edge case.
 - [`step2_environment_analysis.md`](step2_environment_analysis.md) - Step 2; the node/edge shape and environment properties this fit argument is checked against.
 - [`step3_agent_function.md`](step3_agent_function.md) - Step 3; the pseudocode this document reasons about, stated in full.
 - [`step0_schema.md`](step0_schema.md) - the field-level reference for `belief_state`'s own operations (`RECORD`, `RECORD-EDGE`, `cleared`) this document's `SWEEP-CLEARED` discussion assumes.
-- [`examples.md`](examples.md) - Example 3's `ReplicaSet`/`Pod` case works through exactly the `BRIDGE-CATALOGUE`/`RELEVANT` gap named in `open_questions.md`, concretely.
+- [`worked_examples.md`](worked_examples.md) - `WE-003`'s `ReplicaSet`/`Pod` case works through exactly the `BRIDGE-CATALOGUE`/`RELEVANT` gap named in `open_questions.md`, concretely.
 - [`step5_agent_program.md`](step5_agent_program.md) - Step 5; why this document's own "no adjacency, no reused loop" finding means Step 1 (of the build sequence, not this process's Step 1) has to be built from scratch.
 - [`findings.md`](findings.md) - the `CLEARED` cycle-safety finding, extracted from this document.
 - [`open_questions.md`](open_questions.md) - the "Open, not resolved" section, extracted from this document.

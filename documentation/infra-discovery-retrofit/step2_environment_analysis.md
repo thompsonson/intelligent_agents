@@ -127,7 +127,7 @@ the same toy's arc.
 - [`step3_agent_function.md`](step3_agent_function.md) - Step 3; the `AGENT-FUNCTION` pseudocode, translated into this track's own vocabulary.
 - [`step4_algorithm_fit.md`](step4_algorithm_fit.md) - Step 4: whether `discovery/`'s DFS-with-retrace could ever fit this shape.
 - [`step0_schema.md`](step0_schema.md) - the field-level `NodeId`/`Facet`/`Edge` reference and the registered `DSA-CATALOGUE`/`BRIDGE-CATALOGUE` vocabulary.
-- [`examples.md`](examples.md) - the schema instantiated and diagrammed.
+- [`worked_examples.md`](worked_examples.md) - the schema instantiated and diagrammed, as the fifth register (`D-005`).
 - [`step5_agent_program.md`](step5_agent_program.md) - Step 5: the buildable sequence this document's own open items are ordered into.
 - [`decisions.md`](decisions.md) / [`findings.md`](findings.md) / [`open_questions.md`](open_questions.md) - the register files this document's original "Resolved design questions," findings, and "Not decided" sections were extracted into.
 - `atomicguard`'s `docs/design/notes/topology_sensing_dsa_belief_state_and_agent_function.md` - the ontology, PEAS grounding, and `AGENT-FUNCTION` pseudocode this document translates and checks against.

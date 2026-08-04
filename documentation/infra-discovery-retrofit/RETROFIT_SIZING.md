@@ -39,16 +39,17 @@ file for what's actually there now.
 | `roadmap.md` | `step5_agent_program.md` (Step 5) | Rename + extraction - "Testing discipline" moved to `decisions.md`; "Step 0" and "Not decided" moved to `open_questions.md` |
 | `schema.md` | `step0_schema.md` (Step 0) | Copy, cross-links updated for the rename - content otherwise unchanged |
 | `ubiquitous_language.md` | `step0_ubiquitous_language.md` (Step 0) | Copy, cross-links updated for the rename - content otherwise unchanged |
-| `examples.md` | `examples.md` | Copy, cross-links updated - **no home in the scheme; see "Left unresolved," below** |
-| *(scattered across 5 files)* | `decisions.md` | Consolidation - 4 entries |
+| `examples.md` | `worked_examples.md` | **Adopted as the fifth register** (`D-005`), replacing `examples.md` outright - `examples.md` is deleted, not kept alongside it. Three diagrams became `WE-001`-`WE-003`, each restated with what it validates, the instance itself, and what it surfaced. See "The fifth register," below |
+| *(scattered across 5 files)* | `decisions.md` | Consolidation - 5 entries (including `D-005`, adopting `worked_examples.md`) |
 | *(scattered across 2 files)* | `findings.md` | Consolidation - 2 entries, both already resolved |
 | *(scattered across 5 files)* | `open_questions.md` | Consolidation - 19 entries (14 from the original pass; `OQ-015`/`OQ-016` added on a second review pass, found missing; `OQ-017`-`OQ-019` added on a third pass, checking `step3_agent_function.md`'s reproduced pseudocode against the real source line by line - see below) |
 | *(none)* | `blue_sky.md` | **Not created** - see below |
 
 6 files became 11 (12 counting this sizing document itself, which isn't
-part of the retrofit's own output). An earlier version of this document
-miscounted this as 10 - corrected on review; see "Errors found on review,"
-below.
+part of the retrofit's own output) - unchanged in count after `examples.md`
+became `worked_examples.md` (a rename plus a real decision, not an added
+file). An earlier version of this document miscounted this as 10 -
+corrected on review; see "Errors found on review," below.
 
 ## What sizing this for real found, that estimating it wouldn't have
 
@@ -94,15 +95,27 @@ step file. Worth naming as a pattern, not three unrelated gaps: this track
 leans on `atomicguard`'s documents more heavily than its own file structure
 currently shows.
 
-## Left unresolved
+## The fifth register: `worked_examples.md` (resolved, not left open)
 
-**`examples.md` doesn't fit the scheme.** Copied unchanged because there's
-nowhere better to put it - it's not a Decision, Finding, Open question, or
-Blue-sky item, and calling worked examples "Analysis" (the catch-all)
-undersells what they do (validate the ontology against a concrete
-instance). This is a gap in the proposal itself, already flagged on the
-`agent_design_process_extensions.md` side; sizing this retrofit didn't
-resolve it, just confirmed it's a real, not theoretical, gap.
+The gap this section originally described - `examples.md` fit none of the
+four registers, and calling worked examples "Analysis" (the catch-all)
+undersold what they do (validate the ontology against a concrete instance)
+- is resolved, not still open. Proposed as a fifth register
+(`worked_examples.md`), drafted, reviewed, and adopted as `D-005` in
+[`decisions.md`](decisions.md): `examples.md`'s three diagrams became
+`WE-001`-`WE-003`, each stated with what it validates, the instance itself,
+and what it surfaced - `WE-002` surfaced nothing (a clean demonstration,
+no finding or open question), `WE-003` surfaced three (`F-001`, `OQ-003`,
+`OQ-015`), visible now in a way the plain diagram-and-prose version of
+`examples.md` never made explicit. `examples.md` itself is deleted, not
+kept alongside the register.
+
+Left genuinely open by the decision, not resolved by it: the register's
+own ID scheme (sequential vs. grouped-by-validation-target), the same
+per-track-vs-cross-track question `decisions.md`/`findings.md`/
+`open_questions.md` already carry.
+
+## Left unresolved
 
 **Step 0's file count** - `step0_schema.md` + `step0_ubiquitous_language.md` stayed two
 files, per the proposal's own "Not decided" item on this - not resolved
@@ -210,18 +223,19 @@ Of 11 resulting files: **2 required real, track-owned translation work**
 tables and a CLI catalogue into one cross-domain statement;
 `step3_agent_function.md` - reproducing already-complete pseudocode in this
 track's own vocabulary, complete on its logic but initially incomplete on
-the source's own named risks - see above), **1 is copied unresolved**
-(`examples.md` - no home in the scheme), and **8 are mechanical** -
-extraction, consolidation, and renaming of content that already existed,
-with three concrete corrections surfacing only because the consolidation
-forced a side-by-side read (the triple-duplicated `belief_state` question,
-the mislabeled "Step 0" section, the `blue_sky.md` non-file), plus the four
-further errors caught on the second review pass (this document's original
-"10 resulting files" among them) and the two source-fidelity gaps caught
-on the third. The register-file consolidation paid for itself on this one
-track before any code changed as a result - and needed three further
-passes past the first, not just the first, to actually deliver on that:
-one to fill in what the original pass wrongly called unscoped synthesis
-work, one to catch what the original pass got wrong about itself, and one
-to check the filled content against its own source rather than just for
-internal consistency.
+the source's own named risks - see above), **1 became the fifth register**
+(`worked_examples.md`, `D-005` - a real decision, not a mechanical rename,
+even though the underlying diagrams were unchanged), and **8 are
+mechanical** - extraction, consolidation, and renaming of content that
+already existed, with three concrete corrections surfacing only because
+the consolidation forced a side-by-side read (the triple-duplicated
+`belief_state` question, the mislabeled "Step 0" section, the
+`blue_sky.md` non-file), plus the four further errors caught on the second
+review pass (this document's original "10 resulting files" among them) and
+the two source-fidelity gaps caught on the third. The register-file
+consolidation paid for itself on this one track before any code changed as
+a result - and needed three further passes past the first, not just the
+first, to actually deliver on that: one to fill in what the original pass
+wrongly called unscoped synthesis work, one to catch what the original
+pass got wrong about itself, and one to check the filled content against
+its own source rather than just for internal consistency.

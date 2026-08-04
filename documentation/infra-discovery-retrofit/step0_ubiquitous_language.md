@@ -27,7 +27,7 @@ Domain-Driven Design's Ubiquitous Language: one shared, agreed vocabulary, used 
 | Term | Definition | Settled in |
 |---|---|---|
 | **Bidirectional discovery** | The finding that a sensed node's artifact can reveal an edge where *it* is either `edge.from` or `edge.to` - nothing in the `Edge` tuple guarantees a fixed direction relative to which end was just sensed. | `findings.md` (F-001) |
-| **`RECORD-UNCATALOGUED`** | Blue-sky, not yet built. A first-class status for a discovered node whose `kind` has no `DSA-CATALOGUE` entry at all - distinct from `RECORD-UNKNOWABLE`/`RECORD-BLOCKED`, makes a catalogue gap a visible worklist item instead of a silent `RELEVANT() = ∅`. | `atomicguard`'s blue-sky batch (`db07eec`); `examples.md`'s `ReplicaSet` case; scheduled as `step5_agent_program.md` Step 4 |
+| **`RECORD-UNCATALOGUED`** | Blue-sky, not yet built. A first-class status for a discovered node whose `kind` has no `DSA-CATALOGUE` entry at all - distinct from `RECORD-UNKNOWABLE`/`RECORD-BLOCKED`, makes a catalogue gap a visible worklist item instead of a silent `RELEVANT() = ∅`. | `atomicguard`'s blue-sky batch (`db07eec`); `worked_examples.md`'s `WE-003`; scheduled as `step5_agent_program.md` Step 4 |
 
 ## DSA / dispatch terms
 
@@ -78,5 +78,5 @@ Domain-Driven Design's Ubiquitous Language: one shared, agreed vocabulary, used 
 ## Related documents
 
 - [`step0_schema.md`](step0_schema.md) - the field-level structural definitions; should be read as *implementing* the terms defined here, not defining them independently.
-- [`step2_environment_analysis.md`](step2_environment_analysis.md) / [`step4_algorithm_fit.md`](step4_algorithm_fit.md) / [`examples.md`](examples.md) / [`step5_agent_program.md`](step5_agent_program.md) - every term above is drawn from these five documents plus the cited `atomicguard` sources; this document doesn't introduce new concepts, it consolidates ones already settled elsewhere.
+- [`step2_environment_analysis.md`](step2_environment_analysis.md) / [`step4_algorithm_fit.md`](step4_algorithm_fit.md) / [`worked_examples.md`](worked_examples.md) / [`step5_agent_program.md`](step5_agent_program.md) - every term above is drawn from these five documents plus the cited `atomicguard` sources; this document doesn't introduce new concepts, it consolidates ones already settled elsewhere.
 - `atomicguard`'s `docs/design/notes/topology_sensing_dsa_belief_state_and_agent_function.md` and `topology_agent_function_requires_and_discovery_validation.md` - the primary source for most terms above.

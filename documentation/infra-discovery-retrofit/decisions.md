@@ -59,8 +59,25 @@ propagation claim is the same shape and gets it too.
 `discovery/`'s own merged `2×|E|` bound has the identical gap and is
 explicitly not proposed for retrofit.
 
+## D-005: `worked_examples.md` replaces `examples.md` as the fifth register
+
+**Status:** Decided
+**Decision:** worked examples get a fifth register, `worked_examples.md`
+- one entry per example (`WE-001`, `WE-002`, ...), each stating what it
+validates, the instance itself, and what it surfaced (a finding, an open
+question, or nothing) - the same shape `decisions.md`/`findings.md`/
+`open_questions.md`/`blue_sky.md` already use. `examples.md` is retired,
+not kept alongside it.
+**Rules out:** the two options `worked_examples.md`'s own draft left open
+("Not decided" section, now resolved) - keeping `examples.md` as a
+separate longer-form narrative version, or leaving worked examples
+uncategorized under "Analysis" (the catch-all `agent_design_process_extensions.md`
+itself flagged as underselling what they do).
+**Source:** `worked_examples.md`'s draft, reviewed and approved.
+
 ## Related documents
 
 - [`findings.md`](findings.md) - things discovered broken or missing, distinct from decisions.
 - [`open_questions.md`](open_questions.md) - genuinely undecided items, including two that were originally mislabeled as decisions (`roadmap.md`'s "Step 0").
+- [`worked_examples.md`](worked_examples.md) - the fifth register `D-005` adopts; `WE-003` is the worked example that produced `F-001`/`OQ-003`/`OQ-015`.
 - [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md), [`step5_agent_program.md`](step5_agent_program.md) - the analysis documents these decisions were extracted from.

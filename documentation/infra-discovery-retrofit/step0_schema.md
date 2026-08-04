@@ -144,7 +144,7 @@ BRIDGE-CATALOGUE[applies-to] = DSA-CATALOGUE[(target.domain, target.kind)]
 
 Evidence pattern: `kubectl apply`/`kubectl set image`/`gcloud run deploy`/`gcloud builds triggers run` found in a `github_actions.job`'s step log, read off content already fetched (`RESOLVE-BRIDGES`, free, no new DSA call).
 
-**Named but not yet grounded** (no evidence pattern documented for any catalogued domain): `exposes`, `triggers`, `publishes-to`, `observed-by`, `selects-from`, `depends-on-external`. Listed here, not silently dropped, because `step2_environment_analysis.md`'s bidirectional-discovery finding (see `findings.md`, `F-001`) and `examples.md`'s illustrations both use `selects-from` as a worked example of the `edge.from`-is-new case - worth being explicit that this specific verb is illustrative of the *shape* of the problem, not a claim that `selects-from` itself is grounded yet. `BRIDGE-CATALOGUE[edge.edge_type]`'s applicability to a currently-ungrounded verb is undefined until it's grounded, same as `DSA-CATALOGUE` entries for undocumented kinds are.
+**Named but not yet grounded** (no evidence pattern documented for any catalogued domain): `exposes`, `triggers`, `publishes-to`, `observed-by`, `selects-from`, `depends-on-external`. Listed here, not silently dropped, because `step2_environment_analysis.md`'s bidirectional-discovery finding (see `findings.md`, `F-001`) and `worked_examples.md`'s illustrations both use `selects-from` as a worked example of the `edge.from`-is-new case - worth being explicit that this specific verb is illustrative of the *shape* of the problem, not a claim that `selects-from` itself is grounded yet. `BRIDGE-CATALOGUE[edge.edge_type]`'s applicability to a currently-ungrounded verb is undefined until it's grounded, same as `DSA-CATALOGUE` entries for undocumented kinds are.
 
 **Known gap, inherited directly, not new here:** `gcp.GKE_cluster ↔ kubernetes.*` doesn't fit any current bridge verb (a cluster doesn't mutate what it hosts, ruling out `applies-to`; "hosts" isn't in the vocabulary). Same status as it has in the source document - open, not resolved.
 
@@ -166,7 +166,7 @@ Not designed in full (`step2_environment_analysis.md`'s own "Not decided" alread
 
 ## Example instances
 
-Illustrative only - not generated from any running code, since none exists yet. Written against the `@context` above, so `@type` and field names resolve to the vocabulary defined there rather than to a Python class. See `examples.md` for these rendered as diagrams, with the bidirectional-discovery case worked through in full.
+Illustrative only - not generated from any running code, since none exists yet. Written against the `@context` above, so `@type` and field names resolve to the vocabulary defined there rather than to a Python class. See `worked_examples.md` for these rendered as diagrams, with the bidirectional-discovery case worked through in full.
 
 ```json
 {
@@ -240,7 +240,7 @@ class Edge:
 - [`step0_ubiquitous_language.md`](step0_ubiquitous_language.md) - the canonical, implementation-agnostic definition of every term used above; this document's `@context` is that vocabulary expressed structurally, not a second, independent definition of it.
 - [`step2_environment_analysis.md`](step2_environment_analysis.md) - the properties table and node-ownership reasoning this schema is the field-level reference for.
 - [`step4_algorithm_fit.md`](step4_algorithm_fit.md) - `SWEEP-CLEARED`, `RECORD-UNKNOWABLE`/`RECORD-BLOCKED` propagation, and why `cleared` has to be iterative, not recursive.
-- [`examples.md`](examples.md) - these types and this vocabulary, instantiated and diagrammed.
+- [`worked_examples.md`](worked_examples.md) - these types and this vocabulary, instantiated and diagrammed.
 - [`step5_agent_program.md`](step5_agent_program.md) - Step 0's `Edge`-shape decision (plain tuple vs. `Facet`-style accumulated evidence, now `OQ-011`) and where `belief_state`'s own schema gets implemented.
 - `atomicguard`'s `docs/design/notes/platform_topology_peas_and_cli_actions.md` §5 - the real `DSA-CATALOGUE`/CLI action catalogue this document's vocabulary table is reused from verbatim.
 - `atomicguard`'s `docs/design/notes/topology_sensing_dsa_belief_state_and_agent_function.md` - `BRIDGE-CATALOGUE`'s `applies-to` rule, the ontology's own field definitions, and the ontology-standards survey (OWL/RDFS, SOSA/SSN, OpenTelemetry, TOSCA, CIM, ArchiMate, PROV-O) this document's JSON-LD choice is a considered alternative to, not a rejection of that survey's own conclusion.

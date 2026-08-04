@@ -1,17 +1,18 @@
 # Infra Discovery: Worked Examples
 
-**Draft - not yet adopted.** A fifth register, proposed alongside
-`decisions.md`/`findings.md`/`open_questions.md`/`blue_sky.md`, for content
-that's neither a decision nor a finding nor an open question nor
-speculation: a concrete instance demonstrating what an abstract definition
-or claim actually looks like. Built the same way the other four registers
-were - consolidated here, not left as a separate un-registered file - by
-converting `examples.md`'s three existing diagrams into entries with a
+**Adopted (`D-005` in [`decisions.md`](decisions.md)) - replaces
+`examples.md`, which no longer exists in this track.** The fifth register,
+alongside `decisions.md`/`findings.md`/`open_questions.md`/`blue_sky.md`,
+for content that's neither a decision nor a finding nor an open question
+nor speculation: a concrete instance demonstrating what an abstract
+definition or claim actually looks like. Built the same way the other four
+registers were - consolidated here, not left as a separate un-registered
+file - by converting `examples.md`'s three diagrams into entries with a
 fixed shape: what the example validates, the instance itself, and what it
 surfaced (if anything - a worked example that produces no finding or open
 question is still a legitimate entry, just a quieter one).
 
-**Illustrative only**, same caveat `examples.md` already carried: no
+**Illustrative only**, same caveat `examples.md` used to carry: no
 `infra-discovery` implementation exists yet. Every instance below is
 hand-authored from `step0_schema.md` and `atomicguard`'s own worked trace,
 not generated from a running walk. Treat these as "what the shape looks
@@ -157,9 +158,8 @@ universally-present Kubernetes API behavior, not a guess.
 - [`step4_algorithm_fit.md`](step4_algorithm_fit.md) - `SWEEP-CLEARED`/`RELEVANT`/`IN-SCOPE`, the mechanisms these examples' edges and facets feed into.
 - [`step5_agent_program.md`](step5_agent_program.md) - `WE-003`'s still-open fork ((a) vs. (b) in `OQ-015`) scheduled as Step 4 (`RECORD-UNCATALOGUED`), not left open indefinitely.
 - `thompsonson/atomicguard` PR #369 - the `BRIDGE-CATALOGUE`/`edge.from` type-mismatch finding `WE-003`'s "where this gets genuinely hard" distinguishes itself from. Fixed there (commit `fdc0f51`); `WE-003`'s own "no catalogue at all" problem (`OQ-015`) is a different, still-open finding.
-- `examples.md` - the file this register replaces, if adopted; not yet deleted or redirected, since this draft hasn't been reviewed.
+- [`decisions.md`](decisions.md) - `D-005`, the decision adopting this register in place of `examples.md`.
 
 ## Not decided
 
-- **Whether this register replaces `examples.md` outright or the two coexist** (this file holding the register-shaped content, `examples.md` staying as a longer-form illustrated version for reading top to bottom). Not resolved by drafting this - a real design choice, not a formatting detail.
 - **Numbering scheme for future entries** - sequential (`WE-004` next) vs. grouped by what they validate, matching the same open question `decisions.md`/`findings.md`/`open_questions.md` already carry about per-track vs. cross-track IDs.

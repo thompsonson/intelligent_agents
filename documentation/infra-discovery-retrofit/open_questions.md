@@ -18,7 +18,7 @@ concrete sizing data point in favor of consolidation, not just a
 convenience.
 
 **A second payoff, found on a later review pass, not the first:**
-`OQ-015` and `OQ-016` below were added after `findings.md`, `examples.md`,
+`OQ-015` and `OQ-016` below were added after `findings.md`, `worked_examples.md`,
 and `step4_algorithm_fit.md` were each found to claim this content already
 lived here - it didn't. A consolidated file only earns "check here first"
 if it's actually complete; the gap survived the original consolidation
@@ -158,7 +158,7 @@ on review discipline alone, the way this repo's other packages do today.
 
 ## OQ-015: What `RELEVANT` does when a lookup hits an unregistered `kind`
 
-Concretely: `examples.md` Example 3 - `ReplicaSet` is discovered as
+Concretely: `worked_examples.md`'s `WE-003` - `ReplicaSet` is discovered as
 `edge.from` via a `Pod`'s real `ownerReferences`, but
 `DSA-CATALOGUE[(kubernetes, ReplicaSet)]` doesn't exist, so
 `RELEVANT(BRIDGE-CATALOGUE[owns](edge.from), edge.from, Ψ, belief_state)`
@@ -170,9 +170,9 @@ unregistered intermediate kinds itself, so the edge discovered skips
 `db07eec`) is meant to eventually make a visible status instead of a silent
 `RELEVANT() = ∅`** - scheduled as `step5_agent_program.md` Step 4.
 **Gap found during review, not originally captured here:** `findings.md`
-(F-001), `examples.md`, and `step4_algorithm_fit.md` all state that this
+(F-001), `worked_examples.md`, and `step4_algorithm_fit.md` all state that this
 question "is tracked... in `open_questions.md`" - it wasn't, until this
-entry. **Source:** `examples.md` Example 3, "Where this gets genuinely
+entry. **Source:** `worked_examples.md`'s `WE-003`, "Where this gets genuinely
 hard."
 
 ## OQ-016: Acting-DSA selection, when more than one applies to a subject
@@ -235,4 +235,4 @@ open" section ("Repo placement").
 
 - [`decisions.md`](decisions.md) - settled decisions; two items here (`OQ-010`, `OQ-011`) were originally mislabeled as belonging there.
 - [`findings.md`](findings.md) - resolved gaps/bugs, distinct from these still-open questions.
-- [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md), [`step0_schema.md`](step0_schema.md), [`step5_agent_program.md`](step5_agent_program.md), [`step0_ubiquitous_language.md`](step0_ubiquitous_language.md), [`examples.md`](examples.md) - the analysis documents these questions were extracted from.
+- [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md), [`step0_schema.md`](step0_schema.md), [`step5_agent_program.md`](step5_agent_program.md), [`step0_ubiquitous_language.md`](step0_ubiquitous_language.md), [`worked_examples.md`](worked_examples.md) - the analysis documents these questions were extracted from.
