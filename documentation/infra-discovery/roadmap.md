@@ -71,6 +71,7 @@ Dry-run-as-its-own-sensing-shaped-`DSA-CATALOGUE`-entry, the acting-catalogue-ha
 
 ## Related documents
 
+- [`ubiquitous_language.md`](ubiquitous_language.md) - the canonical definition of every term used above.
 - [`environment_design.md`](environment_design.md) - the properties and node-ownership reasoning every step above builds on.
 - [`schema.md`](schema.md) - the field-level types and registered vocabulary Step 1 implements against; the `Edge` shape Step 0's second decision is about.
 - [`algorithm_fit.md`](algorithm_fit.md) - why `DiscoveryAgent` doesn't transfer (the reason this roadmap exists at all), `SWEEP-CLEARED`, and `IN-SCOPE`.

@@ -49,6 +49,7 @@ This isn't a hypothetical import for this environment - it's a live one. Real in
 
 ## Related documents
 
+- [`ubiquitous_language.md`](ubiquitous_language.md) - the canonical definition of every term used above.
 - [`environment_design.md`](environment_design.md) - the node/edge shape and environment properties this fit argument is checked against.
 - [`schema.md`](schema.md) - the field-level reference for `belief_state`'s own operations (`RECORD`, `RECORD-EDGE`, `cleared`) this document's `SWEEP-CLEARED` discussion assumes.
 - [`examples.md`](examples.md) - Example 3's `ReplicaSet`/`Pod` case works through exactly the `BRIDGE-CATALOGUE`/`RELEVANT` gap named in "Open, not resolved," below, concretely.

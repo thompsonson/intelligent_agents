@@ -112,6 +112,7 @@ A new top-level design track, `documentation/infra-discovery/`, sibling to `docu
 
 ## Related documents
 
+- [`ubiquitous_language.md`](ubiquitous_language.md) - the canonical definition of every term used above; this document assumes it, rather than re-explaining terms independently.
 - [`algorithm_fit.md`](algorithm_fit.md) - whether `discovery/`'s DFS-with-retrace could ever fit this shape (it can't, argued directly), and what family of algorithm the source document's own LRTA*-grounding points toward instead.
 - [`schema.md`](schema.md) - the field-level `NodeId`/`Facet`/`Edge` reference and the registered `DSA-CATALOGUE`/`BRIDGE-CATALOGUE` vocabulary, reused verbatim from `atomicguard` rather than the signatures-only sketch above.
 - [`examples.md`](examples.md) - the schema instantiated and diagrammed, including a concrete, technically-grounded worked example of "Discovery is bidirectional," above.

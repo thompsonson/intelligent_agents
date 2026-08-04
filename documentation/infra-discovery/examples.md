@@ -77,6 +77,7 @@ Not decided which. Worth keeping visible as a real design fork this one worked e
 
 ## Related documents
 
+- [`ubiquitous_language.md`](ubiquitous_language.md) - the canonical definition of every term used above.
 - [`schema.md`](schema.md) - the types and registered vocabulary these examples instantiate.
 - [`environment_design.md`](environment_design.md) - "Discovery is bidirectional," the finding Example 3 works through concretely.
 - [`algorithm_fit.md`](algorithm_fit.md) - `SWEEP-CLEARED`/`RELEVANT`/`IN-SCOPE`, the mechanisms these examples' edges and facets feed into.

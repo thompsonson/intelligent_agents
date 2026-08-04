@@ -6,6 +6,8 @@
 
 No code exists yet. This is schema-as-documentation, not a Python module - types are written in dataclass-like pseudocode for precision, the same register `environment_design.md` already used.
 
+**Open, flagged rather than silently carried forward:** writing the ontology directly in Python-flavored pseudocode was a methodology choice made without examining it as one - it let an implementation-language type system stand in for the vocabulary itself, before the vocabulary was agreed independently of any implementation. `ubiquitous_language.md` is the fix for the vocabulary itself (the canonical, implementation-agnostic term definitions this document should be read as *projecting*, not defining). Whether this document's own *structural* definitions should also move to an implementation-agnostic form first - a JSON-LD-style `@context` (concretely closer to this ontology's needs than full OWL/RDF: `domain`/`kind` is already meant to be decentralized and extensible "by the domain, not global," exactly what JSON-LD vocabularies support without requiring a formal reasoner) plus a diagram, with the dataclasses below relabeled as one possible implementation - is under active discussion, not yet decided or restructured here.
+
 ## `NodeId`
 
 ```python
@@ -153,6 +155,7 @@ Illustrative only - not generated from any running code, since none exists yet. 
 
 ## Related documents
 
+- [`ubiquitous_language.md`](ubiquitous_language.md) - the canonical, implementation-agnostic definition of every term below; read this document's dataclasses as one projection of that vocabulary, not the vocabulary itself.
 - [`environment_design.md`](environment_design.md) - the properties table and node-ownership reasoning this schema is the field-level reference for.
 - [`algorithm_fit.md`](algorithm_fit.md) - `SWEEP-CLEARED`, `RECORD-UNKNOWABLE`/`RECORD-BLOCKED` propagation, and why `cleared` has to be iterative, not recursive.
 - [`examples.md`](examples.md) - these types and this vocabulary, instantiated and diagrammed.
