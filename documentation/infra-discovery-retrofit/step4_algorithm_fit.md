@@ -77,7 +77,7 @@ re-deriving:
 Concretely, the candidate algorithm isn't a variant of `DiscoveryAgent.walk()`
 at all - it's the source document's own `AGENT-FUNCTION` pseudocode (Step
 3; see [`step3_agent_function.md`](step3_agent_function.md) for this track's own
-translation, currently a stub): a `pending` pool of `⟨dsa, subject⟩` pairs,
+translation): a `pending` pool of `⟨dsa, subject⟩` pairs,
 `SELECT-NEXT(pending, belief_state) = argmax SCORE(...)`, no position, no
 backtracking, no phases. `discovery/`'s three PRs validated the *readiness*
 half of a relative (the `requires`/`CLEARED` mechanism, per
@@ -119,7 +119,7 @@ untested case is the default case here, not an edge case.
 
 - [`step0_ubiquitous_language.md`](step0_ubiquitous_language.md) - the canonical definition of every term used above (Step 0).
 - [`step2_environment_analysis.md`](step2_environment_analysis.md) - Step 2; the node/edge shape and environment properties this fit argument is checked against.
-- [`step3_agent_function.md`](step3_agent_function.md) - Step 3; currently a stub, but the pseudocode this document reasons about belongs there once written.
+- [`step3_agent_function.md`](step3_agent_function.md) - Step 3; the pseudocode this document reasons about, stated in full.
 - [`step0_schema.md`](step0_schema.md) - the field-level reference for `belief_state`'s own operations (`RECORD`, `RECORD-EDGE`, `cleared`) this document's `SWEEP-CLEARED` discussion assumes.
 - [`examples.md`](examples.md) - Example 3's `ReplicaSet`/`Pod` case works through exactly the `BRIDGE-CATALOGUE`/`RELEVANT` gap named in `open_questions.md`, concretely.
 - [`step5_agent_program.md`](step5_agent_program.md) - Step 5; why this document's own "no adjacency, no reused loop" finding means Step 1 (of the build sequence, not this process's Step 1) has to be built from scratch.

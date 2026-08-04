@@ -136,15 +136,26 @@ undermines the case it's making for consolidation in the first place:
    and `step2_environment_analysis.md` (twice) both say acting-DSA
    selection "stays open" without it ever getting its own entry. Added as
    `OQ-016`.
-4. **A misattributed cross-reference.** `step3_agent_function.md` cited
-   "`algorithm_fit.md`'s Mermaid sequence diagrams" as a model to follow -
-   this track's own `algorithm_fit.md` has no Mermaid content; the actual
-   diagrams are in `../discovery/atomicguard-bridge/algorithm_fit.md`, a
-   different file in a different track. Predates the retrofit; carried
-   forward uncaught until this pass.
+4. **A misattributed cross-reference — and this entry itself needed a
+   correction.** The *original stub* version of `step3_agent_function.md`
+   cited "`algorithm_fit.md`'s Mermaid sequence diagrams" as a model to
+   follow - this track's own `algorithm_fit.md` has no Mermaid content; the
+   actual diagrams are in `../discovery/atomicguard-bridge/algorithm_fit.md`,
+   a different file in a different track. That claim predates the retrofit.
+   It did **not**, however, carry forward into this pass to fix: by the time
+   this review ran, `step3_agent_function.md` had already been fully
+   rewritten (filling the stub with real content) and the rewrite never
+   reproduced the bad citation - checked directly, no "Mermaid" reference
+   exists anywhere in the current file. The first version of this entry
+   claimed the fix happened "in this pass"; it didn't need to, the earlier
+   rewrite had already made it moot. Left as a corrected entry rather than
+   deleted, since the original claim was real (in the stub, at the time),
+   just no longer live by the time anyone went looking for it.
 
-All four are fixed in this pass, not left as a separate TODO - the point of
-finding them was to correct them, not just to note they exist.
+Items 1-3 are fixed in this pass; item 4 turned out to already be resolved
+by the time of this review, not by this review - corrected above rather
+than silently removed, since a section about catching your own errors
+shouldn't itself misdescribe one.
 
 ## Verdict
 

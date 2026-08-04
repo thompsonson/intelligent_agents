@@ -37,7 +37,7 @@ constraint this ontology doesn't have at all, and there's no fixed, finite
 graph to prove full-exploration-in-bounded-moves over even if it did. Step
 1 here has to be a genuinely new loop - the `AGENT-FUNCTION`/`pending`/
 `SELECT-NEXT` shape from `atomicguard`'s own document (this process's Step
-3; see [`step3_agent_function.md`](step3_agent_function.md), currently a stub), not a
+3; see [`step3_agent_function.md`](step3_agent_function.md)), not a
 variant of anything already built - which is exactly why it needs to be
 kept as small as the discipline below can make it.
 
@@ -165,7 +165,7 @@ from everything above already being proven first.
 - [`step2_environment_analysis.md`](step2_environment_analysis.md) - Step 2; the properties and node-ownership reasoning every step above builds on.
 - [`step0_schema.md`](step0_schema.md) - Step 0; the field-level types and registered vocabulary Step 1 implements against.
 - [`step4_algorithm_fit.md`](step4_algorithm_fit.md) - Step 4; why `DiscoveryAgent` doesn't transfer, `SWEEP-CLEARED`, and `IN-SCOPE`.
-- [`step3_agent_function.md`](step3_agent_function.md) - Step 3; currently a stub, but the loop this document's Step 1 implements a minimal version of belongs there once written.
+- [`step3_agent_function.md`](step3_agent_function.md) - Step 3; the loop this document's Step 1 implements a minimal version of.
 - [`examples.md`](examples.md) - the `ReplicaSet`/`Pod` worked example Step 4 (of the build sequence) is built to formalize.
 - [`decisions.md`](decisions.md) / [`findings.md`](findings.md) / [`open_questions.md`](open_questions.md) - the register files this document's "Testing discipline," "Step 0," and "Not decided" sections were extracted into.
 - `atomicguard`'s `docs/design/notes/topology_agent_function_requires_and_discovery_validation.md` - `AGENT-FUNCTION`'s pseudocode, the "Blue-sky extensions worth writing down" section this document sequences, and the `D1`-`D4` invariants.

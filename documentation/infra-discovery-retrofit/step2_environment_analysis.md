@@ -123,8 +123,8 @@ the same toy's arc.
 ## Related documents
 
 - [`step0_ubiquitous_language.md`](step0_ubiquitous_language.md) - the canonical definition of every term used above (Step 0).
-- [`step1_environment_specification.md`](step1_environment_specification.md) - Step 1 (PEAS); currently a stub - see the finding recorded there.
-- [`step3_agent_function.md`](step3_agent_function.md) - Step 3; currently a stub.
+- [`step1_environment_specification.md`](step1_environment_specification.md) - Step 1 (PEAS); combines the per-domain PEAS tables and CLI catalogue into one cross-domain statement.
+- [`step3_agent_function.md`](step3_agent_function.md) - Step 3; the `AGENT-FUNCTION` pseudocode, translated into this track's own vocabulary.
 - [`step4_algorithm_fit.md`](step4_algorithm_fit.md) - Step 4: whether `discovery/`'s DFS-with-retrace could ever fit this shape.
 - [`step0_schema.md`](step0_schema.md) - the field-level `NodeId`/`Facet`/`Edge` reference and the registered `DSA-CATALOGUE`/`BRIDGE-CATALOGUE` vocabulary.
 - [`examples.md`](examples.md) - the schema instantiated and diagrammed.
