@@ -42,7 +42,7 @@ file for what's actually there now.
 | `examples.md` | `examples.md` | Copy, cross-links updated - **no home in the scheme; see "Left unresolved," below** |
 | *(scattered across 5 files)* | `decisions.md` | Consolidation - 4 entries |
 | *(scattered across 2 files)* | `findings.md` | Consolidation - 2 entries, both already resolved |
-| *(scattered across 5 files)* | `open_questions.md` | Consolidation - 16 entries (14 from the original consolidation pass, plus `OQ-015`/`OQ-016`, found missing on a later review pass - see below) |
+| *(scattered across 5 files)* | `open_questions.md` | Consolidation - 19 entries (14 from the original pass; `OQ-015`/`OQ-016` added on a second review pass, found missing; `OQ-017`-`OQ-019` added on a third pass, checking `step3_agent_function.md`'s reproduced pseudocode against the real source line by line - see below) |
 | *(none)* | `blue_sky.md` | **Not created** - see below |
 
 6 files became 11 (12 counting this sizing document itself, which isn't
@@ -157,30 +157,71 @@ by the time of this review, not by this review - corrected above rather
 than silently removed, since a section about catching your own errors
 shouldn't itself misdescribe one.
 
+## Gaps found checking the filled Steps 1/3 against their real source
+
+A third review pass, after Steps 1 and 3 were filled with real content:
+checked `step3_agent_function.md`'s reproduced `AGENT-FUNCTION` pseudocode
+against `atomicguard`'s actual source line by line, rather than trusting
+that a faithful-looking reproduction was a complete one. It wasn't -
+`step3_agent_function.md`'s translation correctly reproduced the
+pseudocode's *logic* (every function, every operator, checked) but silently
+dropped two pieces of the source's own inline commentary that name real,
+still-open risks, not just explanatory color:
+
+1. **The reachability risk is not auto-solved** - the real source states
+   plainly that a `requires` target named in some DSA's `REQUIRES-OF`
+   output but never independently discovered via `RESOLVE-BRIDGES`/
+   `DSA-CATALOGUE` dispatch "would deadlock silently, and nothing here
+   currently prevents that." This track inherits the identical exposure
+   and had nothing saying so. Added as `OQ-017`, with a pointer added at
+   the exact pseudocode line in `step3_agent_function.md`.
+2. **Whether `requires`/`cleared` should ever gate sensing, not just
+   acting** - the source names `ELIGIBLE`'s current policy (sensing always
+   eligible) as a default, not a settled fact, and states the sensing case
+   as deferred, not ruled out. Added as `OQ-018`, same pointer treatment.
+
+A third, lower-stakes item (`OQ-019`, where this agent's code eventually
+lands - `atomicguard`, `intelligent_agents`, or a new repo) was also named
+explicitly in the source's own "Still open" section and had no home here
+either.
+
+Worth stating plainly: a translation pass that reproduces logic correctly
+but drops the source's own named risks is a different, subtler kind of
+incompleteness than the four errors above - nothing was factually wrong,
+the omission just wasn't visible without checking the reproduction against
+its source rather than checking it for internal consistency alone.
+
 ## Verdict
 
-**Updated twice** after the original pass: once when Steps 1 and 3 were
-filled (see the note at the top - both turned out to be translation work
-sourced from content that already existed on `atomicguard` PR #369, not
-fresh design), and once after a second, skeptical review pass over this
+**Updated three times** after the original pass: once when Steps 1 and 3
+were filled (see the note at the top - both turned out to be translation
+work sourced from content that already existed on `atomicguard` PR #369,
+not fresh design); once after a second, skeptical review pass over this
 document's own output caught four further mistakes, listed in "Errors
 found on review," above - including this section's own file count, which
-was wrong.
+was wrong; and once after a third pass checked the filled Steps 1/3
+against their real source rather than just for internal consistency,
+finding two dropped-but-real risks named in the source and never carried
+over (`OQ-017`/`OQ-018`, "Gaps found checking the filled Steps 1/3 against
+their real source," above).
 
 Of 11 resulting files: **2 required real, track-owned translation work**
 (`step1_environment_specification.md` - combining three per-domain PEAS
 tables and a CLI catalogue into one cross-domain statement;
 `step3_agent_function.md` - reproducing already-complete pseudocode in this
-track's own vocabulary; neither needed fresh design), **1 is copied
-unresolved** (`examples.md` - no home in the scheme), and **8 are
-mechanical** - extraction, consolidation, and renaming of content that
-already existed, with three concrete corrections surfacing only because
-the consolidation forced a side-by-side read (the triple-duplicated
-`belief_state` question, the mislabeled "Step 0" section, the
-`blue_sky.md` non-file), plus the four further errors caught on the later
-review pass (this document's original "10 resulting files" among them).
-The register-file consolidation paid for itself on this one track before
-any code changed as a result - and needed two further passes past the
-first, not just the first, to actually deliver on that: one to fill in
-what the original pass wrongly called unscoped synthesis work, one to
-catch what the original pass got wrong about itself.
+track's own vocabulary, complete on its logic but initially incomplete on
+the source's own named risks - see above), **1 is copied unresolved**
+(`examples.md` - no home in the scheme), and **8 are mechanical** -
+extraction, consolidation, and renaming of content that already existed,
+with three concrete corrections surfacing only because the consolidation
+forced a side-by-side read (the triple-duplicated `belief_state` question,
+the mislabeled "Step 0" section, the `blue_sky.md` non-file), plus the four
+further errors caught on the second review pass (this document's original
+"10 resulting files" among them) and the two source-fidelity gaps caught
+on the third. The register-file consolidation paid for itself on this one
+track before any code changed as a result - and needed three further
+passes past the first, not just the first, to actually deliver on that:
+one to fill in what the original pass wrongly called unscoped synthesis
+work, one to catch what the original pass got wrong about itself, and one
+to check the filled content against its own source rather than just for
+internal consistency.

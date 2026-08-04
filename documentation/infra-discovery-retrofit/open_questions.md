@@ -189,6 +189,48 @@ own entry here. **Source:** `step2_environment_analysis.md`'s "`legal_actions`:
 a catalogue lookup, not a node field" section, inherited from
 `atomicguard-bridge/algorithm_fit.md`'s original "DSA selection" open item.
 
+## OQ-017: `RECORD-REQUIRES` doesn't auto-enqueue its own targets - the reachability risk is not auto-solved
+
+**Gap found by checking `step3_agent_function.md`'s reproduced pseudocode
+against the real source line by line, not by inference.** The real
+`AGENT-FUNCTION` pseudocode's `RECORD-REQUIRES(subject, REQUIRES-OF(dsa,
+subject, a))` line carries a load-bearing comment in the source, stripped
+during reproduction along with the rest of the pseudocode's inline
+commentary: an earlier draft auto-enqueued every `requires` target into
+`pending` to close this gap by construction, and it was deliberately
+walked back - "nothing validates that as correct or necessary." The actual
+risk, stated plainly in the source: **"a `requires` target named in some
+DSA's `REQUIRES-OF` output but never independently discovered via
+`RESOLVE-BRIDGES`/`DSA-CATALOGUE` dispatch would deadlock silently, and
+nothing here currently prevents that."** `discovery/`'s own and-joins step
+treats this as "the reachability constraint" - a scenario-design discipline
+the graph author has to get right by hand, not a guarantee the algorithm
+provides. This track inherits the identical exposure and, until this
+entry, had nothing saying so. **Source:** `atomicguard`'s
+`topology_agent_function_requires_and_discovery_validation.md`, "Still
+open" section ("The reachability risk is not auto-solved").
+
+## OQ-018: Does `requires`/`cleared` ever need to gate sensing, not just acting?
+
+`ELIGIBLE`'s current policy default (reproduced in `step3_agent_function.md`)
+is that sensing DSAs always pass regardless of `cleared`, and only acting
+DSAs are gated by `subject ∈ cleared`. The source document states this as
+"a policy default... not a fact `discovery/` establishes" and names the
+question of whether sensing ever needs the same gate as deferred, not
+ruled out. **Gap found the same way as `OQ-017`** - present in the real
+pseudocode's commentary, absent from this track's translation. **Source:**
+`atomicguard`'s `topology_agent_function_requires_and_discovery_validation.md`,
+"Still open" section.
+
+## OQ-019: Where this agent's code eventually lands - `atomicguard`, `intelligent_agents`, or a new repo
+
+Lower stakes than `OQ-017`/`OQ-018` - an administrative question, not a
+design-soundness one - but the source document names it explicitly as
+still open, and this track (one of the three named candidates) has nothing
+saying so. **Source:** `atomicguard`'s
+`topology_agent_function_requires_and_discovery_validation.md`, "Still
+open" section ("Repo placement").
+
 ## Related documents
 
 - [`decisions.md`](decisions.md) - settled decisions; two items here (`OQ-010`, `OQ-011`) were originally mislabeled as belonging there.

@@ -63,6 +63,8 @@ function AGENT-FUNCTION(percept) returns an action
         if percept is an Artifact a:
             belief_state.RECORD(subject, a)
             belief_state.RECORD-REQUIRES(subject, REQUIRES-OF(dsa, subject, a))
+            # Does NOT auto-enqueue these targets into `pending` - see OQ-017,
+            # "the reachability risk is not auto-solved."
 
             for edge in RESOLVE-BRIDGES(a):                # free — pattern-matched from a, no new DSA
                 belief_state.RECORD-EDGE(edge)
@@ -90,6 +92,8 @@ function AGENT-FUNCTION(percept) returns an action
 function ELIGIBLE(pending, belief_state) returns a set of pairs
     belief_state.SWEEP-CLEARED()
     return { ⟨dsa, subject⟩ ∈ pending : IS-SENSING(dsa) or subject ∈ belief_state.cleared }
+    # Sensing always passes regardless of `cleared` - a policy default, not
+    # a fact this track establishes. See OQ-018.
 
 function belief_state.SWEEP-CLEARED()
     # Iterative fixed-point, cycle-safe (D2). cleared is monotonic (D1) —
@@ -162,5 +166,5 @@ this file — translating the pseudocode doesn't resolve any of it:
 - [`step2_environment_analysis.md`](step2_environment_analysis.md) — Step 2; `RESOLVE-BRIDGES`/bidirectional propagation, the finding this file's `RESOLVE-BRIDGES` loop already reflects the fix for.
 - [`step0_ubiquitous_language.md`](step0_ubiquitous_language.md) — every term above, already cited as `Settled in: revision doc` before this file existed.
 - [`decisions.md`](decisions.md) — `D1`–`D4`, the invariants `SWEEP-CLEARED`/`ELIGIBLE` above depend on.
-- [`open_questions.md`](open_questions.md) — `OQ-006`, `OQ-007`, and the `requires` staticness question, all inherited unresolved.
+- [`open_questions.md`](open_questions.md) — `OQ-006`, `OQ-007`, and the `requires` staticness question, all inherited unresolved; `OQ-017`/`OQ-018` specifically (the reachability risk, sensing-gating) were dropped from this file's reproduction of the source pseudocode's own commentary and only added back on a later review pass.
 - `atomicguard`'s `docs/design/notes/topology_agent_function_requires_and_discovery_validation.md` — the source of the pseudocode above, including its own commentary this file doesn't reproduce in full.
