@@ -72,7 +72,7 @@ Domain-Driven Design's Ubiquitous Language: one shared, agreed vocabulary, used 
 
 ## Not decided
 
-- **Whether this glossary's terms should themselves eventually be expressed as a JSON-LD `@context`** (mapping each term here to a stable identifier, potentially reusing OpenTelemetry's real resource-semantic-convention vocabulary where one already exists for a concept) rather than staying prose-and-table form. Under discussion alongside `schema.md`'s own restructuring; not decided here.
+- **Whether this glossary's terms should themselves eventually be expressed as a JSON-LD `@context`** (mapping each term here to a stable identifier, potentially reusing OpenTelemetry's real resource-semantic-convention vocabulary where one already exists for a concept) rather than staying prose-and-table form. `schema.md` has since been restructured around its own `@context` (the ontology's structural shape - `NodeId`/`Facet`/`Edge`); this glossary itself moving to the same notation is a separate, still-open question - not decided here.
 - **Whether code, once it exists, enforces this vocabulary automatically** (e.g., linting variable/class names against this glossary) or relies on review discipline alone, the way this repo's other packages do today.
 
 ## Related documents
