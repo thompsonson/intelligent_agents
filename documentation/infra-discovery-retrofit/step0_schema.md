@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`environment_design.md` sketched `NodeId`/`Facet`/`Edge` as signatures only, deliberately not a full reference - the point there was showing *why* the shape has to change from `real_discovery/`'s, not pinning down every field. This document is that reference: the actual field-level schema, and - just as load-bearing - the actual registered vocabulary (which `domain`s, which `kind`s per domain, which `edge_type`s) this environment would validate against. That vocabulary isn't invented here; it's reused verbatim from `atomicguard`'s own `DSA-CATALOGUE`/`BRIDGE-CATALOGUE` content (`platform_topology_peas_and_cli_actions.md` §5, `topology_sensing_dsa_belief_state_and_agent_function.md`'s Step 3), the same discipline every other document in this track has followed - checked against the real source, not reconstructed from memory.
+`step2_environment_analysis.md` sketched `NodeId`/`Facet`/`Edge` as signatures only, deliberately not a full reference - the point there was showing *why* the shape has to change from `real_discovery/`'s, not pinning down every field. This document is that reference: the actual field-level schema, and - just as load-bearing - the actual registered vocabulary (which `domain`s, which `kind`s per domain, which `edge_type`s) this environment would validate against. That vocabulary isn't invented here; it's reused verbatim from `atomicguard`'s own `DSA-CATALOGUE`/`BRIDGE-CATALOGUE` content (`platform_topology_peas_and_cli_actions.md` §5, `topology_sensing_dsa_belief_state_and_agent_function.md`'s Step 3), the same discipline every other document in this track has followed - checked against the real source, not reconstructed from memory.
 
 No code exists yet. This is schema-as-documentation, not a Python module or a deployed JSON-LD context.
 
@@ -87,7 +87,7 @@ No `Node` class appears here on purpose - see "Where a node's state actually liv
 
 ## Where a node's state actually lives
 
-Worth restating precisely, since it's easy to misread the shapes above as "the Node class": **there is no `Node` type this schema defines**, in either the `@context` or the diagram. `environment_design.md`'s "Who owns what" resolution (inherited from the source ontology document's own "The DSA invocation *is* the node") means a node is never materialized as an object - it's a `(domain, kind, id)` key into `belief_state`'s own facet map, nothing more. `NodeId` is a real identity; "Node" is a *view* over `belief_state`, assembled on read (`belief_state.facets_for(node_id) -> Dict[str, Facet]`), not a value anything constructs or holds.
+Worth restating precisely, since it's easy to misread the shapes above as "the Node class": **there is no `Node` type this schema defines**, in either the `@context` or the diagram. `step2_environment_analysis.md`'s "Who owns what" resolution (inherited from the source ontology document's own "The DSA invocation *is* the node") means a node is never materialized as an object - it's a `(domain, kind, id)` key into `belief_state`'s own facet map, nothing more. `NodeId` is a real identity; "Node" is a *view* over `belief_state`, assembled on read (`belief_state.facets_for(node_id) -> Dict[str, Facet]`), not a value anything constructs or holds.
 
 ## Domains and kinds - the registered vocabulary (`DSA-CATALOGUE`)
 
@@ -144,13 +144,13 @@ BRIDGE-CATALOGUE[applies-to] = DSA-CATALOGUE[(target.domain, target.kind)]
 
 Evidence pattern: `kubectl apply`/`kubectl set image`/`gcloud run deploy`/`gcloud builds triggers run` found in a `github_actions.job`'s step log, read off content already fetched (`RESOLVE-BRIDGES`, free, no new DSA call).
 
-**Named but not yet grounded** (no evidence pattern documented for any catalogued domain): `exposes`, `triggers`, `publishes-to`, `observed-by`, `selects-from`, `depends-on-external`. Listed here, not silently dropped, because `environment_design.md`'s bidirectional-discovery finding and `examples.md`'s illustrations both use `selects-from` as a worked example of the `edge.from`-is-new case - worth being explicit that this specific verb is illustrative of the *shape* of the problem, not a claim that `selects-from` itself is grounded yet. `BRIDGE-CATALOGUE[edge.edge_type]`'s applicability to a currently-ungrounded verb is undefined until it's grounded, same as `DSA-CATALOGUE` entries for undocumented kinds are.
+**Named but not yet grounded** (no evidence pattern documented for any catalogued domain): `exposes`, `triggers`, `publishes-to`, `observed-by`, `selects-from`, `depends-on-external`. Listed here, not silently dropped, because `step2_environment_analysis.md`'s bidirectional-discovery finding (see `findings.md`, `F-001`) and `examples.md`'s illustrations both use `selects-from` as a worked example of the `edge.from`-is-new case - worth being explicit that this specific verb is illustrative of the *shape* of the problem, not a claim that `selects-from` itself is grounded yet. `BRIDGE-CATALOGUE[edge.edge_type]`'s applicability to a currently-ungrounded verb is undefined until it's grounded, same as `DSA-CATALOGUE` entries for undocumented kinds are.
 
 **Known gap, inherited directly, not new here:** `gcp.GKE_cluster ↔ kubernetes.*` doesn't fit any current bridge verb (a cluster doesn't mutate what it hosts, ruling out `applies-to`; "hosts" isn't in the vocabulary). Same status as it has in the source document - open, not resolved.
 
 ## `belief_state`'s schema, sketched
 
-Not designed in full (`environment_design.md`'s own "Not decided" already says so), but sketchable at the operation level, matching the source document's own `AGENT-FUNCTION`/`SWEEP-CLEARED` pseudocode exactly rather than inventing new operation names:
+Not designed in full (`step2_environment_analysis.md`'s own "Not decided" already says so, now in `open_questions.md`), but sketchable at the operation level, matching the source document's own `AGENT-FUNCTION`/`SWEEP-CLEARED` pseudocode exactly rather than inventing new operation names:
 
 | Operation | Shape | Notes |
 |---|---|---|
@@ -160,9 +160,9 @@ Not designed in full (`environment_design.md`'s own "Not decided" already says s
 | `RECORD-UNKNOWABLE(dsa, subject)` / `RECORD-BLOCKED(dsa, subject, reason)` | - | Propagates to permanent non-clearance via `SWEEP-CLEARED`, not a separate cycle-detection mechanism (see `atomicguard`'s `07035745`) |
 | `cleared` | `Set[NodeId]`, monotonically growing | Maintained by `SWEEP-CLEARED()`'s iterative fixed-point pass, never by per-query recursion - the specific property the `CLEARED` cycle-safety fix depends on |
 | `facets_for(subject)` | `NodeId → Dict[str, Facet]` | The read side of `state` - see "Where a node's state actually lives," above |
-| `edges_from(subject)` / `edges_to(subject)` | `NodeId → List[Edge]` | Named symmetrically on purpose - `environment_design.md`'s bidirectional finding means both directions need to be queryable, not just one |
+| `edges_from(subject)` / `edges_to(subject)` | `NodeId → List[Edge]` | Named symmetrically on purpose - `step2_environment_analysis.md`'s bidirectional finding (`F-001`) means both directions need to be queryable, not just one |
 
-**Open, not schematized here** (inherited directly from the source ontology document's own unresolved questions, restated in `environment_design.md`): whether `Edge` needs its own `observed_at`/`sensed_by` the way `Facet` does (the "edge statefulness" question), and whether two independent discoveries of what's semantically the same relationship - once from `from`'s artifact, later from `to`'s (see `environment_design.md`'s "Discovery is bidirectional") - should collapse into one `Edge` or be kept as two, timestamped observations of the same claim. This schema doesn't pick an answer; picking one changes whether `Edge` needs an identity field of its own (e.g. a hash of `(from, to, edge_type)` to de-duplicate against) or stays a plain value type.
+**Open, not schematized here** (inherited directly from the source ontology document's own unresolved questions, restated in `step2_environment_analysis.md`, now in `open_questions.md` as `OQ-003`): whether `Edge` needs its own `observed_at`/`sensed_by` the way `Facet` does (the "edge statefulness" question), and whether two independent discoveries of what's semantically the same relationship - once from `from`'s artifact, later from `to`'s (see `step2_environment_analysis.md`'s "Discovery is bidirectional") - should collapse into one `Edge` or be kept as two, timestamped observations of the same claim. This schema doesn't pick an answer; picking one changes whether `Edge` needs an identity field of its own (e.g. a hash of `(from, to, edge_type)` to de-duplicate against) or stays a plain value type.
 
 ## Example instances
 
@@ -233,14 +233,14 @@ class Edge:
 - **Whether the `@context` above is ever registered at a real, dereferenceable IRI**, and whether that registration reuses OpenTelemetry Resource Semantic Convention terms per-property where one already exists - the same open item `step0_ubiquitous_language.md`'s own "Not decided" section names; not duplicated in full here, just cross-referenced.
 - **Edge identity/de-duplication** - stated above, inherited from the source ontology document's own open "edge statefulness" question, sharpened by the bidirectional-discovery finding (the same relationship discoverable from either end).
 - **Facet value typing** - `Any` above is honest, not a placeholder for something already decided. Different facets have structurally different value shapes (`conclusion` is an enum string; `replica_readiness` is a `{ready, desired}` pair) - whether this schema should type each facet name's value shape per-kind (in the `@context`, via `@type` coercion per property, or in the Python appendix, via a narrower type) or stay untyped and push validation into each DSA's own guard, is open.
-- **`belief_state`'s actual persistence backend and index** - this table describes operations, not storage. `environment_design.md`'s own "Not decided" already flags this; unchanged here.
+- **`belief_state`'s actual persistence backend and index** - this table describes operations, not storage. `step2_environment_analysis.md`'s own "Not decided" already flags this (now `OQ-002`); unchanged here.
 
 ## Related documents
 
 - [`step0_ubiquitous_language.md`](step0_ubiquitous_language.md) - the canonical, implementation-agnostic definition of every term used above; this document's `@context` is that vocabulary expressed structurally, not a second, independent definition of it.
-- [`environment_design.md`](environment_design.md) - the properties table and node-ownership reasoning this schema is the field-level reference for.
+- [`step2_environment_analysis.md`](step2_environment_analysis.md) - the properties table and node-ownership reasoning this schema is the field-level reference for.
 - [`step4_algorithm_fit.md`](step4_algorithm_fit.md) - `SWEEP-CLEARED`, `RECORD-UNKNOWABLE`/`RECORD-BLOCKED` propagation, and why `cleared` has to be iterative, not recursive.
 - [`examples.md`](examples.md) - these types and this vocabulary, instantiated and diagrammed.
-- [`roadmap.md`](roadmap.md) - Step 0's `Edge`-shape decision (plain tuple vs. `Facet`-style accumulated evidence) and where `belief_state`'s own schema gets implemented.
+- [`step5_agent_program.md`](step5_agent_program.md) - Step 0's `Edge`-shape decision (plain tuple vs. `Facet`-style accumulated evidence, now `OQ-011`) and where `belief_state`'s own schema gets implemented.
 - `atomicguard`'s `docs/design/notes/platform_topology_peas_and_cli_actions.md` §5 - the real `DSA-CATALOGUE`/CLI action catalogue this document's vocabulary table is reused from verbatim.
 - `atomicguard`'s `docs/design/notes/topology_sensing_dsa_belief_state_and_agent_function.md` - `BRIDGE-CATALOGUE`'s `applies-to` rule, the ontology's own field definitions, and the ontology-standards survey (OWL/RDFS, SOSA/SSN, OpenTelemetry, TOSCA, CIM, ArchiMate, PROV-O) this document's JSON-LD choice is a considered alternative to, not a rejection of that survey's own conclusion.

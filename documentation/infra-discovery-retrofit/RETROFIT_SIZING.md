@@ -9,14 +9,33 @@ is unmodified by this exercise.** This document is the actual sizing
 answer: not an estimate written in the abstract, but what doing it for real
 on one track turned up.
 
+**Update, after Steps 1 and 3 were filled in:** the "Verdict" and "Two of
+five steps have no owned content" framing below were written when both
+files were stubs, and characterized producing their real content as
+"unscoped synthesis work." That characterization was too strong, corrected
+directly rather than silently: checked against `atomicguard` PR #369, the
+actual hard content for both steps already existed there in detail - the
+full `AGENT-FUNCTION` pseudocode for Step 3, three per-domain PEAS tables
+plus a full CLI action catalogue for Step 1 - and `step0_ubiquitous_language.md`
+(already in this retrofit before either stub was filled) already cited
+every `AGENT-FUNCTION` component as `Settled in: revision doc`. Writing both
+files turned out to be substantially a translation/combination pass, not
+fresh design work - true for Step 3 especially (the pseudocode was complete
+and only needed reproducing in this track's own vocabulary); Step 1 needed
+real, if bounded, synthesis (combining three tables into one PEAS statement
+- no such combined statement existed anywhere before this file). The
+sections below are left as written at the time, not rewritten, so the
+correction is visible rather than absorbed silently - see each stub's own
+file for what's actually there now.
+
 ## File mapping
 
 | Original file | Became | Kind of work |
 |---|---|---|
 | `environment_design.md` | `step2_environment_analysis.md` (Step 2) | Extraction - properties table and ontology-adjacent analysis kept; "Nodes and edges, translated" dropped (superseded by `step0_schema.md`); "Discovery is bidirectional" moved to `findings.md`; "Resolved design questions" moved to `decisions.md`; "Not decided" moved to `open_questions.md` |
-| *(none)* | `step1_environment_specification.md` (Step 1) | **Net-new.** No owned PEAS content existed for this track - see below |
+| *(none)* | `step1_environment_specification.md` (Step 1) | Originally net-new/stub; now filled - synthesis of `atomicguard`'s three per-domain PEAS tables + CLI catalogue into one cross-domain PEAS statement. See the update note above |
 | `algorithm_fit.md` | `step4_algorithm_fit.md` (Step 4) | Extraction only - `CLEARED` finding moved to `findings.md`, "Open, not resolved" moved to `open_questions.md`; everything else unchanged, already correctly filed |
-| *(none)* | `step3_agent_function.md` (Step 3) | **Net-new.** No owned agent-function content existed for this track - see below |
+| *(none)* | `step3_agent_function.md` (Step 3) | Originally net-new/stub; now filled - the `AGENT-FUNCTION` pseudocode translated from `atomicguard`'s revision document into this track's own file. See the update note above |
 | `roadmap.md` | `step5_agent_program.md` (Step 5) | Rename + extraction - "Testing discipline" moved to `decisions.md`; "Step 0" and "Not decided" moved to `open_questions.md` |
 | `schema.md` | `step0_schema.md` (Step 0) | Copy, unchanged |
 | `ubiquitous_language.md` | `step0_ubiquitous_language.md` (Step 0) | Copy, unchanged |
@@ -30,17 +49,18 @@ on one track turned up.
 
 ## What sizing this for real found, that estimating it wouldn't have
 
-**Two of five steps have no owned content anywhere in this track - not a
-filing problem.** `step1_environment_specification.md` (Step 1) and
-`step3_agent_function.md` (Step 3) are stubs, not because content was misfiled
-elsewhere and needed moving, but because it was checked directly against
-the original documents and genuinely doesn't exist for this track. Both
-steps' real content lives only in `atomicguard`, cited by name repeatedly
-but never translated into this track's own words the way the Node/Edge
-ontology was. This is the single biggest sizing finding: **the retrofit is
-not just data entry.** Producing real Step 1 and Step 3 content is
-unscoped synthesis work, sized in each stub file's own "What writing this
-file for real would need to cover" section, not attempted here.
+**Two of five steps had no owned content anywhere in this track - not a
+filing problem, but not "unscoped synthesis work" either, as first
+characterized here (see the update note at the top).** `step1_environment_specification.md`
+(Step 1) and `step3_agent_function.md` (Step 3) were stubs, not because
+content was misfiled elsewhere and needed moving, but because nothing in
+this track's own files translated it - it lived only in `atomicguard`,
+cited by name repeatedly. That's a real finding, and it's real work to fix,
+but "unscoped" overstated it: the hard part (the actual pseudocode for Step
+3; three real PEAS tables and a full CLI catalogue for Step 1) was already
+done, on `atomicguard` PR #369, before either file was written. Filling both
+in turned out to be bounded - translation for Step 3, combination for Step
+1 - not open-ended design work.
 
 **Consolidating the register files surfaced duplication invisible while
 scattered.** `belief_state`'s persistence backend was asked as an open
@@ -97,12 +117,25 @@ decided in, isn't decided here either.
 
 ## Verdict
 
-Of 10 resulting files: **2 are real new-content work** (`step1_environment_specification.md`,
-`step3_agent_function.md` - both stubs stating what's missing, not drafts of the
-content itself), **1 is copied unresolved** (`examples.md` - no home in the
-scheme), and **7 are mechanical** - extraction, consolidation, and renaming
-of content that already existed, with three concrete corrections
-surfacing only because the consolidation forced a side-by-side read
-(the triple-duplicated `belief_state` question, the mislabeled "Step 0"
-section, the `blue_sky.md` non-file). The register-file consolidation paid
-for itself on this one track before any code changed as a result.
+**Updated** after Steps 1 and 3 were filled (see the note at the top; the
+original verdict, written when both were stubs, undercounted how much of
+the real content already existed on `atomicguard` PR #369 rather than
+needing fresh design work here).
+
+Of 10 resulting files: **2 required real, track-owned work to fill**
+(`step1_environment_specification.md` - combining three per-domain PEAS
+tables and a CLI catalogue into one cross-domain statement;
+`step3_agent_function.md` - translating already-complete pseudocode into
+this track's own vocabulary), **1 is copied unresolved** (`examples.md` -
+no home in the scheme), and **7 are mechanical** - extraction,
+consolidation, and renaming of content that already existed, with three
+concrete corrections surfacing only because the consolidation forced a
+side-by-side read (the triple-duplicated `belief_state` question, the
+mislabeled "Step 0" section, the `blue_sky.md` non-file). The register-file
+consolidation paid for itself on this one track before any code changed as
+a result. With Steps 1 and 3 filled and `step0_schema.md`'s two dead links
+(`environment_design.md`/`roadmap.md`, pre-dating the rename) fixed, the
+retrofit folder is a faithful, complete reorganization of everything the
+original six files contained - not a claim that the underlying design work
+(`IN-SCOPE` boundedness, `SCORE`'s feature set, and the rest of
+`open_questions.md`) is any more finished than it was before.
