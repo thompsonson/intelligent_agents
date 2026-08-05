@@ -6,6 +6,8 @@ real infrastructure itself); not local per-walk bookkeeping.
 
 Implements RECORD, RECORD-EDGE, RECORD-REQUIRES, RECORD-UNKNOWABLE,
 RECORD-BLOCKED operations from step3_agent_function.md.
+
+FIX: Tracks (dsa_name, subject) pairs for proper de-duplication per D-003.
 """
 
 from dataclasses import dataclass, field
@@ -28,6 +30,8 @@ class BeliefState:
       requires are all themselves in cleared (D1, F-002 fix)
     - unknowable: Set[NodeId] - subjects that failed permanently (rmax exhausted)
     - blocked: Set[NodeId] - subjects that escalated/stagnated
+    - recorded: Set[Tuple[str, NodeId]] - (dsa_name, subject) pairs already invoked
+      per D-003 for proper de-duplication with multiple DSAs per kind
     """
 
     facets_by_node: Dict[NodeId, Dict[str, Facet]] = field(default_factory=dict)
@@ -38,6 +42,7 @@ class BeliefState:
     cleared: Set[NodeId] = field(default_factory=set)
     unknowable: Set[NodeId] = field(default_factory=set)
     blocked: Set[NodeId] = field(default_factory=set)
+    recorded: Set[Tuple[str, NodeId]] = field(default_factory=set)
 
     def record(self, subject: NodeId, facets: Dict[str, Facet]) -> None:
         """Merge facets into subject's state.
@@ -132,20 +137,28 @@ class BeliefState:
         return [e for e in self.edges if e.to == subject]
 
     def is_recorded(self, dsa_name: str, subject: NodeId) -> bool:
-        """Check if (dsa, subject) has already been invoked.
+        """Check if (dsa_name, subject) has already been invoked.
         
-        Used by RELEVANT() to de-duplicate pending work.
-        For now, we check if the subject has any facets recorded
-        (simplified; real implementation would track (dsa, subject) pairs).
+        FIX: Tracks (dsa_name, subject) pairs for proper de-duplication
+        per D-003, allowing multiple DSAs per (domain, kind).
         
         Args:
-            dsa_name: Name of the DSA (unused in simplified version).
+            dsa_name: Name of the DSA (e.g., "DSA-K8S-DEPLOYMENT-GET").
             subject: The NodeId to query.
         
         Returns:
-            True if subject has been recorded.
+            True if (dsa_name, subject) has been recorded.
         """
-        return subject in self.facets_by_node
+        return (dsa_name, subject) in self.recorded
+
+    def mark_recorded(self, dsa_name: str, subject: NodeId) -> None:
+        """Mark a (dsa_name, subject) pair as recorded.
+        
+        Args:
+            dsa_name: Name of the DSA.
+            subject: The NodeId that was sensed.
+        """
+        self.recorded.add((dsa_name, subject))
 
     def recorded_subjects(self) -> Set[NodeId]:
         """Get all subjects that have been recorded.

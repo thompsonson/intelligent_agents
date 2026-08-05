@@ -1,12 +1,14 @@
 {
+  "name": "web",
+  "namespace": "default",
   "replicas": 3,
   "ready_replicas": 3,
   "status": "Progressing",
   "edges": [
     {
-      "to": ["github_actions", "job", "deploy"],
+      "from": ["github_actions", "job", "deploy"],
       "type": "deployed-by",
-      "evidence": "metadata.ownerReferences via spec.template.metadata.labels"
+      "evidence": "metadata.ownerReferences via deployment controller"
     }
   ]
 }

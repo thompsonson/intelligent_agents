@@ -1,16 +1,19 @@
 {
-  "conclusion": "success",
+  "id": "deploy",
   "status": "completed",
+  "conclusion": "success",
+  "run_number": 42,
+  "name": "Deploy to production",
   "edges": [
     {
       "to": ["kubernetes", "Deployment", "web"],
       "type": "applies-to",
-      "evidence": "step: kubectl apply -f deployment.yaml"
+      "evidence": "github_actions deployment environment binding"
     },
     {
       "to": ["gcp", "CloudRun_service", "api"],
       "type": "applies-to",
-      "evidence": "step: gcloud run deploy --image gcr.io/..."
+      "evidence": "github_actions deployment environment binding"
     }
   ]
 }

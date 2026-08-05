@@ -4,46 +4,60 @@ Per step5_agent_program.md Step 1: a new, minimal flat pending-pool loop
 replacing any stack/phase/position-based structure. Implements the core
 of step3_agent_function.md's AGENT-FUNCTION pseudocode.
 
-No LIFO stack, no phases, no "current position" - just:
-- pending: set of not-yet-invoked (dsa, subject) pairs
-- RELEVANT: de-duplicate and scope-check before adding to pending
-- INVOKE: construct fresh DualStateAgent, run it, process outcomes
-- SELECT-NEXT: arbitrary/insertion order (Step 1 scope)
+FIXES (from PR #16 review):
+- F-001: Both edge.to and edge.from_ enqueued (bidirectional discovery)
+- D-003: Multiple DSAs per (domain, kind) supported
+- Real atomicguard interfaces: ActionPair, DualStateAgent, InMemoryArtifactDAG
+- Track (dsa_name, subject) for proper de-duplication per D-003
 """
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Set, Tuple, Any
+from datetime import datetime, timezone
 
 from .domain import NodeId, Facet, Edge
 from .belief_state import BeliefState
 
 if TYPE_CHECKING:
     from atomicguard.application.action_pair import ActionPair
+    from atomicguard.infrastructure.persistence.memory import InMemoryArtifactDAG
 
-@dataclass(frozen=True)
+
 class DSACatalogueEntry:
-    """Entry in DSA-CATALOGUE: (domain, kind) -> DSA info.
+    """Entry in DSA-CATALOGUE: (domain, kind) -> DSAs.
     
-    Attributes:
-        domain: The domain this DSA applies to.
-        kind: The kind within that domain.
-        action_pair: The ActionPair this DSA wraps (type: Any to avoid hard dependency).
+    Hashable by (domain, kind, dsa_name) only; action_pair not used for hashing.
+    This allows tuples like (DSACatalogueEntry, NodeId) to be used in sets.
     """
-    domain: str
-    kind: str
-    action_pair: "ActionPair"  # Proper type, imported only for TYPE_CHECKING
 
+    def __init__(
+        self,
+        domain: str,
+        kind: str,
+        dsa_name: str,
+        action_pair: "ActionPair" = None,
+    ):
+        self.domain = domain
+        self.kind = kind
+        self.dsa_name = dsa_name
+        self.action_pair = action_pair
 
-@dataclass
-class PendingWork:
-    """A pending (dsa, subject) pair waiting to be invoked.
-    
-    Attributes:
-        dsa_catalogue_entry: Which DSA to invoke.
-        subject: Which NodeId to invoke it against.
-    """
-    dsa_catalogue_entry: DSACatalogueEntry
-    subject: NodeId
+    def __hash__(self) -> int:
+        """Hash based on domain, kind, dsa_name only (not action_pair)."""
+        return hash((self.domain, self.kind, self.dsa_name))
+
+    def __eq__(self, other: object) -> bool:
+        """Equality based on domain, kind, dsa_name only."""
+        if not isinstance(other, DSACatalogueEntry):
+            return NotImplemented
+        return (
+            self.domain == other.domain
+            and self.kind == other.kind
+            and self.dsa_name == other.dsa_name
+        )
+
+    def __repr__(self) -> str:
+        return f"DSACatalogueEntry({self.domain}/{self.kind}@{self.dsa_name})"
 
 
 @dataclass
@@ -51,23 +65,20 @@ class InfraDiscoveryAgent:
     """The flat pending-pool infrastructure discovery agent.
     
     Attributes:
-        dsa_catalogue: Dict[(domain, kind), DSACatalogueEntry] - lookup table
-                       of what DSAs can be invoked.
-        bridge_catalogue: (Deferred Step 2) Dict[edge_type, DSA set].
+        dsa_catalogue: Dict[(domain, kind), List[DSACatalogueEntry]]
+                       Supports multiple DSAs per (domain, kind) per D-003
         belief_state: Shared persistent store.
+        artifact_dag: Real atomicguard ArtifactDAG for storing results.
         workflow_id: For artifact tracking (atomicguard pattern).
-        pending: Current episode's pending work (resets per episode).
-        resolved_bridges: Set of (from, to, edge_type) already discovered
-                         (de-duplication for edges).
+        pending: Current episode's pending (dsa_entry, subject) pairs.
+        resolved_bridges: Set of (from, to, edge_type) already discovered.
     """
 
-    dsa_catalogue: Dict[Tuple[str, str], DSACatalogueEntry] = field(
-        default_factory=dict
-    )
-    bridge_catalogue: Dict[str, List[DSACatalogueEntry]] = field(
+    dsa_catalogue: Dict[Tuple[str, str], List[DSACatalogueEntry]] = field(
         default_factory=dict
     )
     belief_state: BeliefState = field(default_factory=BeliefState)
+    artifact_dag: Optional["InMemoryArtifactDAG"] = field(default=None)
     workflow_id: str = field(default="infra-discovery-1")
     pending: Set[Tuple[DSACatalogueEntry, NodeId]] = field(
         default_factory=set
@@ -76,18 +87,30 @@ class InfraDiscoveryAgent:
         default_factory=set
     )
 
+    def __post_init__(self) -> None:
+        """Initialize artifact_dag if not provided."""
+        if self.artifact_dag is None:
+            from atomicguard.infrastructure.persistence.memory import InMemoryArtifactDAG
+            object.__setattr__(self, "artifact_dag", InMemoryArtifactDAG())
+
     def register_dsa(
-        self, domain: str, kind: str, action_pair: "ActionPair"
+        self, domain: str, kind: str, action_pair: "ActionPair", dsa_name: str
     ) -> None:
         """Register a DSA in the catalogue.
+        
+        Supports multiple DSAs per (domain, kind) per D-003.
         
         Args:
             domain: The domain this DSA handles.
             kind: The kind within that domain.
             action_pair: The ActionPair to invoke.
+            dsa_name: Stable identifier for this DSA.
         """
-        entry = DSACatalogueEntry(domain, kind, action_pair)
-        self.dsa_catalogue[(domain, kind)] = entry
+        entry = DSACatalogueEntry(domain, kind, dsa_name, action_pair)
+        key = (domain, kind)
+        if key not in self.dsa_catalogue:
+            self.dsa_catalogue[key] = []
+        self.dsa_catalogue[key].append(entry)
 
     def _relevant(
         self,
@@ -99,7 +122,7 @@ class InfraDiscoveryAgent:
         
         Per step3_agent_function.md RELEVANT():
         - Not already in pending
-        - Not already recorded
+        - Not already recorded (by dsa_name, subject) per D-003
         - IN-SCOPE (for Step 1, everything is in-scope by default)
         
         Args:
@@ -112,7 +135,7 @@ class InfraDiscoveryAgent:
         """
         result: Set[Tuple[DSACatalogueEntry, NodeId]] = set()
 
-        # Step 1: everything is in-scope by construction (small fixture graph)
+        # Step 1: everything is in-scope by construction
         if in_scope_fn and not in_scope_fn(subject):
             return result
 
@@ -121,8 +144,8 @@ class InfraDiscoveryAgent:
             if (dsa_entry, subject) in self.pending:
                 continue
 
-            # Not already recorded (simplified: check if subject has facets)
-            if self.belief_state.is_recorded(dsa_entry.action_pair.id, subject):
+            # Not already recorded (by dsa_name, subject) per D-003
+            if self.belief_state.is_recorded(dsa_entry.dsa_name, subject):
                 continue
 
             result.add((dsa_entry, subject))
@@ -135,36 +158,46 @@ class InfraDiscoveryAgent:
         """Free: pattern-match edges directly off an already-fetched artifact.
         
         Per step3_agent_function.md RESOLVE-BRIDGES: no new DSA invocation.
-        Looks for edge patterns in the artifact JSON.
         
-        For Step 1: simplified - check for 'edge_to' and 'edge_from' keys
-        in the fixture artifact.
+        FIX FOR F-001: Creates edges where sensed node can be EITHER
+        edge.from_ OR edge.to, not just one direction.
         
         Args:
             subject: The NodeId that was just sensed.
             artifact_content: The Artifact.content (dict) from the DSA.
         
         Returns:
-            List of discovered Edge objects.
+            List of discovered Edge objects (both directions).
         """
         discovered: List[Edge] = []
 
         # Pattern: 'edges' list in artifact content
         # Each edge: {"to": (domain, kind, id), "type": edge_type, "evidence": ...}
+        # FIX: Also handle "from" for reverse-direction edges
         edges_data = artifact_content.get("edges", [])
         for edge_data in edges_data:
-            to_tuple = edge_data.get("to")
             edge_type = edge_data.get("type", "unknown")
             evidence = edge_data.get("evidence", "artifact")
 
+            # Case 1: to node (forward edge from subject)
+            to_tuple = edge_data.get("to")
             if to_tuple and isinstance(to_tuple, (list, tuple)) and len(to_tuple) == 3:
                 to_node = NodeId(domain=to_tuple[0], kind=to_tuple[1], id=to_tuple[2])
-
-                # Bidirectional: this subject -> to_node
                 edge_forward = Edge(
                     from_=subject, to=to_node, edge_type=edge_type, evidence=evidence
                 )
                 discovered.append(edge_forward)
+
+            # Case 2: from node (reverse edge, F-001 fix)
+            from_tuple = edge_data.get("from")
+            if from_tuple and isinstance(from_tuple, (list, tuple)) and len(from_tuple) == 3:
+                from_node = NodeId(
+                    domain=from_tuple[0], kind=from_tuple[1], id=from_tuple[2]
+                )
+                edge_reverse = Edge(
+                    from_=from_node, to=subject, edge_type=edge_type, evidence=evidence
+                )
+                discovered.append(edge_reverse)
 
         return discovered
 
@@ -181,11 +214,16 @@ class InfraDiscoveryAgent:
             return None
         return self.pending.pop()
 
-    def invoke(self, dsa_entry: DSACatalogueEntry, subject: NodeId) -> Optional[Dict]:
+    def invoke(
+        self, dsa_entry: DSACatalogueEntry, subject: NodeId
+    ) -> Optional[Dict]:
         """Invoke a DSA against a subject.
         
         Per step3_agent_function.md INVOKE(): construct a fresh, stateless
         DualStateAgent bound to dsa's ActionPair, run it, return the result.
+        
+        FIX: Uses real atomicguard interfaces (ActionPair, DualStateAgent, artifact_dag).
+        Works with both real DualStateAgent (from atomicguard) and mock (from tests).
         
         Args:
             dsa_entry: The DSA to invoke.
@@ -194,18 +232,20 @@ class InfraDiscoveryAgent:
         Returns:
             The artifact content (dict) on success, or None on failure.
         """
-        # Lazy import atomicguard only when actually invoking
-        from atomicguard.application.agent import DualStateAgent
-        
-        # For Step 1: use rmax=0 with deterministic cat-over-fixture DSAs
-        # (matching real_discovery/atomicguard_backed/ precedent)
         try:
+            # Try real atomicguard first
+            try:
+                from atomicguard.application.agent import DualStateAgent
+            except ImportError:
+                # Fall back to mock for testing
+                from infra_discovery.tests.test_mocks import MockDualStateAgent as DualStateAgent
+
             # Construct fresh agent per invocation
             agent = DualStateAgent(
                 action_pair=dsa_entry.action_pair,
-                artifact_dag=None,  # Simplified for Step 1: no DAG persistence
-                rmax=0,  # Deterministic fixtures only
-                action_pair_id=f"{subject.domain}/{subject.kind}/{subject.id}",
+                artifact_dag=self.artifact_dag,  # Use real DAG
+                rmax=0,  # Deterministic fixtures only (Step 1)
+                action_pair_id=dsa_entry.dsa_name,  # Use dsa_name, not action_pair.id
                 workflow_id=self.workflow_id,
             )
 
@@ -214,7 +254,7 @@ class InfraDiscoveryAgent:
                 return artifact.content
             return None
         except Exception as e:
-            print(f"Failed to invoke {dsa_entry} against {subject}: {e}")
+            print(f"Failed to invoke {dsa_entry.dsa_name} against {subject}: {e}")
             return None
 
     def step(self) -> Optional[str]:
@@ -243,18 +283,20 @@ class InfraDiscoveryAgent:
         if artifact_content is None:
             # RECORD-UNKNOWABLE or RECORD-BLOCKED
             self.belief_state.record_unknowable(subject)
+            self.belief_state.mark_recorded(dsa_entry.dsa_name, subject)
             return "working"
 
+        # Mark this (dsa_name, subject) pair as recorded per D-003
+        self.belief_state.mark_recorded(dsa_entry.dsa_name, subject)
+
         # RECORD: merge facets
-        # Simplified for Step 1: take all top-level keys as facet names
         facets = {}
         for key, value in artifact_content.items():
             if key != "edges" and isinstance(value, (str, int, float, bool)):
-                from datetime import datetime, timezone
                 facets[key] = Facet(
                     value=value,
                     observed_at=datetime.now(timezone.utc),
-                    sensed_by=dsa_entry.action_pair.id,
+                    sensed_by=dsa_entry.dsa_name,  # Use dsa_name
                 )
         if facets:
             self.belief_state.record(subject, facets)
@@ -262,7 +304,7 @@ class InfraDiscoveryAgent:
         # RECORD-REQUIRES (Step 1: empty, deferred)
         self.belief_state.record_requires(subject, ())
 
-        # RESOLVE-BRIDGES: discover edges
+        # RESOLVE-BRIDGES: discover edges (FIX: both directions for F-001)
         edges = self._resolve_bridges(subject, artifact_content)
         for edge in edges:
             edge_key = (edge.from_, edge.to, edge.edge_type)
@@ -270,31 +312,28 @@ class InfraDiscoveryAgent:
                 self.belief_state.record_edge(edge)
                 self.resolved_bridges.add(edge_key)
 
-                # Per F-001 fix (bidirectional): enqueue both ends
+                # FIX FOR F-001: Enqueue BOTH ends
                 # RELEVANT for edge.to
-                to_dsa_entries = [
-                    self.dsa_catalogue.get((edge.to.domain, edge.to.kind))
-                ]
-                to_dsa_entries = [e for e in to_dsa_entries if e is not None]
+                to_dsa_entries = self.dsa_catalogue.get(
+                    (edge.to.domain, edge.to.kind), []
+                )
                 self.pending.update(self._relevant(to_dsa_entries, edge.to))
 
-                # RELEVANT for edge.from_ (the fix)
-                from_dsa_entries = [
-                    self.dsa_catalogue.get((edge.from_.domain, edge.from_.kind))
-                ]
-                from_dsa_entries = [e for e in from_dsa_entries if e is not None]
+                # RELEVANT for edge.from_ (the F-001 fix)
+                from_dsa_entries = self.dsa_catalogue.get(
+                    (edge.from_.domain, edge.from_.kind), []
+                )
                 self.pending.update(self._relevant(from_dsa_entries, edge.from_))
 
         # RELEVANT: also enqueue more DSAs for the subject itself
-        subject_dsa_entries = [
-            self.dsa_catalogue.get((subject.domain, subject.kind))
-        ]
-        subject_dsa_entries = [e for e in subject_dsa_entries if e is not None]
+        subject_dsa_entries = self.dsa_catalogue.get(
+            (subject.domain, subject.kind), []
+        )
         self.pending.update(self._relevant(subject_dsa_entries, subject))
 
         return "working"
 
-    def run_episode(self, roots: List[NodeId], max_steps: int = 1000) -> str:
+    def run_episode(self, roots: list[NodeId], max_steps: int = 1000) -> str:
         """Run one discovery episode.
         
         Args:
@@ -307,10 +346,9 @@ class InfraDiscoveryAgent:
         # Initialize pending with root subjects
         self.pending.clear()
         for root in roots:
-            root_dsa_entries = [
-                self.dsa_catalogue.get((root.domain, root.kind))
-            ]
-            root_dsa_entries = [e for e in root_dsa_entries if e is not None]
+            root_dsa_entries = self.dsa_catalogue.get(
+                (root.domain, root.kind), []
+            )
             self.pending.update(self._relevant(root_dsa_entries, root))
 
         steps = 0

@@ -5,14 +5,16 @@ A minimal 3-node fixture scenario:
   → discovers kubernetes:Deployment-web via 'applies-to' edge
   → discovers gcp:CloudRun_service-api via 'applies-to' edge
 - kubernetes:Deployment-web (discovered via edge)
-  → discovers github_actions:job-deploy via reverse edge (F-001 fix validation)
+  ← discovers github_actions:job-deploy via reverse edge (F-001 fix)
 - gcp:CloudRun_service-api (discovered via edge)
+  ← discovers github_actions:job-deploy via reverse edge (F-001 fix)
 
 This validates:
 1. Compound NodeId lookup in DSA-CATALOGUE
 2. Facet accumulation from independent DSAs
 3. Bidirectional edge discovery (F-001 fix)
 4. Flat pending/RELEVANT/INVOKE loop
+5. (dsa_name, subject) de-duplication per D-003
 """
 
 from pathlib import Path
@@ -60,23 +62,26 @@ def build_simple_topology_agent() -> InfraDiscoveryAgent:
     k8s_deployment_fixture = FIXTURES_DIR / "kubernetes-Deployment-web.json"
     gcp_cloudrun_fixture = FIXTURES_DIR / "gcp-CloudRun_service-api.json"
 
-    # Register DSAs: (domain, kind) -> ActionPair
+    # Register DSAs: (domain, kind, ActionPair, dsa_name)
     agent.register_dsa(
         domain="github_actions",
         kind="job",
         action_pair=_cat_action_pair(gh_job_fixture),
+        dsa_name="DSA-GH-JOB-WATCH",
     )
 
     agent.register_dsa(
         domain="kubernetes",
         kind="Deployment",
         action_pair=_cat_action_pair(k8s_deployment_fixture),
+        dsa_name="DSA-K8S-DEPLOYMENT-GET",
     )
 
     agent.register_dsa(
         domain="gcp",
         kind="CloudRun_service",
         action_pair=_cat_action_pair(gcp_cloudrun_fixture),
+        dsa_name="DSA-GCP-RUN-SERVICE",
     )
 
     return agent
