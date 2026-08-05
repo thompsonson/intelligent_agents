@@ -23,32 +23,40 @@ like," not "what was observed."
 **Validates:** the base case `BRIDGE-CATALOGUE[applies-to]` is grounded
 against - a `github_actions.job` senses successfully, and its step-log
 content (already fetched, no new DSA call) reveals it applied a Kubernetes
-manifest. Both edges here are the *forward* case: the sensed node is always
-`edge.from`, the newly-discovered node is always `edge.to`.
+manifest. The one edge here is the *forward* case: the sensed node is
+`edge.from`, the newly-discovered node is `edge.to`. Everything downstream
+of that edge (`DSA-K8S-ROLLOUT`, then `DSA-K8S-PODSET`) is facet-sensing on
+the same `Deployment` node, not further edge discovery - `DSA-K8S-PODSET`'s
+`replica_readiness: {ready, desired}` is a facet value, not a set of
+discovered `Pod` nodes (an earlier version of this diagram drew it as an
+`owns` edge to three `Pod` nodes; that was wrong, fixed as `F-005` in
+[`findings.md`](findings.md)).
 
 **Instance:**
 
 ```mermaid
 graph LR
     Job["github_actions:job<br/>.../job/deploy-staging<br/>conclusion: success"]
-    Dep["kubernetes:Deployment<br/>staging/web-frontend"]
-    Pods["kubernetes:Pod (x3)<br/>via DSA-K8S-PODSET"]
+    Dep["kubernetes:Deployment<br/>staging/web-frontend<br/>rollout: Available<br/>replica_readiness: ready:3, desired:3"]
 
     Job -- "applies-to<br/>(evidence: step log,<br/>'kubectl apply -f deployment.yaml')" --> Dep
-    Dep -- "owns<br/>(domain-native)" --> Pods
 
     classDef sensed fill:#93c47d,stroke:#333,color:#000
-    class Job,Dep,Pods sensed
+    class Job,Dep sensed
 ```
 
-**What it surfaced:** nothing on its own - this is the one direction the
-original, unfixed `RESOLVE-BRIDGES`/`RELEVANT` propagation ever handled,
-which is exactly the point `WE-003` exists to complicate. Worth keeping as
-the baseline case precisely because it's the one every other worked
-example gets compared against.
+**What it surfaced:** nothing on its own, in the sense of an open question -
+this is the one direction the original, unfixed `RESOLVE-BRIDGES`/
+`RELEVANT` propagation ever handled, which is exactly the point `WE-003`
+exists to complicate. It did surface `F-005` (above) on review: an earlier
+version of this diagram invented a second edge the source trace doesn't
+have. Worth keeping as the baseline case precisely because it's the one
+every other worked example gets compared against.
 
 **Source:** reused directly from `atomicguard`'s own worked example
-(`topology_sensing_dsa_belief_state_and_agent_function.md`, Step 3).
+(`topology_sensing_dsa_belief_state_and_agent_function.md`, Step 3's
+"Concrete worked trace" table) - now checked line-by-line against that
+table's four steps, not just against its general shape.
 
 ## WE-002: multi-facet state, accumulated over separate sense calls
 

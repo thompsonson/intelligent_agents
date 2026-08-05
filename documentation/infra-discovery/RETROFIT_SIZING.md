@@ -47,7 +47,7 @@ file for what's actually there now.
 | `ubiquitous_language.md` | `step0_ubiquitous_language.md` (Step 0) | Copy, cross-links updated for the rename - content otherwise unchanged |
 | `examples.md` | `worked_examples.md` | **Adopted as the fifth register** (`D-005`), replacing `examples.md` outright - `examples.md` is deleted, not kept alongside it. Three diagrams became `WE-001`-`WE-003`, each restated with what it validates, the instance itself, and what it surfaced. See "The fifth register," below |
 | *(scattered across 5 files)* | `decisions.md` | Consolidation - 6 entries (`D-005` adopting `worked_examples.md`; `D-006` keeping Step 0 as two files) |
-| *(scattered across 2 files)* | `findings.md` | Consolidation - 3 entries (`F-003` added on the Step 1 scrutiny pass, below) |
+| *(scattered across 2 files)* | `findings.md` | Consolidation - 5 entries (`F-003` added on the Step 1 scrutiny pass; `F-004`/`F-005` added scrutinizing `decisions.md`/`worked_examples.md` against their sources - both below) |
 | *(scattered across 5 files)* | `open_questions.md` | Consolidation - 19 entries (14 from the original pass; `OQ-015`/`OQ-016` added on a second review pass, found missing; `OQ-017`-`OQ-019` added on a third pass, checking `step3_agent_function.md`'s reproduced pseudocode against the real source line by line - see below) |
 | *(none)* | `blue_sky.md` | **Not created** - see below |
 
@@ -226,6 +226,36 @@ requirement - a reasonable extension mischaracterized as a direct
 inheritance. Fixed; see `F-003` in [`findings.md`](findings.md). This
 section's title said "Steps 1/3" from the start; only now does its content
 actually cover both.
+
+**A fifth pass, requested explicitly once this track was already live,
+scrutinized the two registers not yet checked against their own
+sources: `decisions.md`'s `D-001`-`D-004` and `worked_examples.md`'s
+`WE-001`/`WE-002`.** `D-001`-`D-003` and `WE-002` all checked out directly
+against `atomicguard`'s real ontology definitions, pseudocode, and worked
+trace. Two real problems turned up:
+
+- **`D-004`** (`F-004`) used bare "Step 1"/"Step 2" to mean
+  `step5_agent_program.md`'s own internal build-sequence numbering -
+  correct in that document's original, self-contained context, but
+  misleading once read from `decisions.md` sitting next to this track's
+  Agent-Design-Process step-numbered files, which use "Step 1"/"Step 2" to
+  mean something else entirely. Fixed by naming the build-sequence steps
+  explicitly rather than leaving the bare numbers to collide.
+- **`WE-001`** (`F-005`) drew an `owns` edge from the sensed `Deployment` to
+  three separately-discovered `Pod` nodes, credited to `DSA-K8S-PODSET` -
+  not in the source trace it claimed to reuse. The source's own
+  `DSA-K8S-PODSET` step returns `replica_readiness: {ready, desired}` as a
+  **facet** on the `Deployment` itself, not new `Pod` nodes; `WE-002`,
+  elsewhere in the same file, already modeled this correctly, making
+  `WE-001`'s treatment of the identical DSA self-inconsistent, not just
+  source-inconsistent. Fixed by removing the fabricated edge and ending the
+  diagram where the source trace actually does.
+
+Neither error was subtle tone-misreading like the incident that prompted
+`agent_design_process_extensions.md` in the first place - both were
+checkable, factual mismatches against a named source, caught only because
+this pass checked line-by-line rather than trusting a citation's presence
+as proof of its accuracy.
 
 ## Verdict
 

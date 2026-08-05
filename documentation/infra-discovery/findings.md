@@ -97,8 +97,34 @@ not this process's Step 0)" - `D-004` just didn't follow it.
 **Status:** Fixed - `D-004` now names `step5_agent_program.md`'s
 build-sequence steps explicitly rather than bare "Step 1"/"Step 2".
 
+## F-005: `WE-001`'s worked trace fabricated an `owns` edge to three `Pod` nodes that its own cited source doesn't contain
+
+**Found:** during a requested review of `worked_examples.md`'s `WE-001`/
+`WE-002` against their real sources - checked `WE-001`'s "reused directly
+from `atomicguard`'s own worked example" claim against
+`topology_sensing_dsa_belief_state_and_agent_function.md`'s actual
+"Concrete worked trace" table, line by line, not just against its general
+shape.
+**Failing case:** the diagram showed `Dep -- owns (domain-native) -->
+Pods["kubernetes:Pod (x3) via DSA-K8S-PODSET"]` - `DSA-K8S-PODSET`
+discovering three separate `Pod` nodes, connected to the `Deployment` by an
+`owns` edge. The real trace's steps 3-4 never do this: `DSA-K8S-PODSET`'s
+actual returned artifact is `{replica_readiness: {ready: 3, desired: 3}}`,
+recorded as a **facet** on the `Deployment` node itself
+(`step0_schema.md`'s own `Facet` table lists `replica_readiness` this way
+explicitly) - not new `Pod` node instances discovered via an edge.
+`WE-002`, elsewhere in the same file, gets this right - it shows
+`replica_readiness` as a facet on the `Deployment`, sensed by
+`DSA-K8S-PODSET` - making `WE-001`'s original treatment of the same DSA
+inconsistent with its own sibling entry, not only with the source.
+**Status:** Fixed - `WE-001`'s diagram now ends at the `Deployment` node
+carrying both facets (`rollout`, `replica_readiness`), matching the source
+trace's actual four steps through `REPORT(healthy)`; the fabricated
+`owns`/`Pod`-discovery edge is removed.
+
 ## Related documents
 
 - [`decisions.md`](decisions.md) - settled decisions, distinct from findings.
 - [`open_questions.md`](open_questions.md) - genuinely undecided items, including duplicate mentions of both findings' surrounding context (e.g. `algorithm_fit.md`'s original "Open, not resolved" section referenced `CLEARED`'s fix as still-relevant context, not as an unresolved item itself - consolidated here to avoid the same content appearing as both a finding and an open question).
 - [`step1_environment_specification.md`](step1_environment_specification.md), [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md), [`step5_agent_program.md`](step5_agent_program.md) - the analysis documents these findings were extracted from.
+- [`worked_examples.md`](worked_examples.md) - `WE-001`, the worked example `F-005` corrects.
