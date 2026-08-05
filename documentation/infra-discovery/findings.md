@@ -46,8 +46,30 @@ cycle could occur.
 monotonically-growing set, membership-check only, matching the safe
 pattern above rather than the unsafe recursive one.
 
+## F-003: `step1_environment_specification.md`'s Performance-measure row overclaimed its own source fidelity
+
+**Found:** during a requested scrutiny pass on `step1_environment_specification.md`
+before treating this track's structure as ready to replace the live
+`documentation/infra-discovery/` - checked every quote and paraphrase
+against `platform_topology_peas_and_cli_actions.md` directly, not assumed
+accurate because the rest of the file checked out.
+**Failing case:** the row's original text claimed the "correctly
+attributing failure to the specific node in the chain" requirement was
+"inherited directly from §3's own GKE-handoff caveat, not new here." §3's
+actual caveat - "for GKE-backed resources, correctly handing off to the
+Kubernetes PEAS above rather than duplicating it" - is an instruction about
+how *that analysis document* should be authored (don't re-derive K8s's own
+PEAS when covering GKE-hosted resources), not a runtime failure-attribution
+requirement. The rest of `step1`'s file checked out almost entirely
+verbatim against the source (its three Percepts bullets are exact
+quotes) - which is exactly why this one row's overclaim was worth catching
+rather than assuming the pattern held throughout.
+**Status:** Fixed - the row now states plainly that the failure-attribution
+claim is a reasonable extension of §3's scoping note, not something §3
+already said.
+
 ## Related documents
 
 - [`decisions.md`](decisions.md) - settled decisions, distinct from findings.
 - [`open_questions.md`](open_questions.md) - genuinely undecided items, including duplicate mentions of both findings' surrounding context (e.g. `algorithm_fit.md`'s original "Open, not resolved" section referenced `CLEARED`'s fix as still-relevant context, not as an unresolved item itself - consolidated here to avoid the same content appearing as both a finding and an open question).
-- [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md) - the analysis documents these findings were extracted from.
+- [`step1_environment_specification.md`](step1_environment_specification.md), [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md) - the analysis documents these findings were extracted from.

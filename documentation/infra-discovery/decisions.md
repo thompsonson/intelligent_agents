@@ -75,9 +75,16 @@ uncategorized under "Analysis" (the catch-all `agent_design_process_extensions.m
 itself flagged as underselling what they do).
 **Source:** `worked_examples.md`'s draft, reviewed and approved.
 
+## D-006: Step 0 stays two files - `step0_schema.md` and `step0_ubiquitous_language.md`
+
+**Status:** Decided
+**Decision:** Step 0 (Ontology/Vocabulary) is not merged into one `ontology.md`. It stays split: `step0_schema.md` for structure (`NodeId`/`Facet`/`Edge`, the JSON-LD `@context`, the registered `DSA-CATALOGUE`/`BRIDGE-CATALOGUE` vocabulary), `step0_ubiquitous_language.md` for the canonical, implementation-agnostic term definitions everything else cites.
+**Rules out:** `agent_design_process_extensions.md`'s own open question about whether Step 0 should be a single file - answered here, for this track, as no.
+**Source:** explicit user decision, closing the "Left unresolved" item `RETROFIT_SIZING.md` had carried since the retrofit's first pass.
+
 ## Related documents
 
 - [`findings.md`](findings.md) - things discovered broken or missing, distinct from decisions.
 - [`open_questions.md`](open_questions.md) - genuinely undecided items, including two that were originally mislabeled as decisions (`roadmap.md`'s "Step 0").
 - [`worked_examples.md`](worked_examples.md) - the fifth register `D-005` adopts; `WE-003` is the worked example that produced `F-001`/`OQ-003`/`OQ-015`.
-- [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md), [`step5_agent_program.md`](step5_agent_program.md) - the analysis documents these decisions were extracted from.
+- [`step1_environment_specification.md`](step1_environment_specification.md), [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md), [`step5_agent_program.md`](step5_agent_program.md) - the analysis documents these decisions were extracted from.

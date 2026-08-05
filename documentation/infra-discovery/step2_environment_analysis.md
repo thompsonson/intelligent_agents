@@ -112,12 +112,15 @@ persistent `artifact_dag` rather than building one per call.
 
 ## Where this lives
 
-A new top-level design track, `documentation/infra-discovery/` (this
-retrofit is a sizing copy under `documentation/infra-discovery-retrofit/`,
-not the live track) - sibling to `documentation/discovery/`,
-`documentation/task-graph/`, `documentation/path-maintenance/`, not nested
-under `discovery/`'s own `atomicguard-bridge/`, since this is a different
-agent built against a genuinely different ontology, not a further step in
+A new top-level design track, `documentation/infra-discovery/` - this
+file's own structure (step-numbered files, consolidated registers) was
+sized as a trial in a sibling `infra-discovery-retrofit/` folder first and
+adopted from there once reviewed (see `RETROFIT_SIZING.md` for that
+history); that folder no longer exists, this is the live track now -
+sibling to `documentation/discovery/`, `documentation/task-graph/`,
+`documentation/path-maintenance/`, not nested under `discovery/`'s own
+`atomicguard-bridge/`, since this is a different agent built against a
+genuinely different ontology, not a further step in
 the same toy's arc.
 
 ## Related documents

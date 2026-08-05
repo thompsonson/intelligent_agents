@@ -1,13 +1,19 @@
 # Infra Discovery: Retrofit Sizing
 
-**What this is:** a full trial retrofit of `documentation/infra-discovery/`
+**Adopted.** This document records how the retrofit happened, kept for the
+history rather than deleted once its verdict was acted on. What it
+originally was: a full trial retrofit of `documentation/infra-discovery/`
 into the one-file-per-step + consolidated-register-file structure proposed
 in [`agent_design_process_extensions.md`](https://github.com/thompsonson/atomicguard/blob/claude/platform-topology-agent-eduh7h/docs/design/notes/agent_design_process_extensions.md)
-(atomicguard PR #369), built in this sibling folder so the original track
-stays untouched as a reference baseline - **`documentation/infra-discovery/`
-is unmodified by this exercise.** This document is the actual sizing
-answer: not an estimate written in the abstract, but what doing it for real
-on one track turned up.
+(atomicguard PR #369), built in a sibling folder
+(`documentation/infra-discovery-retrofit/`) so the original six-file track
+stayed untouched and reversible while the exercise was sized and reviewed.
+That folder no longer exists - after four review passes (three catching
+real errors and gaps, a fourth requested explicitly before adoption) and
+two structural decisions (`D-005`, `D-006`), the retrofitted structure
+*is* `documentation/infra-discovery/` now, not a copy of it. This document
+is the sizing answer that led there: not an estimate written in the
+abstract, but what doing it for real on this track turned up.
 
 **Update, after Steps 1 and 3 were filled in:** the "Verdict" and "Two of
 five steps have no owned content" framing below were written when both
@@ -40,8 +46,8 @@ file for what's actually there now.
 | `schema.md` | `step0_schema.md` (Step 0) | Copy, cross-links updated for the rename - content otherwise unchanged |
 | `ubiquitous_language.md` | `step0_ubiquitous_language.md` (Step 0) | Copy, cross-links updated for the rename - content otherwise unchanged |
 | `examples.md` | `worked_examples.md` | **Adopted as the fifth register** (`D-005`), replacing `examples.md` outright - `examples.md` is deleted, not kept alongside it. Three diagrams became `WE-001`-`WE-003`, each restated with what it validates, the instance itself, and what it surfaced. See "The fifth register," below |
-| *(scattered across 5 files)* | `decisions.md` | Consolidation - 5 entries (including `D-005`, adopting `worked_examples.md`) |
-| *(scattered across 2 files)* | `findings.md` | Consolidation - 2 entries, both already resolved |
+| *(scattered across 5 files)* | `decisions.md` | Consolidation - 6 entries (`D-005` adopting `worked_examples.md`; `D-006` keeping Step 0 as two files) |
+| *(scattered across 2 files)* | `findings.md` | Consolidation - 3 entries (`F-003` added on the Step 1 scrutiny pass, below) |
 | *(scattered across 5 files)* | `open_questions.md` | Consolidation - 19 entries (14 from the original pass; `OQ-015`/`OQ-016` added on a second review pass, found missing; `OQ-017`-`OQ-019` added on a third pass, checking `step3_agent_function.md`'s reproduced pseudocode against the real source line by line - see below) |
 | *(none)* | `blue_sky.md` | **Not created** - see below |
 
@@ -117,9 +123,9 @@ per-track-vs-cross-track question `decisions.md`/`findings.md`/
 
 ## Left unresolved
 
-**Step 0's file count** - `step0_schema.md` + `step0_ubiquitous_language.md` stayed two
-files, per the proposal's own "Not decided" item on this - not resolved
-here.
+**Step 0's file count - resolved, not left open.** Decided (`D-006` in
+[`decisions.md`](decisions.md)): stays two files, `step0_schema.md` and
+`step0_ubiquitous_language.md`, not merged into one `ontology.md`.
 
 **Whether register files are self-contained per track or need cross-checking
 against `atomicguard`'s own decisions/findings/blue-sky content** - this
@@ -203,6 +209,23 @@ but drops the source's own named risks is a different, subtler kind of
 incompleteness than the four errors above - nothing was factually wrong,
 the omission just wasn't visible without checking the reproduction against
 its source rather than checking it for internal consistency alone.
+
+**A fourth pass, requested explicitly before treating this track's
+structure as ready to replace the live `documentation/infra-discovery/`,
+checked `step1_environment_specification.md` the same way** - every quote
+and paraphrase against `platform_topology_peas_and_cli_actions.md`
+directly. This one held up almost entirely: its three Percepts bullets are
+exact quotes from §1-3, the credential-handoff paragraph is a faithful
+compression of §4, and every section number it cites is correct. One real
+overclaim found (`F-003`): the Performance-measure row's failure-attribution
+requirement was described as "inherited directly from §3's own GKE-handoff
+caveat, not new here," when §3's actual caveat is an instruction about how
+*that source document* should be authored (don't re-derive K8s's PEAS when
+covering GKE-hosted resources), not a runtime failure-attribution
+requirement - a reasonable extension mischaracterized as a direct
+inheritance. Fixed; see `F-003` in [`findings.md`](findings.md). This
+section's title said "Steps 1/3" from the start; only now does its content
+actually cover both.
 
 ## Verdict
 
