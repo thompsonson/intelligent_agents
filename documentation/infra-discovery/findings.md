@@ -68,8 +68,37 @@ rather than assuming the pattern held throughout.
 claim is a reasonable extension of §3's scoping note, not something §3
 already said.
 
+## F-004: `decisions.md`'s `D-004` used bare "Step 1"/"Step 2", which now collide with this retrofit's own step-numbered filenames
+
+**Found:** during a requested review of `decisions.md`'s `D-001`-`D-004`
+against their real sources - the first three checked out; this one failed,
+not against a source misquote but against a naming choice this retrofit
+itself made after `D-004` was written.
+**Failing case:** `D-004`'s original text said "Step 2's `requires`/
+`SWEEP-CLEARED` work" and "Step 1's bidirectional propagation claim is the
+same shape and gets it too." Accurate in its original context -
+`roadmap.md` (now `step5_agent_program.md`) defines its own internal
+build-sequence numbering ("Step 0: two decisions," "Step 1: typed,
+multi-facet, bidirectional sensing," "Step 2: `requires`/`SWEEP-CLEARED`,"
+...), explicitly distinguished there from the Agent Design Process's own
+steps (see that document's "Why there's no free 'step 1' here"). Once this
+track adopted step-numbered filenames for the Agent Design Process's own
+steps (`step1_environment_specification.md`, `step2_environment_analysis.md`,
+...), `D-004`'s bare "Step 1"/"Step 2" - sitting in a cross-cutting register
+file next to those very files, in `decisions.md`'s own "Related documents"
+list - reads as referring to them instead, which is wrong: the
+bidirectional-propagation claim `D-004` is citing (`F-001`, above) belongs
+to `step2_environment_analysis.md`'s content, not
+`step1_environment_specification.md`'s (which contains no
+bidirectional-propagation claim at all - checked directly, zero matches).
+The corpus already had precedent for disambiguating exactly this collision
+- `open_questions.md`'s `OQ-012` spells out "Step 0 (of the build sequence,
+not this process's Step 0)" - `D-004` just didn't follow it.
+**Status:** Fixed - `D-004` now names `step5_agent_program.md`'s
+build-sequence steps explicitly rather than bare "Step 1"/"Step 2".
+
 ## Related documents
 
 - [`decisions.md`](decisions.md) - settled decisions, distinct from findings.
 - [`open_questions.md`](open_questions.md) - genuinely undecided items, including duplicate mentions of both findings' surrounding context (e.g. `algorithm_fit.md`'s original "Open, not resolved" section referenced `CLEARED`'s fix as still-relevant context, not as an unresolved item itself - consolidated here to avoid the same content appearing as both a finding and an open question).
-- [`step1_environment_specification.md`](step1_environment_specification.md), [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md) - the analysis documents these findings were extracted from.
+- [`step1_environment_specification.md`](step1_environment_specification.md), [`step2_environment_analysis.md`](step2_environment_analysis.md), [`step4_algorithm_fit.md`](step4_algorithm_fit.md), [`step5_agent_program.md`](step5_agent_program.md) - the analysis documents these findings were extracted from.

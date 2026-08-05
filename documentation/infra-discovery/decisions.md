@@ -43,21 +43,28 @@ for sensing.
 `RELEVANT`/`pending` mechanism, not asserted - `environment_design.md`'s
 "`legal_actions`: a catalogue lookup, not a node field" section.
 
-## D-004: Property-based testing starts at Step 1, not deferred to Step 2
+## D-004: Property-based testing starts at the build sequence's Step 1, not deferred to its Step 2
 
 **Status:** Decided
 **Decision:** any claim that holds over an unbounded class of shapes (any
 `requires` graph including cyclic ones; any edge direction) gets
-property-based testing from the step it first appears in, alongside
-hand-traced fixtures - not deferred to whichever step happens to name the
-mechanism most directly.
+property-based testing from the build-sequence step it first appears in,
+alongside hand-traced fixtures - not deferred to whichever step happens to
+name the mechanism most directly. **"Step 1"/"Step 2" here are
+`step5_agent_program.md`'s own internal build-sequence numbering ("Step 1:
+typed, multi-facet, bidirectional sensing"; "Step 2: `requires`/
+`SWEEP-CLEARED`"), not this process's Step 1 (`step1_environment_specification.md`)
+or Step 2 (`step2_environment_analysis.md`) - named explicitly, since the
+retrofit's step-numbered filenames make that an easy, wrong, default
+reading otherwise (`F-004` in [`findings.md`](findings.md)).**
 **Rules out:** treating property-based testing as something only `D1`/`D2`
-(Step 2's `requires`/`SWEEP-CLEARED` work) need; Step 1's bidirectional
-propagation claim is the same shape and gets it too.
-**Source:** `roadmap.md`'s "Testing discipline" section, prompted by
-`atomicguard`'s `a241844`. Honestly scoped there, not retroactive:
-`discovery/`'s own merged `2×|E|` bound has the identical gap and is
-explicitly not proposed for retrofit.
+(the build sequence's Step 2, `requires`/`SWEEP-CLEARED` work) need; the
+build sequence's Step 1 bidirectional-propagation claim (`F-001`) is the
+same shape and gets it too.
+**Source:** `step5_agent_program.md`'s "Testing discipline" section
+(originally `roadmap.md`'s), prompted by `atomicguard`'s `a241844`.
+Honestly scoped there, not retroactive: `discovery/`'s own merged `2×|E|`
+bound has the identical gap and is explicitly not proposed for retrofit.
 
 ## D-005: `worked_examples.md` replaces `examples.md` as the fifth register
 
