@@ -1,0 +1,5 @@
+{
+  "replicas": 2,
+  "ready_replicas": 2,
+  "status": "Active"
+}
