@@ -1,0 +1,16 @@
+{
+  "conclusion": "success",
+  "status": "completed",
+  "edges": [
+    {
+      "to": ["kubernetes", "Deployment", "web"],
+      "type": "applies-to",
+      "evidence": "step: kubectl apply -f deployment.yaml"
+    },
+    {
+      "to": ["gcp", "CloudRun_service", "api"],
+      "type": "applies-to",
+      "evidence": "step: gcloud run deploy --image gcr.io/..."
+    }
+  ]
+}
