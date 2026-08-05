@@ -169,3 +169,4 @@ from everything above already being proven first.
 - [`worked_examples.md`](worked_examples.md) - `WE-003`, the `ReplicaSet`/`Pod` worked example Step 4 (of the build sequence) is built to formalize.
 - [`decisions.md`](decisions.md) / [`findings.md`](findings.md) / [`open_questions.md`](open_questions.md) - the register files this document's "Testing discipline," "Step 0," and "Not decided" sections were extracted into.
 - `atomicguard`'s `docs/design/notes/topology_agent_function_requires_and_discovery_validation.md` - `AGENT-FUNCTION`'s pseudocode, the "Blue-sky extensions worth writing down" section this document sequences, and the `D1`-`D4` invariants.
+- [`HANDOVER.md`](HANDOVER.md) - a kickoff document for whoever implements this document's Step 1 next; distills this file's scope plus the precedent, blocking question, and open risks an implementer needs, without repeating the full design corpus.
