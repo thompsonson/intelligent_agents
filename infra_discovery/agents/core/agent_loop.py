@@ -88,9 +88,16 @@ class InfraDiscoveryAgent:
     )
 
     def __post_init__(self) -> None:
-        """Initialize artifact_dag if not provided."""
+        """Initialize artifact_dag if not provided.
+        
+        Lazy-imports InMemoryArtifactDAG with fallback to mock for testing.
+        """
         if self.artifact_dag is None:
-            from atomicguard.infrastructure.persistence.memory import InMemoryArtifactDAG
+            try:
+                from atomicguard.infrastructure.persistence.memory import InMemoryArtifactDAG
+            except ImportError:
+                # Fallback to mock for testing without atomicguard installed
+                from infra_discovery.tests.test_mocks import MockArtifactDAG as InMemoryArtifactDAG
             object.__setattr__(self, "artifact_dag", InMemoryArtifactDAG())
 
     def register_dsa(

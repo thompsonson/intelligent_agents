@@ -20,25 +20,26 @@ This validates:
 from pathlib import Path
 from typing import Dict
 
-from atomicguard.application.action_pair import ActionPair
-from atomicguard.contrib.guards.exit_code_guard import ExitCodeGuard
-from atomicguard.domain.prompts import PromptTemplate
-from atomicguard.infrastructure.generators.subprocess_generator import (
-    SubprocessGenerator,
-)
-
 from ..core.domain import NodeId
 from ..core.agent_loop import InfraDiscoveryAgent
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures" / "simple_topology"
 
 
-def _cat_action_pair(fixture_file: Path) -> ActionPair:
+def _cat_action_pair(fixture_file: Path):
     """Create an ActionPair that cats a fixture file.
     
+    Lazy-imports atomicguard only when needed.
     Deterministic, subprocess-backed, matches real_discovery/atomicguard_backed/
     precedent.
     """
+    from atomicguard.application.action_pair import ActionPair
+    from atomicguard.contrib.guards.exit_code_guard import ExitCodeGuard
+    from atomicguard.domain.prompts import PromptTemplate
+    from atomicguard.infrastructure.generators.subprocess_generator import (
+        SubprocessGenerator,
+    )
+
     prompt = PromptTemplate(role="", constraints="", task="")
     return ActionPair(
         generator=SubprocessGenerator(command=["cat", str(fixture_file)]),
@@ -51,6 +52,7 @@ def build_simple_topology_agent() -> InfraDiscoveryAgent:
     """Build the agent with simple topology scenario.
     
     Registers three DSAs (one per node) that read from fixture JSON files.
+    Lazy-imports atomicguard only when creating real DSAs (not during collection).
     
     Returns:
         InfraDiscoveryAgent ready to run.
@@ -84,9 +86,16 @@ def build_simple_topology_agent() -> InfraDiscoveryAgent:
         dsa_name="DSA-GCP-RUN-SERVICE",
     )
 
+    agent.register_dsa(
+        domain="kubernetes",
+        kind="ReplicaSet",
+        action_pair=_cat_action_pair(
+            FIXTURES_DIR / "kubernetes-ReplicaSet-web-rs.json"
+        ),
+        dsa_name="DSA-K8S-REPLICASET-GET",
+    )
+
     return agent
-
-
 def root_nodes() -> list[NodeId]:
     """Root nodes to start discovery from.
     

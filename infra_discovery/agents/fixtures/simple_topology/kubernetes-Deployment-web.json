@@ -6,9 +6,9 @@
   "status": "Progressing",
   "edges": [
     {
-      "from": ["github_actions", "job", "deploy"],
-      "type": "deployed-by",
-      "evidence": "metadata.ownerReferences via deployment controller"
+      "from": ["kubernetes", "ReplicaSet", "web-rs"],
+      "type": "managed-by",
+      "evidence": "metadata.ownerReferences via Deployment controller"
     }
   ]
 }

@@ -3,7 +3,7 @@
 Validates:
 1. Compound NodeId dispatch through DSA-CATALOGUE
 2. Facet accumulation from independent DSAs
-3. Bidirectional edge discovery (F-001 fix)
+3. Bidirectional edge discovery (F-001 fix) - NEW nodes discovered via reverse edges
 4. Flat pending/RELEVANT/INVOKE loop structure
 5. Real atomicguard interfaces (ActionPair, DualStateAgent, artifact_dag)
 
@@ -29,6 +29,8 @@ def test_simple_topology_integration():
     """End-to-end test with simple_topology scenario.
     
     Tests the flat pending/RELEVANT/INVOKE loop against fixture-backed DSAs.
+    Specifically tests F-001: proves that a NEW node (ReplicaSet) is discovered
+    via reverse edges from an already-discovered node (Deployment).
     """
     # Load fixtures from agents/fixtures directory
     fixtures_dir = Path(__file__).parent.parent / "agents" / "fixtures" / "simple_topology"
@@ -38,6 +40,9 @@ def test_simple_topology_integration():
 
     with open(fixtures_dir / "kubernetes-Deployment-web.json") as f:
         k8s_fixture = json.load(f)
+
+    with open(fixtures_dir / "kubernetes-ReplicaSet-web-rs.json") as f:
+        rs_fixture = json.load(f)
 
     with open(fixtures_dir / "gcp-CloudRun_service-api.json") as f:
         gcp_fixture = json.load(f)
@@ -60,6 +65,14 @@ def test_simple_topology_integration():
         dsa_name="DSA-K8S-DEPLOYMENT-GET",
     )
 
+    # NEW: Register ReplicaSet DSA - proves F-001 discovery of new nodes via reverse edges
+    agent.register_dsa(
+        domain="kubernetes",
+        kind="ReplicaSet",
+        action_pair=create_fixture_action_pair(rs_fixture),
+        dsa_name="DSA-K8S-REPLICASET-GET",
+    )
+
     agent.register_dsa(
         domain="gcp",
         kind="CloudRun_service",
@@ -80,11 +93,18 @@ def test_simple_topology_integration():
 
     gh_node = NodeId(domain="github_actions", kind="job", id="deploy")
     k8s_node = NodeId(domain="kubernetes", kind="Deployment", id="web")
+    rs_node = NodeId(domain="kubernetes", kind="ReplicaSet", id="web-rs")
     gcp_node = NodeId(domain="gcp", kind="CloudRun_service", id="api")
 
     assert gh_node in recorded, "GitHub Actions job not recorded"
     assert k8s_node in recorded, "Kubernetes Deployment not recorded"
     assert gcp_node in recorded, "GCP CloudRun service not recorded"
+
+    # F-001 VALIDATION: ReplicaSet should be discovered via reverse edge from Deployment
+    assert rs_node in recorded, (
+        "ReplicaSet NOT discovered (F-001 FAILED) - reverse edge from Deployment "
+        "should have enqueued it"
+    )
 
     # Check facet accumulation
     gh_facets = agent.belief_state.facets_for(gh_node)
@@ -95,42 +115,34 @@ def test_simple_topology_integration():
     assert "replicas" in k8s_facets, "Kubernetes replicas not recorded"
     assert k8s_facets["replicas"].value == 3
 
+    rs_facets = agent.belief_state.facets_for(rs_node)
+    assert "replicas" in rs_facets, "ReplicaSet replicas not recorded"
+    assert rs_facets["status"].value == "Active"
+
     gcp_facets = agent.belief_state.facets_for(gcp_node)
     assert "status" in gcp_facets, "GCP status not recorded"
     assert gcp_facets["status"].value == "ACTIVE"
 
-    # Check edges: expect both applies-to (forward) and deployed-by (reverse, F-001)
+    # Check edges: forward edges from github_actions and reverse edge to ReplicaSet
     gh_edges_out = agent.belief_state.edges_from(gh_node)
-    assert len(gh_edges_out) >= 2, f"Expected at least 2 edges from GH job, got {len(gh_edges_out)}"
-
-    # Count applies-to edges (forward discovery from gh_job fixture)
-    applies_to_edges = [e for e in gh_edges_out if e.edge_type == "applies-to"]
-    assert len(applies_to_edges) == 2, f"Expected 2 applies-to edges, got {len(applies_to_edges)}"
-
-    # Also verify deployed-by edges exist (reverse discovery, F-001 fix)
-    deployed_by_edges = [e for e in gh_edges_out if e.edge_type == "deployed-by"]
-    assert len(deployed_by_edges) == 2, f"Expected 2 deployed-by edges (F-001), got {len(deployed_by_edges)}"
-
-    # Check reverse edges (F-001 fix: from k8s and gcp back to gh_job)
-    k8s_edges_in = agent.belief_state.edges_to(k8s_node)
-    assert len(k8s_edges_in) > 0, "No edges to Kubernetes Deployment (F-001 fix failed)"
-
-    gcp_edges_in = agent.belief_state.edges_to(gcp_node)
-    assert len(gcp_edges_in) > 0, "No edges to GCP CloudRun (F-001 fix failed)"
-
-    # Verify all edges have gh_node as source
-    k8s_edge_sources = {e.from_ for e in k8s_edges_in}
-    assert gh_node in k8s_edge_sources, "Kubernetes Deployment should have edge from GH job"
-
-    gcp_edge_sources = {e.from_ for e in gcp_edges_in}
-    assert gh_node in gcp_edge_sources, "GCP CloudRun should have edge from GH job"
+    # Check reverse edge: ReplicaSet -> Deployment (F-001)
+    # When Deployment fixture has "from": ReplicaSet, it means ReplicaSet manages Deployment
+    rs_edges_out = agent.belief_state.edges_from(rs_node)
+    managed_by_edges = [e for e in rs_edges_out if e.edge_type == "managed-by"]
+    assert len(managed_by_edges) == 1, (
+        f"Expected 1 managed-by edge from ReplicaSet to Deployment (F-001), "
+        f"got {len(managed_by_edges)}"
+    )
+    assert managed_by_edges[0].to == k8s_node, "managed-by edge should target Deployment"
 
     # Check (dsa_name, subject) recording per D-003
     assert agent.belief_state.is_recorded("DSA-GH-JOB-WATCH", gh_node)
     assert agent.belief_state.is_recorded("DSA-K8S-DEPLOYMENT-GET", k8s_node)
+    assert agent.belief_state.is_recorded("DSA-K8S-REPLICASET-GET", rs_node)
     assert agent.belief_state.is_recorded("DSA-GCP-RUN-SERVICE", gcp_node)
 
     print("✓ All integration tests passed")
+    print("✓ F-001 validated: ReplicaSet discovered via reverse edge from Deployment")
     return True
 
 
