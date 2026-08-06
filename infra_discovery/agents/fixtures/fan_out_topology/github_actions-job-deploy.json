@@ -1,0 +1,50 @@
+{
+  "status": "success",
+  "edges": [
+    {
+      "to": [
+        "kubernetes",
+        "Service",
+        "web"
+      ],
+      "type": "applies-to",
+      "evidence": "kubectl apply -f svc-web.yaml"
+    },
+    {
+      "to": [
+        "kubernetes",
+        "Service",
+        "api"
+      ],
+      "type": "applies-to",
+      "evidence": "kubectl apply -f svc-api.yaml"
+    },
+    {
+      "to": [
+        "gcp",
+        "CloudRun_service",
+        "gateway"
+      ],
+      "type": "applies-to",
+      "evidence": "gcloud run deploy gateway --image ..."
+    },
+    {
+      "to": [
+        "gcp",
+        "CloudRun_service",
+        "worker"
+      ],
+      "type": "applies-to",
+      "evidence": "gcloud run deploy worker --image ..."
+    },
+    {
+      "to": [
+        "aws",
+        "EC2_instance",
+        "cache"
+      ],
+      "type": "applies-to",
+      "evidence": "terraform apply -target aws_instance.cache"
+    }
+  ]
+}

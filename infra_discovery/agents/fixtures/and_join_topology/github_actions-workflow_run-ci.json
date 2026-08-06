@@ -1,0 +1,32 @@
+{
+  "conclusion": "success",
+  "edges": [
+    {
+      "to": [
+        "github_actions",
+        "job",
+        "lint"
+      ],
+      "type": "triggers",
+      "evidence": "workflow fan-out: ci triggers lint job"
+    },
+    {
+      "to": [
+        "gcp",
+        "CloudBuild_trigger",
+        "integration-tests"
+      ],
+      "type": "triggers",
+      "evidence": "workflow fan-out: ci triggers integration-tests build"
+    },
+    {
+      "to": [
+        "kubernetes",
+        "Deployment",
+        "web-app"
+      ],
+      "type": "applies-to",
+      "evidence": "step: kubectl apply -f web-app.yaml"
+    }
+  ]
+}

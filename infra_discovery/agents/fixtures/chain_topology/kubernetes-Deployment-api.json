@@ -1,0 +1,24 @@
+{
+  "replicas": 2,
+  "ready": 2,
+  "edges": [
+    {
+      "to": [
+        "gcp",
+        "CloudRun_service",
+        "backend"
+      ],
+      "type": "enables",
+      "evidence": "selector matches GCP workload identity"
+    },
+    {
+      "to": [
+        "github_actions",
+        "job",
+        "deploy"
+      ],
+      "type": "deployed-by",
+      "evidence": "metadata.ownerReferences (F-001 reverse)"
+    }
+  ]
+}

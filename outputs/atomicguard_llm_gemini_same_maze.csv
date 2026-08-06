@@ -1,0 +1,11 @@
+run,maze_id,maze_size,provider,model,success,final_coordinate,accepted_moves,rejected_moves,total_attempts,path_length,runtime_seconds
+1,42,10,gemini,default,False,"(5, 19)",50,0,50,50,43.971
+2,42,10,gemini,default,False,"(5, 19)",50,0,50,50,31.843
+3,42,10,gemini,default,False,"(5, 19)",50,0,50,50,31.262
+4,42,10,gemini,default,False,"(5, 19)",50,0,50,50,46.098
+5,42,10,gemini,default,False,"(5, 19)",50,0,50,50,51.25
+6,42,10,gemini,default,False,"(5, 19)",50,0,50,50,49.251
+7,42,10,gemini,default,False,"(5, 19)",50,0,50,50,52.549
+8,42,10,gemini,default,False,"(5, 19)",50,0,50,50,37.041
+9,42,10,gemini,default,False,"(5, 19)",50,0,50,50,38.486
+10,42,10,gemini,default,False,"(5, 19)",50,0,50,50,37.949

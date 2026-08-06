@@ -1,0 +1,2 @@
+run,maze_id,maze_size,model,success,final_coordinate,accepted_moves,rejected_moves,total_attempts,path_length,runtime_seconds
+1,42,10,google/gemma-4-26b-a4b-it:free,False,"(1, 1)",0,0,0,0,2.434
