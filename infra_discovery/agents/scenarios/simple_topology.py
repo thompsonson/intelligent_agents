@@ -32,20 +32,33 @@ def _cat_action_pair(fixture_file: Path):
     Lazy-imports atomicguard only when needed.
     Deterministic, subprocess-backed, matches real_discovery/atomicguard_backed/
     precedent.
+    
+    Falls back to a fixture-content mock when atomicguard isn't installed,
+    matching agent_loop.py's own __post_init__/invoke() precedent - lets
+    this scenario build and run without the real dependency present.
     """
-    from atomicguard.application.action_pair import ActionPair
-    from atomicguard.contrib.guards.exit_code_guard import ExitCodeGuard
-    from atomicguard.domain.prompts import PromptTemplate
-    from atomicguard.infrastructure.generators.subprocess_generator import (
-        SubprocessGenerator,
-    )
+    try:
+        from atomicguard.application.action_pair import ActionPair
+        from atomicguard.contrib.guards.exit_code_guard import ExitCodeGuard
+        from atomicguard.domain.prompts import PromptTemplate
+        from atomicguard.infrastructure.generators.subprocess_generator import (
+            SubprocessGenerator,
+        )
 
-    prompt = PromptTemplate(role="", constraints="", task="")
-    return ActionPair(
-        generator=SubprocessGenerator(command=["cat", str(fixture_file)]),
-        guard=ExitCodeGuard(),
-        prompt_template=prompt,
-    )
+        prompt = PromptTemplate(role="", constraints="", task="")
+        return ActionPair(
+            generator=SubprocessGenerator(command=["cat", str(fixture_file)]),
+            guard=ExitCodeGuard(),
+            prompt_template=prompt,
+        )
+    except ImportError:
+        import json
+
+        from infra_discovery.tests.test_mocks import create_fixture_action_pair
+
+        with open(fixture_file) as f:
+            content = json.load(f)
+        return create_fixture_action_pair(content)
 
 
 def build_simple_topology_agent() -> InfraDiscoveryAgent:

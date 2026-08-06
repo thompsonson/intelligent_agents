@@ -36,11 +36,16 @@ class DSACatalogueEntry:
         kind: str,
         dsa_name: str,
         action_pair: "ActionPair" = None,
+        is_sensing: bool = True,
     ):
         self.domain = domain
         self.kind = kind
         self.dsa_name = dsa_name
         self.action_pair = action_pair
+        # Per step3_agent_function.md's ELIGIBLE(): sensing DSAs always pass
+        # regardless of `cleared` (OQ-018's stated default); acting DSAs
+        # (Step 5, none registered yet) will need subject ∈ cleared.
+        self.is_sensing = is_sensing
 
     def __hash__(self) -> int:
         """Hash based on domain, kind, dsa_name only (not action_pair)."""
@@ -86,6 +91,12 @@ class InfraDiscoveryAgent:
     resolved_bridges: Set[Tuple[NodeId, NodeId, str]] = field(
         default_factory=set
     )
+    # Per step5_agent_program.md Step 2: `requires` is static and
+    # catalogue-declared for this step, not sensed - a NodeId -> its
+    # declared prerequisite NodeIds, fed to RECORD-REQUIRES at sense time.
+    requires_catalogue: Dict[NodeId, Tuple[NodeId, ...]] = field(
+        default_factory=dict
+    )
 
     def __post_init__(self) -> None:
         """Initialize artifact_dag if not provided.
@@ -101,7 +112,12 @@ class InfraDiscoveryAgent:
             object.__setattr__(self, "artifact_dag", InMemoryArtifactDAG())
 
     def register_dsa(
-        self, domain: str, kind: str, action_pair: "ActionPair", dsa_name: str
+        self,
+        domain: str,
+        kind: str,
+        action_pair: "ActionPair",
+        dsa_name: str,
+        is_sensing: bool = True,
     ) -> None:
         """Register a DSA in the catalogue.
         
@@ -112,12 +128,31 @@ class InfraDiscoveryAgent:
             kind: The kind within that domain.
             action_pair: The ActionPair to invoke.
             dsa_name: Stable identifier for this DSA.
+            is_sensing: Whether this DSA only reads (default). Acting DSAs
+                        (Step 5, none exist yet) pass False and are gated by
+                        ELIGIBLE on subject ∈ cleared.
         """
-        entry = DSACatalogueEntry(domain, kind, dsa_name, action_pair)
+        entry = DSACatalogueEntry(domain, kind, dsa_name, action_pair, is_sensing)
         key = (domain, kind)
         if key not in self.dsa_catalogue:
             self.dsa_catalogue[key] = []
         self.dsa_catalogue[key].append(entry)
+
+    def register_requires(
+        self, subject: NodeId, requires: Tuple[NodeId, ...]
+    ) -> None:
+        """Statically declare a subject's requires (catalogue-declared, not sensed).
+        
+        Per step5_agent_program.md Step 2: `requires` is static for this
+        step - a NodeId's prerequisites are fixed at scenario-build time,
+        not derived from a DSA's artifact content. `step()` looks this up
+        at RECORD-REQUIRES time for every sensed subject.
+        
+        Args:
+            subject: The NodeId whose requires are being declared.
+            requires: The NodeIds subject depends on (may be empty).
+        """
+        self.requires_catalogue[subject] = requires
 
     def _relevant(
         self,
@@ -208,18 +243,44 @@ class InfraDiscoveryAgent:
 
         return discovered
 
-    def _select_next(self) -> Optional[Tuple[DSACatalogueEntry, NodeId]]:
-        """Pick the next (dsa, subject) to invoke from eligible.
+    def _eligible(self) -> Set[Tuple[DSACatalogueEntry, NodeId]]:
+        """ELIGIBLE(pending, belief_state): sweep cleared, then filter pending.
         
-        Step 1 scope: arbitrary/insertion order. SCORE stays named-not-defined.
-        Just pop from the set arbitrarily.
+        Per step5_agent_program.md Step 2 and step3_agent_function.md's
+        pseudocode: SWEEP-CLEARED runs every turn of the flat loop (not
+        between exploration phases - there are no phases here). A pair is
+        eligible if its DSA is sensing (always passes, per OQ-018's stated
+        default) or its subject is already cleared. Step 2 registers only
+        sensing DSAs, so this is a structural no-op on selection today -
+        the mechanism being proven is `cleared` itself, via belief_state.
         
         Returns:
-            A (dsa_entry, subject) pair, or None if pending is empty.
+            The subset of pending that's safe to act on this turn.
         """
-        if not self.pending:
+        self.belief_state.sweep_cleared()
+        return {
+            (dsa_entry, subject)
+            for (dsa_entry, subject) in self.pending
+            if dsa_entry.is_sensing or subject in self.belief_state.cleared
+        }
+
+    def _select_next(
+        self, eligible: Set[Tuple[DSACatalogueEntry, NodeId]]
+    ) -> Optional[Tuple[DSACatalogueEntry, NodeId]]:
+        """Pick the next (dsa, subject) to invoke from eligible.
+        
+        Step 1/2 scope: arbitrary/insertion order. SCORE stays named-not-defined.
+        Just pop from the set arbitrarily.
+        
+        Args:
+            eligible: The ELIGIBLE-filtered candidates for this turn.
+        
+        Returns:
+            A (dsa_entry, subject) pair, or None if eligible is empty.
+        """
+        if not eligible:
             return None
-        return self.pending.pop()
+        return eligible.pop()
 
     def invoke(
         self, dsa_entry: DSACatalogueEntry, subject: NodeId
@@ -270,19 +331,25 @@ class InfraDiscoveryAgent:
         Returns:
             A status string ("done", "escalated", "working"), or None on error.
         """
-        # Step 1 scope: no requires/SWEEP-CLEARED yet, no DECIDABLE check
-        # Just: do we have pending work?
+        # Step 2: sweep before deciding whether there's anything left - a
+        # subject recorded on the immediately preceding turn needs a sweep
+        # of its own before `cleared` reflects it. Without this, "done"
+        # (fired the instant `pending` empties) can land one sweep short
+        # of the true fixed point - the last subject recorded never gets
+        # swept again. ELIGIBLE (below) sweeps again per turn regardless;
+        # this call is what covers the final turn specifically.
+        self.belief_state.sweep_cleared()
 
         if not self.pending:
             return "done"
 
-        # ELIGIBLE (Step 1: all sensing DSAs, no acting)
-        # SELECT-NEXT
-        next_work = self._select_next()
+        eligible = self._eligible()
+        next_work = self._select_next(eligible)
         if not next_work:
             return "escalated"
 
         dsa_entry, subject = next_work
+        self.pending.discard(next_work)
 
         # INVOKE
         artifact_content = self.invoke(dsa_entry, subject)
@@ -308,8 +375,13 @@ class InfraDiscoveryAgent:
         if facets:
             self.belief_state.record(subject, facets)
 
-        # RECORD-REQUIRES (Step 1: empty, deferred)
-        self.belief_state.record_requires(subject, ())
+        # RECORD-REQUIRES: static, catalogue-declared (Step 2 scope) - not
+        # auto-enqueued into `pending` (OQ-017's reachability risk stands;
+        # every requires target here must be independently reachable via
+        # RESOLVE-BRIDGES, same as any other node)
+        self.belief_state.record_requires(
+            subject, self.requires_catalogue.get(subject, ())
+        )
 
         # RESOLVE-BRIDGES: discover edges (FIX: both directions for F-001)
         edges = self._resolve_bridges(subject, artifact_content)

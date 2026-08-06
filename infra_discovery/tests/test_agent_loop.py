@@ -23,8 +23,12 @@ class TestSimpleTopologyScenario:
         """Agent should initialize with DSA catalogue."""
         agent = build_simple_topology_agent()
 
-        # Should have 3 DSAs registered
-        assert len(agent.dsa_catalogue) == 3
+        # Should have 4 DSAs registered (job, Deployment, CloudRun_service,
+        # ReplicaSet - the ReplicaSet DSA was added later for the F-001
+        # reverse-edge validation; this assertion never actually ran until
+        # now, since _cat_action_pair's atomicguard import always failed
+        # first)
+        assert len(agent.dsa_catalogue) == 4
 
         # Check that compound keys work
         assert (
@@ -34,6 +38,7 @@ class TestSimpleTopologyScenario:
             agent.dsa_catalogue.get(("kubernetes", "Deployment")) is not None
         )
         assert agent.dsa_catalogue.get(("gcp", "CloudRun_service")) is not None
+        assert agent.dsa_catalogue.get(("kubernetes", "ReplicaSet")) is not None
 
     def test_node_id_equality(self):
         """NodeId should support equality and hashing."""
