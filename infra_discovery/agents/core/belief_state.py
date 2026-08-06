@@ -20,18 +20,14 @@ from .domain import NodeId, Facet, Edge
 class BeliefState:
     """The persistent world-belief store.
     
-    Holds:
-    - facets_by_node: Dict[NodeId, Dict[str, Facet]] - a node's state is
-      accumulated facets from multiple DSAs
-    - edges: List[Edge] - discovered relationships
-    - requires_by_node: Dict[NodeId, Tuple[NodeId, ...]] - declared or
-      discovered dependencies
-    - cleared: Set[NodeId] - monotonically-growing set of subjects whose
-      requires are all themselves in cleared (D1, F-002 fix)
-    - unknowable: Set[NodeId] - subjects that failed permanently (rmax exhausted)
-    - blocked: Set[NodeId] - subjects that escalated/stagnated
-    - recorded: Set[Tuple[str, NodeId]] - (dsa_name, subject) pairs already invoked
-      per D-003 for proper de-duplication with multiple DSAs per kind
+    Attributes:
+        facets_by_node: Maps NodeId -> facets dict.
+        edges: List of discovered relationships.
+        requires_by_node: Maps NodeId -> requires tuple (prerequisites).
+        cleared: Set of NodeIds that have passed all requires.
+        unknowable: Set of NodeIds that failed to be sensed.
+        blocked: Set of NodeIds that were blocked/escalated/stagnated.
+        recorded: Set of (dsa_name, subject) pairs already invoked.
     """
 
     facets_by_node: Dict[NodeId, Dict[str, Facet]] = field(default_factory=dict)
@@ -47,13 +43,9 @@ class BeliefState:
     def record(self, subject: NodeId, facets: Dict[str, Facet]) -> None:
         """Merge facets into subject's state.
         
-        Does NOT replace prior facets - new facets are added/updated,
-        prior ones from other DSAs survive. This allows multiple senses
-        of the same subject to accumulate independent timestamped observations.
-        
         Args:
-            subject: The NodeId being sensed.
-            facets: Dict[facet_name, Facet] to merge.
+            subject: The node to record facets for.
+            facets: The facets to record.
         """
         if subject not in self.facets_by_node:
             self.facets_by_node[subject] = {}
@@ -73,41 +65,35 @@ class BeliefState:
         """Record a subject's declared or discovered dependencies.
         
         Args:
-            subject: The NodeId with dependencies.
-            requires: Tuple of required NodeIds.
+            subject: The node to record requires for.
+            requires: The prerequisite NodeIds.
         """
         self.requires_by_node[subject] = requires
 
     def record_unknowable(self, subject: NodeId) -> None:
         """Mark a subject as permanently unknowable (rmax exhausted).
         
-        Propagates: nothing requiring subject can ever clear (F-002 fix).
-        
         Args:
-            subject: The NodeId that failed permanently.
+            subject: The node that failed to be sensed.
         """
         self.unknowable.add(subject)
 
     def record_blocked(self, subject: NodeId) -> None:
         """Mark a subject as blocked/escalated/stagnated.
         
-        Same propagation as unknowable - blocks clearance of dependents.
-        
         Args:
-            subject: The NodeId that escalated.
+            subject: The node that was blocked.
         """
         self.blocked.add(subject)
 
     def facets_for(self, subject: NodeId) -> Dict[str, Facet]:
         """Get all facets for a subject.
         
-        Returns an empty dict if the subject has no recorded facets yet.
-        
         Args:
-            subject: The NodeId to query.
+            subject: The node to get facets for.
         
         Returns:
-            Dict[facet_name, Facet].
+            A dict of facets for the subject.
         """
         return self.facets_by_node.get(subject, {})
 
@@ -115,39 +101,33 @@ class BeliefState:
         """Get all edges where subject is the source.
         
         Args:
-            subject: The NodeId to query.
+            subject: The node to get outgoing edges for.
         
         Returns:
-            List of Edge where edge.from_ == subject.
+            List of Edge objects where subject is from.
         """
         return [e for e in self.edges if e.from_ == subject]
 
     def edges_to(self, subject: NodeId) -> list[Edge]:
         """Get all edges where subject is the target.
         
-        Per F-001 (bidirectional discovery), this direction needs to be
-        queryable, not just edges_from().
-        
         Args:
-            subject: The NodeId to query.
+            subject: The node to get incoming edges for.
         
         Returns:
-            List of Edge where edge.to == subject.
+            List of Edge objects where subject is to.
         """
         return [e for e in self.edges if e.to == subject]
 
     def is_recorded(self, dsa_name: str, subject: NodeId) -> bool:
         """Check if (dsa_name, subject) has already been invoked.
         
-        FIX: Tracks (dsa_name, subject) pairs for proper de-duplication
-        per D-003, allowing multiple DSAs per (domain, kind).
-        
         Args:
-            dsa_name: Name of the DSA (e.g., "DSA-K8S-DEPLOYMENT-GET").
-            subject: The NodeId to query.
+            dsa_name: The DSA name.
+            subject: The node to check.
         
         Returns:
-            True if (dsa_name, subject) has been recorded.
+            True if already invoked.
         """
         return (dsa_name, subject) in self.recorded
 
@@ -155,18 +135,16 @@ class BeliefState:
         """Mark a (dsa_name, subject) pair as recorded.
         
         Args:
-            dsa_name: Name of the DSA.
-            subject: The NodeId that was sensed.
+            dsa_name: The DSA name.
+            subject: The node that was invoked.
         """
         self.recorded.add((dsa_name, subject))
 
     def recorded_subjects(self) -> Set[NodeId]:
         """Get all subjects that have been recorded.
         
-        Used by SWEEP-CLEARED to check requires.
-        
         Returns:
-            Set of NodeIds that have facets.
+            Set of NodeIds that have been recorded.
         """
         return set(self.facets_by_node.keys())
 
@@ -174,10 +152,10 @@ class BeliefState:
         """Get a subject's requires.
         
         Args:
-            subject: The NodeId to query.
+            subject: The node to get requires for.
         
         Returns:
-            Tuple of required NodeIds, or empty tuple if none.
+            Tuple of prerequisite NodeIds.
         """
         return self.requires_by_node.get(subject, ())
 
@@ -195,15 +173,17 @@ class BeliefState:
             changed = False
             # Check subjects not yet cleared
             for subject in self.recorded_subjects() - self.cleared:
-                # Get requires; if all are cleared or the subject is blocked,
-                # mark subject as cleared
+                # Subjects that failed to be sensed should NEVER be cleared
+                # as they would allow their dependents to clear incorrectly
+                if subject in self.unknowable or subject in self.blocked:
+                    continue  # Don't allow blocked/unknowable subjects to clear
+                
+                # Get requires; if all are cleared, mark subject as cleared
                 requires = self.get_requires(subject)
-                blocked_or_unknowable = (
-                    subject in self.unknowable or subject in self.blocked
-                )
-
-                if blocked_or_unknowable or all(
-                    r in self.cleared for r in requires
-                ):
+                
+                if all(r in self.cleared for r in requires):
                     self.cleared.add(subject)
                     changed = True
+
+    def __repr__(self) -> str:
+        return f"BeliefState(cleared={len(self.cleared)}, recorded={len(self.recorded)}, unknowable={len(self.unknowable)}, blocked={len(self.blocked)})"
