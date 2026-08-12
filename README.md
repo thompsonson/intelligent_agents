@@ -21,6 +21,8 @@ source .venv/bin/activate
 uv pip install ipykernel jupyter notebook
 # Install required packages
 uv pip install networkx matplotlib pandas mazelib imageio
+# Install the Hy Lisp dialect (for the minimal LLM loop toy: examples/minimal_llm_loop.hy)
+uv pip install hy
 ```
 
 ## System Architecture

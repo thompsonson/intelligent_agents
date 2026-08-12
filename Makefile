@@ -7,7 +7,7 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live benchmark-gsm8k benchmark-gsm8k-reflection test-task-graph test-maze-solver test-path-maintenance test-discovery
+.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live minimal-llm-loop benchmark-gsm8k benchmark-gsm8k-reflection test-task-graph test-maze-solver test-path-maintenance test-discovery
 
 # Default target
 help:
@@ -30,6 +30,7 @@ help:
 	@echo "  format        - Format code"
 	@echo "  clean         - Clean up temporary files"
 	@echo "  check-env     - Check environment setup"
+	@echo "  minimal-llm-loop - Run the minimal LLM loop toy against the configured LLM server"
 	@echo ""
 	@echo "Gradio interface:"
 	@echo "  gradio-dev    - Launch Gradio interface in development mode"
@@ -59,7 +60,7 @@ help:
 # Install dependencies
 install: .venv
 	@echo "Installing dependencies with uv..."
-	uv pip install pytest pytest-cov openai
+	uv pip install pytest pytest-cov openai hy
 	@echo "Installing Jupyter notebook packages..."
 	uv pip install ipykernel jupyter notebook
 	@echo "Installing data science and visualization packages..."
@@ -269,6 +270,11 @@ except Exception as e: \
     print(f'❌ Error: {e}'); \
     print('Make sure LiteLLM is running: make litellm-status'); \
 "
+
+# Run the minimal LLM loop toy against the configured LLM server
+minimal-llm-loop:
+	@echo "Running minimal LLM loop with model: $(LLM_MODEL) at $(or $(LLM_BASE_URL),http://computer:13305/api/v1)"
+	@uv run hy examples/minimal_llm_loop.hy $(PROMPT)
 
 # Run all checks
 check-all: lint test-coverage
