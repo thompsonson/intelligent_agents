@@ -1,21 +1,65 @@
-# [IA Series 3/n] Intelligent Agents Term Sheet — Revised
+# [IA Series 11/n] Ontologies, Doctrine, and Ubiquitous Language
 
 *This is an addition to the original term sheet. The core terminology is unchanged; the **[Agent Design Process](https://matt.thompson.gr/2025/05/16/ia-series-n-intelligent-agents.html)** has gained a Step 0 — Ontology / Vocabulary. The step introduces a living document you revisit.*
 
 ## Introduction
 
-I've come around to ontology, I'd spent some time thinking only a workflow was needed and then I learnt what an ontology really is! 
+I've come around to ontology. It speaks to me, my interest in meaning goes back to reading the Thesaurus as a kid, grammar didn't interest me as much, but meaning is fascinating, probably the birth of Context Is All you Need :) 
 
-My interest in meaning goes back to reading the Theasaurus as a kid, grammar didn't interest me as much but meaning was fascinating, probably the birth of Context Is All you Need :) 
+I'm here building an agent that will navigate through a maze of infrastructure and writing a DSL to express the actions. I was creating a graph of nodes and edges where the nodes have domains, types, and legal actions; the edges connect the nodes to express dependancy.
 
+This led to this comment in my session with Claude (spelling mistake is kept for honesty!): 
 
+> "I am thinking that this could be a use case for one type of system however I am now thinking we need an ontological for the nodes and edges defined clearly. it would not be a generic discovery agent, rather an Infra Discovery Agent and use an ontology documented in the atomicguard repo: docs/design/notes/topology_sensing_dsa_belief_state_and_agent_function.md's 'Node and Edge ontology' section... take a step back and consider what an environment for that would look like."
 
+The conversation has progressed to the point where I wanted to understand what an ontology really is and why it is making sense, central to my work, and where in my approach and workflow should I be defining it.
 
-## Step 0 — Ontology / Vocabulary
+### What is an Ontology
 
-> **First pass before PEAS; then a living document, re-entered whenever a later step exposes a gap.**
+Ontology definition from [Wikipedia](https://en.wikipedia.org/wiki/Ontology):
 
-You cannot write "Environment: PRs, CI runs, merge gates" without already having decided those are the entities that matter — some ontology commitment always precedes PEAS, even when unstated. Step 0 makes that commitment explicit, and then stays open.
+> Ontology is the philosophical study of being. 
+
+This was a big blocker to why I thought it wasn't relevant, I do not buy into AI being conscious so this triggered me.
+
+This is getting more useful as a definition - [Formal Ontology from Wikipedia](https://en.wikipedia.org/wiki/Formal_ontology):
+
+> In philosophy, the term formal ontology is used to refer to an ontology defined by axioms in a formal language with the goal to provide an unbiased (domain- and application-independent) view on reality, which can help the modeler of domain- or application-specific ontologies to avoid possibly erroneous ontological assumptions encountered in modeling large-scale ontologies.
+
+It's a graph of objects with specific relations. Voilà. 
+
+### Context on application of Ontologies
+
+I've been a big fan of these systems without really understanding the components of them. I'd thought of them as ways of acting in different contexts, and treated it like a skill, apparently common sense once I'd learnt the frameworks.
+
+* **[Situational Leadership](https://en.wikipedia.org/wiki/Situational_leadership_theory):** The ontology defines the developmental level of the individual (their competence and commitment). The doctrine is the specific leadership style applied to that exact profile.
+* **[Cynefin Framework](https://en.wikipedia.org/wiki/Cynefin_framework):** The ontology defines the state of the environment (Clear, Complicated, Complex, Chaotic). The doctrine dictates how you must alter your decision-making process for that specific state.
+* **[Segmentation Technologies / Zero Trust](https://www.philvenables.com/post/segmentation-technologies---zero-trust) (Phil Venables):** The ontology defines your boundaries—what an asset, workload, or trusted zone actually is. The doctrine is the isolation strategy enforcing those boundaries.
+* **[Domain-Driven Design](https://en.wikipedia.org/wiki/Domain-driven_design):** The ontology is the "Ubiquitous Language" defining bounded contexts, aggregates, and entities. The doctrine is the software architecture built on top of that shared meaning.
+
+This quote from the DDD wiki page is key for any software engineering (formal or otherwise):
+
+> Ubiquitous language is one of the pillars of DDD together with strategic design and tactical design.
+
+The way to look at it is that ontology is a symbolic structure that defines the terrain. Doctrine and frameworks offer an imperfect way to navigate that terrain.
+
+> If ontology is the map, doctrine is your strategy.
+
+Here is how they stack together in system design:
+
+* **Ontology (The "What"):** Defines what exists. It establishes the vocabulary, entities, boundaries, and relationships in your environment. You have to formally define what a "workload," "trusted zone," or "critical asset" actually is.
+* **Doctrine (The "How"):** Defines how you behave. It establishes the rules, policies, and strategic intent governing those entities (e.g., "critical assets must be isolated from untrusted zones").
+* **Structure (The "With What"):** The actual implementation, tools, or physical architecture used to enforce the doctrine.
+
+In formal systems or orchestration layers, your ontology is the foundational state space and schema (like the definitions in a belief store). Your doctrine provides the deterministic constraints and logic applied to that state.
+
+PEAS? Its a framework and vocabulary that helps define how an intelligent agent perceives and interacts with a given world. 
+
+## Adding Step 0 — Ontology / Vocabulary - to the Agent Design Process
+
+In formal systems or orchestration layers, an ontology is the state space and schema (like a graph of infra) that an agent navigates. PEAS assumes you already know the vocabulary for the environment you are building - at least as I learnt it.
+
+So defining your environment is a step that should be done as a first pass before PEAS; then a living document, re-entered whenever a later step exposes a gap. As with DDD, the model should be considered flexible, as you learn more about the domain you update the ontology.
 
 Two artefacts, because they fail differently:
 
@@ -24,7 +68,7 @@ Two artefacts, because they fail differently:
 | **Schema** | The types and predicates of the domain, each classified by its **Kind** — **controllable**, **exogenous**, **static**, or **derived** (the definitions live in the ubiquitous language) | *"I'm missing a predicate"* — the structure can't express something the design needs |
 | **Ubiquitous language** | The shared naming and vocabulary for those types and predicates, agreed so every design document means the same thing by the same word | *"Two docs use the same word for different things"* — the naming drifts and the design reads inconsistently |
 
-Scope it honestly: this is the **data ontology** — the concepts the agent reasons about. It is not the **definitional ontology** — how the agent loop itself is defined (percept, action, agent function). Confusing the two is the most common way the step goes wrong.
+Scope it honestly: this is the **world ontology** — the environment the agent navigates and acts in: its entities, predicates, actions, and connections. It is not the **agent ontology**, which uses the PEAS meta-ontology to define the agent loop itself (percept, agent function). Confusing the two is the most common way the step goes wrong.
 
 **When to re-enter Step 0:** it is a *normal, expected* loop-back, not a process violation. The clearest signals are in Step 2 (the environment's properties don't fit what Step 0 declared) and Step 3 (a persistent-state variable has no home in the schema). Discovering "I need an ontology" mid-build — usually after the Agent Function step — is how this step tends to be found in practice.
 
@@ -57,6 +101,44 @@ The smallest agent that is still an agent: a percept→action loop with a persis
 **Action vocabulary:** `LLM.QUERY(context)` and `REPORT(answer)` — both controllable, and the only two things the agent can emit.
 
 The honest takeaway: **almost everything degenerates to exogenous.** There is no world to model — two percept kinds, two actions, one accumulated state — yet the vocabulary is complete: the agent can name what it produces. An honestly thin ontology is the correct Step 0 output; Step 0 is not an excuse to invent structure the domain does not have.
+
+**The world ontology, as a graph:**
+
+```mermaid
+graph LR
+    classDef type fill:#f5f4ef,stroke:#333,stroke-width:1px,color:#111
+    classDef action fill:#3b4a5a,stroke:#222,stroke-width:1px,color:#fff
+    classDef exo stroke:#b85f1e,color:#b85f1e,fill:#fff,stroke-width:2px
+    classDef ctrl stroke:#2f6690,color:#2f6690,fill:#fff,stroke-width:2px
+    classDef der stroke:#3f7a5c,color:#3f7a5c,fill:#fff,stroke-width:2px
+
+    Prompt(["Prompt"]):::type
+    Message(["Message<br/>{role, content}"]):::type
+    Context(["Context<br/>[Message]"]):::type
+    Response(["Response"]):::type
+    Answer(["Answer"]):::type
+    QUERY[["LLM.QUERY(context)"]]:::action
+    REPORT[["REPORT(answer)"]]:::action
+
+    PerceptPrompt("percept(prompt)"):::exo
+    PerceptResponse("percept(response)"):::exo
+    ContextPred("context(msgs)"):::ctrl
+    IsFinal("is_final(response)"):::der
+    AnswerPred("answer(response)"):::der
+
+    Prompt --> PerceptPrompt
+    Response --> PerceptResponse
+    Context --> ContextPred
+    Response --> IsFinal
+    Response --> AnswerPred
+    AnswerPred --> Answer
+
+    Prompt -.wrapped as.-> Message
+    Response -.wrapped as.-> Message
+    Message -.wrapped as.-> Context
+    Context -.available to.-> QUERY
+    Answer -.available to.-> REPORT
+```
 
 ### The ubiquitous language
 
@@ -146,6 +228,28 @@ function MINIMAL-LLM-LOOP-AGENT(percept) returns an action
 ```
 
 Only declared vocabulary appears: the two actions, `context`, and the derived `is_final`/`answer` — no `turn_count`, no undeclared predicates.
+
+**The agent function, as a flow:**
+
+```mermaid
+flowchart TD
+    classDef state fill:#2f6690,color:#fff,stroke:#1c3d52
+    classDef action fill:#3b4a5a,color:#fff,stroke:#222
+    classDef decision fill:#f5f4ef,stroke:#333
+
+    Start(["percept arrives"]) --> TypeCheck{"percept kind?"}:::decision
+    TypeCheck -- "prompt" --> AppendPrompt["context += [user: percept]"]:::state
+    TypeCheck -- "response" --> AppendResponse["context += [assistant: percept]"]:::state
+
+    AppendPrompt --> QUERY1[["LLM.QUERY(context)"]]:::action
+
+    AppendResponse --> FinalCheck{"is_final(response)?"}:::decision
+    FinalCheck -- "no" --> QUERY2[["LLM.QUERY(context)"]]:::action
+    FinalCheck -- "yes" --> REPORT[["REPORT(answer(response))"]]:::action
+
+    QUERY1 -.->|"next percept: response"| Start
+    QUERY2 -.->|"next percept: response"| Start
+```
 
 #### A worked trace
 
