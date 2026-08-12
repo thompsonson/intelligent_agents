@@ -2,6 +2,14 @@
 
 *This is an addition to the original term sheet. The core terminology is unchanged; the **[Agent Design Process](https://matt.thompson.gr/2025/05/16/ia-series-n-intelligent-agents.html)** has gained a Step 0 — Ontology / Vocabulary. The step introduces a living document you revisit.*
 
+## Introduction
+
+I've come around to ontology, I'd spent some time thinking only a workflow was needed and then I learnt what an ontology really is! 
+
+My interest in meaning goes back to reading the Theasaurus as a kid, grammar didn't interest me as much but meaning was fascinating, probably the birth of Context Is All you Need :) 
+
+
+
 
 ## Step 0 — Ontology / Vocabulary
 
@@ -186,7 +194,7 @@ Step 5 implements the chosen architecture within physical constraints. The toy's
 | `LLM.QUERY(context)` | stub `llm-query` — the documented swap point |
 | `REPORT(answer)` | the driver's terminal branch |
 
-**The corrected Hy program** (adapted from the verified reference implementation, fixed to this post's vocabulary):
+**The corrected Hy program** (fixed to this post's vocabulary; the runnable live-server version lives at `examples/minimal_llm_loop.hy`):
 
 ```hy
 ;; the only persistent state — context, Kind: controllable
@@ -255,7 +263,7 @@ The stub is a teaching stand-in. A runnable version that makes the swap concrete
 - **Dependency**: model-agnostic — swap the stub body and nothing else changes
 - **Scaffolding**: the stub's behavior lives in `llm-query`, outside the domain model (consistent with Step 0's `turn_count` exclusion)
 
-The reference implementation carried `REPORT(response)` and a `turns` counter; this version extracts the answer and lets the stub decide by `context` length — so `turn_count` never enters the domain, matching Step 0.
+The original toy carried `REPORT(response)` and a `turns` counter; this version extracts the answer and lets the stub decide by `context` length — so `turn_count` never enters the domain, matching Step 0.
 
 ### Re-entry stays open
 
