@@ -92,22 +92,23 @@ The smallest agent that is still an agent: a percept→action loop with a persis
 
 | Predicate | Kind | Why |
 |---|---|---|
-| `percept(prompt)` | exogenous | Arrives from the user |
-| `percept(response)` | exogenous | Arrives from the LLM service |
+| `received(prompt)` | exogenous | a prompt arrived from the user |
+| `received(response)` | exogenous | a response arrived from the LLM service |
 | `answer(response)` | derived | Extracted from the response, not carried as a raw prefix |
 | `is_final(response)` | derived | `response.startswith("FINAL:")` — computed, not sensed |
 | `context(msgs)` | controllable | Maintained by the agent's own append action, though its *content* is exogenous-sourced |
 
 **Action vocabulary:** `LLM.QUERY(context)` and `REPORT(answer)` — both controllable, and the only two things the agent can emit.
 
-The honest takeaway: **almost everything degenerates to exogenous.** There is no world to model — two percept kinds, two actions, one accumulated state — yet the vocabulary is complete: the agent can name what it produces. An honestly thin ontology is the correct Step 0 output; Step 0 is not an excuse to invent structure the domain does not have.
+**Connections:** `Prompt` and `Response` are wrapped into `Message`s, which assemble into `Context`; `answer` derives from `Response`.
+
+The honest takeaway: **almost everything degenerates to exogenous.** There is no world to model — two exogenous facts, two actions, one accumulated state — yet the vocabulary is complete: the agent can name what it produces. An honestly thin ontology is the correct Step 0 output; Step 0 is not an excuse to invent structure the domain does not have.
 
 **The world ontology, as a graph:**
 
 ```mermaid
 graph LR
     classDef type fill:#f5f4ef,stroke:#333,stroke-width:1px,color:#111
-    classDef action fill:#3b4a5a,stroke:#222,stroke-width:1px,color:#fff
     classDef exo stroke:#b85f1e,color:#b85f1e,fill:#fff,stroke-width:2px
     classDef ctrl stroke:#2f6690,color:#2f6690,fill:#fff,stroke-width:2px
     classDef der stroke:#3f7a5c,color:#3f7a5c,fill:#fff,stroke-width:2px
@@ -117,17 +118,15 @@ graph LR
     Context(["Context<br/>[Message]"]):::type
     Response(["Response"]):::type
     Answer(["Answer"]):::type
-    QUERY[["LLM.QUERY(context)"]]:::action
-    REPORT[["REPORT(answer)"]]:::action
 
-    PerceptPrompt("percept(prompt)"):::exo
-    PerceptResponse("percept(response)"):::exo
+    ReceivedPrompt("received(prompt)"):::exo
+    ReceivedResponse("received(response)"):::exo
     ContextPred("context(msgs)"):::ctrl
     IsFinal("is_final(response)"):::der
     AnswerPred("answer(response)"):::der
 
-    Prompt --> PerceptPrompt
-    Response --> PerceptResponse
+    Prompt --> ReceivedPrompt
+    Response --> ReceivedResponse
     Context --> ContextPred
     Response --> IsFinal
     Response --> AnswerPred
@@ -136,8 +135,6 @@ graph LR
     Prompt -.wrapped as.-> Message
     Response -.wrapped as.-> Message
     Message -.wrapped as.-> Context
-    Context -.available to.-> QUERY
-    Answer -.available to.-> REPORT
 ```
 
 ### The ubiquitous language
@@ -149,7 +146,7 @@ The shared vocabulary, agreed once so the schema above is checkable:
 | Kind | Definition | Example here |
 |---|---|---|
 | **controllable** | Set by the agent's own action | `context` |
-| **exogenous** | Sensed from the world, outside the agent's control | `percept(prompt)`, `percept(response)` |
+| **exogenous** | Sensed from the world, outside the agent's control | `received(prompt)`, `received(response)` |
 | **static** | Fixed for the task lifetime | — (none yet) |
 | **derived** | Computed from other predicates, never directly set | `answer(response)`, `is_final(response)` |
 
@@ -160,6 +157,7 @@ The shared vocabulary, agreed once so the schema above is checkable:
 | `"FINAL:"` | The stop marker the `stop-check` reads — a signal, distinct from the answer |
 | `answer` | The extracted content the agent reports |
 | `context` | The conversation history — here the model input and the agent's only state are one object, so one word covers both |
+| `received` | A world event — a prompt or response arrived from the user/LLM; distinct from the agent's `percept` (the loop's input) |
 
 One deliberate exclusion: the stub's `turn_count` is test fixture, not domain ontology, and is kept out of the schema above. A clean Step 0 keeps scaffolding out of the domain model.
 
@@ -170,9 +168,9 @@ The integration point from Step 0, made concrete: the PEAS rows cite the schema'
 | Element | Cites Step 0 | Description |
 |---|---|---|
 | **Performance** | `answer(response)`, `is_final(response)` | Produce the answer to the prompt; success is the model's self-declared `"FINAL:"` marker — no ground-truth check (the "irrational performance measure" caveat) |
-| **Environment** | the `LLM.QUERY` target | The LLM service + the user, who supplies `percept(prompt)` once |
+| **Environment** | the `LLM.QUERY` target | The LLM service + the user, who supplies `received(prompt)` once |
 | **Actuators** | `LLM.QUERY`, `REPORT` | Send `context(msgs)`; report the extracted `answer` |
-| **Sensors** | `percept(prompt)`, `percept(response)` | From the user and the LLM service — the only two percepts |
+| **Sensors** | `received(prompt)`, `received(response)` | From the user and the LLM service — the only two inputs |
 
 ### Step 2 — Environment Analysis
 
@@ -198,7 +196,7 @@ Step 3 defines the ideal behaviour — a mapping from percept sequences to actio
 | State variable | Kind (in schema) | Home |
 |---|---|---|
 | `context(msgs)` | controllable | Declared in the schema — the only thing the function maintains |
-| everything else | — | exogenous percepts or derived predicates (`is_final`, `answer`), never held in state |
+| everything else | — | exogenous facts or derived predicates (`is_final`, `answer`), never held in state |
 
 The Step 3 loop-back signal never fires: no state variable appears that the schema lacks.
 
