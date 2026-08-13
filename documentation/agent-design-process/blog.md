@@ -252,6 +252,12 @@ Which leaves the post's point standing: the Kind axis is exactly what schema.org
 
 The serialization carries the facts — there is no Kind field. How each fact is determined stays in the semantics layer, exactly as the serialisation/semantics split above sets out.
 
+### The belief state — storing a fact as a belief
+
+The world ontology names facts; the agent stores them as *beliefs*. A fact is what is the case in the world; a belief is the agent's stored, justified representation of it. Storing a fact as a belief is the loop's core move — **SENSE → RECORD**: the agent senses the world's exogenous predicates (`node`, `notifies`, `requires`) and records them into its own controllable predicates (`known`, `visited`, `cleared`).
+
+This is where Kind does its real work, tying back to the facts section: the exogenous facts are justified by the world at the moment they are sensed; the belief is justified by the agent's own actions of sensing and recording. The lifecycle below shows a fact entering belief, and the belief evolving as the agent acts.
+
 **The belief state, as a lifecycle:**
 
 ```mermaid
@@ -310,6 +316,8 @@ sequenceDiagram
 ```
 
 This serializes the lifecycle's states (`known`/`visited`/`cleared`/`blocked`) as the belief object.
+
+A stored belief is not a guaranteed fact — it is justified by the agent's actions, not guaranteed by the world. A belief can be well-stored and false, exactly as the facts section's "justification is not truth" set out.
 
 ### The ubiquitous language
 
