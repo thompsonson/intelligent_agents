@@ -64,6 +64,8 @@ Term             → Function(Term, ...) | Constant | Variable
 
 Everything else is not a sentence of the language — no matter how plausible it reads.
 
+This grammar declares facts — predicates and the sentences built from them. Actions, operations with preconditions and effects, are the *planning* half, written over this grammar's sentences rather than inside it.
+
 ## Semantics — Meaning
 
 - **Interpretation**: An assignment of meaning to a language — a domain plus a mapping that names the constants, predicates, and functions in it.

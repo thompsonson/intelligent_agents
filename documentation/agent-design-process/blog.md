@@ -64,7 +64,7 @@ A fact, in the philosophically accepted sense, is a [justified true belief](http
 
 | Kind | Justified by |
 |---|---|
-| **exogenous** | sensing the world — the world itself is the justification |
+| **exogenous** | sensing the world — a belief about the state at the moment of sensing |
 | **controllable** | the agent's own action — it made the fact so |
 | **static** | setup — granted once, fixed for the task |
 | **derived** | inference — entailed by other justified beliefs |
@@ -76,6 +76,8 @@ These four kinds are not new coinage — each is an established concept:
 - **derived** predicates appear in [PDDL 2.2](https://en.wikipedia.org/wiki/Planning_Domain_Definition_Language) (Edelkamp & Hoffmann 2004), in Datalog's intensional predicates (the [EDB/IDB split](https://en.wikipedia.org/wiki/Datalog)), and in situation calculus's defined fluents ([Reiter 2001](https://en.wikipedia.org/wiki/Situation_calculus))
 
 What this project contributes is the sharper **synchronous-entailment test** — *does the effector's successful return entail the fact?* — which draws the controllable/exogenous boundary without ambiguity, and the decision to tag every predicate with an explicit kind.
+
+Multiple Kind tables are not redundancy — each reads the same coin through a different lens. The facts section reads Kind as **justification**: what entitles the agent to hold the belief. The ubiquitous language reads it as **determination**: what sets the fact's truth, judged by the synchronous-entailment test. The belief state reads it as **belief**: what the agent actually holds, which may be false. That is the honest epistemic position — a fact is a justified true belief, but the agent never directly knows the *true*: it can only hold justifiably held beliefs. The most it can claim is that a fact was *true at the point in time it was sensed, or the action was taken*.
 
 Two consequences worth holding onto:
 
@@ -146,6 +148,8 @@ flowchart TD
 | `is-leaf(id)` | derived | no `notifies` — a structural goal or dead end |
 
 **Actions:** `SENSE(node)`, `WALK(edge)`, `BACKTRACK`, `RECORD(belief)`, `REPORT(descriptor)`.
+
+Predicates are the facts of the state — what can be asserted about the world, each classified by Kind. Actions are the operations that change the state, and an action is defined *over* predicates: its precondition is a set of predicates that must hold, and its effect is a set of predicates it makes or unmakes true. `SENSE` and `RECORD` above are actions; `node`, `notifies`, and `known` are the predicates they read and write.
 
 **Connections:** `notifies` and `requires` edges link nodes; the agent's belief is the discovered subgraph.
 
@@ -336,7 +340,7 @@ The shared vocabulary, agreed once so the schema above is checkable:
 | Kind | Definition | Example here |
 |---|---|---|
 | **controllable** | the effector's successful return entails the fact — determined by the agent's own action | `known`, `visited`, `cleared` |
-| **exogenous** | the effector's return does not entail it — set by other agents or world processes | `node`, `notifies`, `requires` |
+| **exogenous** | the effector's successful return does not entail it — the world can change the fact after the action returns, so the fact is only a belief about the current state | `node`, `notifies`, `requires` |
 | **static** | true at setup, never changed by any action or sensing | `domain` |
 | **derived** | computed by the state model, never asserted — entailed from other predicates | `reachable`, `is-leaf` |
 
