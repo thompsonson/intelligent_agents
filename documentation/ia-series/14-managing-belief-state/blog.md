@@ -28,13 +28,13 @@ That caveat is the whole problem in miniature. The held belief *was* a fact — 
 
 In IA 13 I collapsed two layers I should have kept apart. The discovery agent has:
 
-1. **The world (ontic)** — the actual infra graph: nodes, `notifies`, `requires`. The agent never observes this directly; it only ever senses a node it has reached.
+1. **The world (ontic)** — the actual infra graph: nodes, `notifies`, `requires`. The agent observes it by sensing nodes it reaches, but it never **holds** the world — only copies of it.
 2. **The belief (epistemic)** — the agent's *copies* of the world's facts, folded into `known`/`visited`/`cleared` and the recorded edges. This is a growing, append-only record.
 3. **The declared** — the agent's own commitments (its workflow state), distinct from both.
 
 | Layer | What it holds | Source |
 |---|---|---|
-| **World** (ontic `W`) | the actual state of the infra estate | mutable; never directly observed |
+| **World** (ontic `W`) | the actual state of the infra estate | mutable; observed through sensing — the agent holds a copy, never the world itself |
 | **Belief** (epistemic `S_env`) | copies of sensed facts + the agent's controllable assertions | append-only; the agent's model |
 | **Declared** (`S_workflow`) | the agent's own commitments and workflow state | the agent's intent |
 
