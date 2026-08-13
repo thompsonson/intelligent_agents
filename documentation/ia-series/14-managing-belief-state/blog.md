@@ -1,0 +1,106 @@
+# [IA Series 14/n] Managing a Belief State
+
+*Draft. Following on from [Ontologies, Doctrine, and Ubiquitous Language](../13-ontologies/blog.md), which stored a fact as a belief. This post is about what happens after you hold one — and the vocabulary the agent needs the moment the world won't sit still.*
+
+## Storing was the easy half
+
+The [previous post](../13-ontologies/blog.md) established the acquisition half: a fact is a justified true belief, and storing it as a belief is **SENSE → RECORD** — the agent senses the world's exogenous predicates (`node`, `notifies`, `requires`) and records them into its own controllable ones (`known`, `visited`, `cleared`). The temporal caveat was already there: *a fact was true at the point in time it was sensed, or the action was taken.*
+
+That caveat is the whole problem in miniature. Between one sense and the next, the held belief is a *prediction*, not a fact — and a belief gained by visiting a node can go **out of sync with the world state**. The world is what the search moves through; the belief is what the search holds. They are different things, and the gap between them is the subject of this post.
+
+## Three layers, not two
+
+In IA 13 I collapsed two layers I should have kept apart. The discovery agent has:
+
+1. **The world (ontic)** — the actual infra graph: nodes, `notifies`, `requires`. The agent never observes this directly; it only ever senses a node it has reached.
+2. **The belief (epistemic)** — the agent's *copies* of the world's facts, folded into `known`/`visited`/`cleared` and the recorded edges. This is a growing, append-only record.
+3. **The declared** — the agent's own commitments (its workflow state), distinct from both.
+
+| Layer | What it holds | Source |
+|---|---|---|
+| **World** (ontic `W`) | the actual state of the infra estate | mutable; never directly observed |
+| **Belief** (epistemic `S_env`) | copies of sensed facts + the agent's controllable assertions | append-only; the agent's model |
+| **Declared** (`S_workflow`) | the agent's own commitments and workflow state | the agent's intent |
+
+One epistemic store, two declared ontologies (the world's `:domain` and the agent's loop), one ontic world behind it. The belief store is not the world, and the agent's declared state is not the belief store.
+
+The drift problem lives in the middle layer: **the epistemic copy can diverge from the ontic world**, and nothing in the current vocabulary names that divergence.
+
+## The two channels
+
+Not all beliefs are sensed the same way, and the difference decides how you manage them.
+
+| Channel | The atom is about | Can a blocking sense verify it? |
+|---|---|---|
+| **World** | the ontic state (`ci-green`, `node-exists`) | yes — `gh run watch` returns ground truth |
+| **Generator** | the model's own reasoning (the LLM's answer) | no — only the *artifact* can be checked, not the reasoning |
+
+The world channel is the case ADR D4 got right: a blocking sensing effector collapses temporal uncertainty into a sensed fact, and re-sensing before each action keeps the plan over a fresh snapshot. Belief distributions are wasted machinery there.
+
+The generator channel is different: the LLM's reasoning is *self-attested by the same stochastic process being measured* — the `"FINAL:"` problem from the earlier post. No post-guard can observe the truth of the reasoning, only the artifact. Here a **confidence weight is the honest representation** — not a distribution over world states, but a property of the reasoning artifact. The repo already built it: the self-reflection agent's entropy.
+
+So the management split is: **D4-style re-sensing for the world channel, a confidence layer for the generator channel** — the one thing blocking sensing cannot absorb.
+
+## Kind is justification, not freshness
+
+The post on ontologies classified every predicate by **Kind** — controllable, exogenous, static, derived — which is *who determines the atom's truth*. That is the justification axis.
+
+What it is *not* is the **freshness axis**. Kind says nothing about how current your copy is. An exogenous atom is *ground truth at the moment of sensing* — but the copy can go stale the moment the world moves. Justification and freshness are orthogonal: one is about who makes the fact true, the other about when to re-sense.
+
+Why not just add a predicate, `stale(fact)`? Because of the closed-world assumption. An atom absent from the world model is read as false — so `stale(?fact)` would be *entailed false* for every unasserted atom, which is nonsense. Freshness is a property **of a copy** — when it was sensed, by which effector, with what verdict — not a property of the world. It must be **metadata on the epistemic copy, never an atom**.
+
+## The freshness axis: declared doctrine, recorded metadata
+
+There are three questions hiding inside "freshness," and they don't all have the same answer:
+
+| Question | Answer |
+|---|---|
+| **Storage** — where does freshness live? | metadata on the epistemic copy, never an atom in the world model |
+| **Meaning** — is it ontology or bookkeeping? | a **declared staleness bound** per predicate, carried beside `:kind` in the ontology — the freshness *doctrine* |
+| **Policy** — who decides when to re-sense? | the loop executes the declared bound — re-sensing becomes ontology-driven |
+
+The sharp claim is the middle row. A bound like *"`ci-green` is fresh for N minutes"* is itself a fact about the world (how fast it changes) — static or derived — so declaring it in the ontology is world content, not a loop concern. This is IA 13's own framing made concrete: **`:kind` is the justification axis; a staleness bound is the freshness doctrine on the same map.** And D4's "always re-sense" turns out to be the degenerate case — no declared bounds, re-sense everything. The doctrine upgrades it to *"re-sense when the declared bound is hit,"* without touching what an atom is.
+
+One rule the doctrine must handle: **derived predicates inherit freshness.** `reachable`, `is-leaf` (and the earlier post's `cleared`) are computed from base atoms — their staleness is a function of their dependencies', not an independent bound. A derived head's freshness bound is the **minimum** (most conservative) of its body's bounds — if any base belief goes stale, everything derived from it is stale — and stale signals **OR-compose** across the body. A derived head may override `:fresh-for` only when re-sensing the aggregate is cheaper than re-sensing its parts. **Consistency is downstream of sync.**
+
+The whole axis in one line: **the ontology declares how fresh each fact must be; the metadata records how fresh it actually is; the loop reconciles the gap.**
+
+## The management actions
+
+With a declared bound and recorded metadata, the loop's job is reconciliation:
+
+- **RESENSE(id)** — re-query a node when its bound is hit or a signal fires, to detect drift
+- **RECONCILE(id)** — compare the recorded belief against the fresh sense and update
+- **INVALIDATE(id)** — mark a belief stale without yet knowing the truth
+
+These are the actions the earlier post's "when the ontology is re-entered" predicted: the vocabulary the agent needs the moment the world won't sit still.
+
+## Worked example: a `:predicate` extension
+
+The concrete shape, in the DS-PDDL flavour of the atomicguard work — staleness bounds declared beside `:kind`:
+
+```
+:predicates ((branch-exists ?b - branch         :kind static        :stale-on <never>)
+             (pr-open ?p - pr                   :kind controllable  :stale-on <effect-retract>)
+             (ci-run ?c - commit ?p - pr        :kind exogenous     :fresh-for "5m")
+             (ci-green ?c - commit ?p - pr      :kind exogenous     :fresh-for "5m")
+             (merge-ready ?p - pr               :kind exogenous     :fresh-for "1m"))
+```
+
+- `:fresh-for N` — a wall-clock bound: the copy is trustworthy for N; re-sense when the bound is hit
+- `:stale-on <signal>` — an event bound: the copy is stale the moment a named signal fires (a reverse effector returns, an `:effect` retracts it, a downstream invalidation fires)
+- omitted — D4's default: always re-sense
+
+And derived heads **compose** rather than declare:
+
+```
+(:derived (checks-green ?p)
+    (forall (?c - commit) (imply (ci-run ?c ?p) (ci-green ?c ?p))))
+;; freshness(checks-green) = min over the body's bounds; stale signals OR-compose
+```
+
+The bound lives in the declared ontology; the metadata (`sensed_at`, `effector`, `verdict`) threads the existing guard-result and DAG-timestamp structures, and the declared-state document's `updated_at`. No new atoms, no change to the world model's semantics, D4's closed-world stance intact.
+
+## Re-entry stays open
+
+The ontology was re-entered the moment the world wouldn't sit still — that was the signal. And writing this has been managing my own belief state: the last post's claim that the belief state was "the controllable side" was a belief I held, and it went out of sync with the world the moment the atomicguard work pointed out the epistemic copies. Justification is not truth; freshness is not Kind; and the belief I hold about my own work needs the same re-sensing I've been describing.
