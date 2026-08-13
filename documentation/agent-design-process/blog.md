@@ -256,20 +256,26 @@ The serialization carries the facts — there is no Kind field. How each fact is
 
 The world ontology names facts; the agent stores them as *beliefs*. A fact is what is the case in the world; a belief is the agent's stored, justified representation of it. Storing a fact as a belief is the loop's core move — **SENSE → RECORD**: the agent senses the world's exogenous predicates (`node`, `notifies`, `requires`) and records them into its own controllable predicates (`known`, `visited`, `cleared`).
 
-This is where Kind does its real work, tying back to the facts section: the exogenous facts are justified by the world at the moment they are sensed; the belief is justified by the agent's own actions of sensing and recording. The lifecycle below shows a fact entering belief, and the belief evolving as the agent acts.
+This is where Kind does its real work, tying back to the facts section: the exogenous facts are justified by the world at the moment they are sensed; the belief is justified by the agent's own actions of sensing and recording. The sequence below shows a fact entering belief, and the belief evolving as the agent acts.
 
-**The belief state, as a lifecycle:**
+**The belief state — schema (JSON-LD context):**
 
-```mermaid
-stateDiagram-v2
-    [*] --> Unknown
-    Unknown --> Known : SENSE names it
-    Known --> Visited : agent arrives
-    Visited --> Cleared : all requires cleared
-    Visited --> Blocked : requires unmet
-    Blocked --> Cleared : requires later clear
-    Cleared --> [*]
+```json
+{
+  "@context": {
+    "@vocab": "https://schema.org/",
+    "dev": "https://dev.example.org/",
+    "BeliefState": "dev:BeliefState",
+    "known": "dev:known",
+    "visited": "dev:visited",
+    "cleared": "dev:cleared",
+    "blocked": "dev:blocked"
+  },
+  "@type": "BeliefState"
+}
 ```
+
+The schema defines the belief state as a JSON-LD object: the `BeliefState` type with four properties — `known`, `visited`, `cleared`, `blocked`.
 
 **Building belief, as a sequence:**
 
@@ -294,7 +300,9 @@ sequenceDiagram
     A->>A: REPORT(descriptor)
 ```
 
-**The belief state, as JSON-LD:**
+**An example belief state, from a run:**
+
+The walk `commit → lint → merge-gate → deploy` leaves this belief state:
 
 ```json
 {
@@ -308,14 +316,14 @@ sequenceDiagram
     "blocked": "dev:blocked"
   },
   "@type": "BeliefState",
-  "known": ["dev:commit", "dev:lint", "dev:unit-tests", "dev:integration-tests", "dev:merge-gate", "dev:deploy"],
+  "known": ["dev:commit", "dev:lint", "dev:unit-tests", "dev:merge-gate", "dev:deploy"],
   "visited": ["dev:commit", "dev:lint", "dev:merge-gate", "dev:deploy"],
-  "cleared": ["dev:commit", "dev:lint", "dev:unit-tests", "dev:integration-tests", "dev:merge-gate"],
+  "cleared": ["dev:commit", "dev:lint", "dev:merge-gate", "dev:deploy"],
   "blocked": []
 }
 ```
 
-This serializes the lifecycle's states (`known`/`visited`/`cleared`/`blocked`) as the belief object.
+`unit-tests` is `known` — learned from `commit`'s notifies — but unvisited, because the walk took the `lint` branch; `integration-tests` was never sensed.
 
 A stored belief is not a guaranteed fact — it is justified by the agent's actions, not guaranteed by the world. A belief can be well-stored and false, exactly as the facts section's "justification is not truth" set out.
 
@@ -378,4 +386,19 @@ and the same fact as compact JSON-LD:
 ```
 
 The predicate, the triple, and the JSON-LD are the same statement — the grammar determines the shape, the serialization chooses the form.
+
+### The belief state, as a lifecycle
+
+The lifecycle of a single node's belief — from unknown, through known and visited, to cleared or blocked:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Unknown
+    Unknown --> Known : SENSE names it
+    Known --> Visited : agent arrives
+    Visited --> Cleared : all requires cleared
+    Visited --> Blocked : requires unmet
+    Blocked --> Cleared : requires later clear
+    Cleared --> [*]
+```
 
