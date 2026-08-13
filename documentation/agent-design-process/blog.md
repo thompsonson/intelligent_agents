@@ -1,4 +1,4 @@
-# [IA Series 12/n] Ontologies, Doctrine, and Ubiquitous Language
+# [IA Series 13/n] Ontologies, Doctrine, and Ubiquitous Language
 
 *This is an addition to the original term sheet. The core terminology is unchanged; the **[Agent Design Process](https://matt.thompson.gr/2025/05/16/ia-series-n-intelligent-agents.html)** has gained a Step 0 — Ontology / Vocabulary. The step introduces a living document you revisit.*
 
@@ -53,7 +53,9 @@ Here is how they stack together in system design:
 
 In formal systems or orchestration layers, your ontology is the foundational state space and schema (like the definitions in a belief store). Your doctrine provides the deterministic constraints and logic applied to that state.
 
-PEAS? Its a framework and vocabulary that helps define how an intelligent agent perceives and interacts with a given world. 
+PEAS? Its a framework and vocabulary that helps define how an intelligent agent perceives and interacts with a given world.
+
+This post is the synthesis of the two grammars in this series: the ontology's predicates are written in the [grammar of logic (Series 11)](../logic/blog.md), and its ubiquitous language is the [grammar of natural language (Series 12)](../natural-language/blog.md) vocabulary the design documents share.
 
 ## Adding Step 0 — Ontology / Vocabulary - to the Agent Design Process
 

@@ -1,10 +1,10 @@
-# [IA Series 13/n] The Grammar of Natural Language — A Term Sheet
+# [IA Series 12/n] The Grammar of Natural Language — A Term Sheet
 
 *This is a term sheet for the grammar of natural language, in the same spirit as the [Intelligent Agents Term Sheet](https://matt.thompson.gr/2025/05/16/ia-series-n-intelligent-agents.html) and the [Grammar of Logic](../logic/blog.md). The core terms come from the standard linguistics literature and Russell and Norvig's 'Artificial Intelligence: A Modern Approach' (Chapter 23).*
 
 ## Introduction
 
-My interest in meaning goes back to reading the Thesaurus as a kid — grammar didn't interest me much, but meaning did. The agents in this series are natural-language interfaces: they read prompts and write answers in this language. The grammar of logic (Series 11) is how an agent reasons; the grammar of natural language is how it communicates. The LLM agents I build sit exactly on that bridge, so the language they process deserves the same term-sheet treatment as the logic they reason in. This post is deliberately lean — a shared vocabulary, not a textbook.
+My interest in meaning goes back to reading the Thesaurus as a kid — grammar didn't interest me much, but meaning did. The agents in this series are natural-language interfaces: they read prompts and write answers in this language. The grammar of logic (Series 11) is how an agent reasons; the grammar of natural language (Series 12) is how it communicates. The LLM agents I build sit exactly on that bridge, so the language they process deserves the same term-sheet treatment as the logic they reason in. This post is deliberately lean — a shared vocabulary, not a textbook.
 
 ## The Grammar — Core Terminology
 
