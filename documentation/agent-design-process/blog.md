@@ -68,6 +68,14 @@ A fact, in the philosophically accepted sense, is a justified true belief — th
 | **static** | setup — granted once, fixed for the task |
 | **derived** | inference — entailed by other justified beliefs |
 
+These four kinds are not new coinage — each is an established concept:
+
+- **static** predicates are standard in planning ([PDDL](https://en.wikipedia.org/wiki/Planning_Domain_Definition_Language))
+- **exogenous** state variables — "one whose dynamics are independent of the agent's actions" — come from planning under uncertainty ([Chitnis & Lozano-Pérez 2019](https://arxiv.org/abs/1909.13870))
+- **derived** predicates appear in PDDL 2.2 (Edelkamp & Hoffmann 2004), in Datalog's intensional predicates (the [EDB/IDB split](https://en.wikipedia.org/wiki/Datalog)), and in situation calculus's defined fluents ([Reiter 2001](https://en.wikipedia.org/wiki/Situation_calculus))
+
+What this project contributes is the sharper **synchronous-entailment test** — *does the effector's successful return entail the fact?* — which draws the controllable/exogenous boundary without ambiguity, and the decision to tag every predicate with an explicit kind.
+
 Two consequences worth holding onto:
 
 - **Justification is not truth.** A belief can be well-justified and false — truth is determined relative to a model (the Grammar of Logic's Determination, Series 11), and a model can be wrong. The minimal loop's `"FINAL:"` marker is a belief justified by the very system being measured — an "irrational performance measure" — not by the world.
@@ -310,10 +318,10 @@ The shared vocabulary, agreed once so the schema above is checkable:
 
 | Kind | Definition | Example here |
 |---|---|---|
-| **controllable** | Determined by the agent's own action | `known`, `visited`, `cleared` |
-| **exogenous** | Determined by the world, outside the agent's control | `node`, `notifies`, `requires` |
-| **static** | Determined at setup — fixed for the task lifetime | `domain` |
-| **derived** | Determined by the system — computed from other predicates, never directly set | `reachable`, `is-leaf` |
+| **controllable** | the effector's successful return entails the fact — determined by the agent's own action | `known`, `visited`, `cleared` |
+| **exogenous** | the effector's return does not entail it — set by other agents or world processes | `node`, `notifies`, `requires` |
+| **static** | true at setup, never changed by any action or sensing | `domain` |
+| **derived** | computed by the state model, never asserted — entailed from other predicates | `reachable`, `is-leaf` |
 
 **Term definitions — one agreed meaning each:**
 
