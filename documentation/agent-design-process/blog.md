@@ -78,6 +78,22 @@ Scope it honestly: this is the **world ontology** — the environment the agent 
 
 The infra discovery agent walks an unknown pipeline graph — `commit` → `lint`, `unit-tests` → `integration-tests` → `merge-gate` → `deploy` — building belief one sensed node at a time. The environment holds the whole topology but withholds it: the agent can only query a node it has already reached. Here the world is the point, and Step 0 earns its keep.
 
+**The world, as instances:**
+
+```mermaid
+flowchart TD
+    commit --> lint
+    commit --> unit-tests
+    lint --> merge-gate
+    unit-tests --> integration-tests
+    unit-tests --> merge-gate
+    integration-tests --> merge-gate
+    merge-gate --> deploy
+
+    classDef goal fill:#3f7a5c,color:#fff
+    class deploy goal
+```
+
 ### The world ontology
 
 **Entities:**
@@ -107,6 +123,42 @@ The infra discovery agent walks an unknown pipeline graph — `commit` → `lint
 **Connections:** `notifies` and `requires` edges link nodes; the agent's belief is the discovered subgraph.
 
 **The belief state** — the point of this example. The world ontology is what gives the agent something to *hold belief about*: the minimal loop's world was the conversation, and there was nothing to model. Here the agent's belief is a real model of the world, built incrementally — `known` (heard of), `visited` (been there), `cleared` (requirements met) grow one sense at a time as the agent walks. This is the schema's controllable side doing real work.
+
+**The belief state, as a lifecycle:**
+
+```mermaid
+stateDiagram-v2
+    [*] --> Unknown
+    Unknown --> Known : SENSE names it
+    Known --> Visited : agent arrives
+    Visited --> Cleared : all requires cleared
+    Visited --> Blocked : requires unmet
+    Blocked --> Cleared : requires later clear
+    Cleared --> [*]
+```
+
+**Building belief, as a sequence:**
+
+```mermaid
+sequenceDiagram
+    participant A as DiscoveryAgent
+    participant W as World
+
+    A->>W: SENSE(commit)
+    W-->>A: notifies: lint, unit-tests
+    A->>A: RECORD known(lint), known(unit-tests)
+    A->>W: WALK(lint)
+    A->>W: SENSE(lint)
+    W-->>A: notifies: merge-gate
+    A->>A: RECORD known(merge-gate), visited(lint)
+    A->>W: WALK(merge-gate)
+    A->>W: SENSE(merge-gate)
+    W-->>A: notifies: deploy
+    A->>A: RECORD known(deploy), visited(merge-gate)
+    A->>W: WALK(deploy)
+    A->>A: SENSE(deploy) — is-leaf
+    A->>A: REPORT(descriptor)
+```
 
 **The world ontology, as a graph:**
 
