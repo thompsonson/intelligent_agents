@@ -1,4 +1,4 @@
-# [IA Series 11/n] Ontologies, Doctrine, and Ubiquitous Language
+# [IA Series 12/n] Ontologies, Doctrine, and Ubiquitous Language
 
 *This is an addition to the original term sheet. The core terminology is unchanged; the **[Agent Design Process](https://matt.thompson.gr/2025/05/16/ia-series-n-intelligent-agents.html)** has gained a Step 0 — Ontology / Vocabulary. The step introduces a living document you revisit.*
 
