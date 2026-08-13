@@ -225,7 +225,7 @@ Which leaves the post's point standing: the Kind axis is exactly what schema.org
 }
 ```
 
-The serialization carries the facts — there is no Kind field. How each fact is determined stays in the semantics layer, exactly as ADR D8 says.
+The serialization carries the facts — there is no Kind field. How each fact is determined stays in the semantics layer, exactly as the serialisation/semantics split above sets out.
 
 **The belief state, as a lifecycle:**
 
