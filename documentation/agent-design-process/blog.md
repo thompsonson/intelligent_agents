@@ -57,6 +57,22 @@ PEAS? Its a framework and vocabulary that helps define how an intelligent agent 
 
 This post is the synthesis of the two grammars in this series: the ontology's predicates are written in the [grammar of logic (Series 11)](../logic/blog.md), and its ubiquitous language is the [grammar of natural language (Series 12)](../natural-language/blog.md) vocabulary the design documents share.
 
+## Facts as justifiably held belief
+
+A fact, in the philosophically accepted sense, is a justified true belief — the analysis of knowledge that runs from Plato's *Theaetetus* forward: a proposition you hold, that is true, and that you are justified in holding. Everything the world ontology names is exactly that: a belief the agent holds about the world. And **Kind is the justification** — what entitles the agent to hold it.
+
+| Kind | Justified by |
+|---|---|
+| **exogenous** | sensing the world — the world itself is the justification |
+| **controllable** | the agent's own action — it made the fact so |
+| **static** | setup — granted once, fixed for the task |
+| **derived** | inference — entailed by other justified beliefs |
+
+Two consequences worth holding onto:
+
+- **Justification is not truth.** A belief can be well-justified and false — truth is determined relative to a model (the Grammar of Logic's Determination, Series 11), and a model can be wrong. The minimal loop's `"FINAL:"` marker is a belief justified by the very system being measured — an "irrational performance measure" — not by the world.
+- **The belief state is the controllable side.** Which facts the agent holds is justified by its own actions (sensing, recording); the exogenous facts are justified for it by the world. Kind draws that line before the agent's belief state appears later in this post.
+
 ## Adding Step 0 — Ontology / Vocabulary - to the Agent Design Process
 
 In formal systems or orchestration layers, an ontology is the state space and schema (like a graph of infra) that an agent navigates. PEAS assumes you already know the vocabulary for the environment you are building - at least as I learnt it.
