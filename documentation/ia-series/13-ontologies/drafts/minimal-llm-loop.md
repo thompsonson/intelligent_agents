@@ -69,7 +69,7 @@ graph LR
 
 The shared vocabulary, agreed once so the schema above is checkable:
 
-**Kind definitions** — a Kind says what *determines* a predicate's truth (the determination defined in the [Grammar of Logic term sheet](../../logic/blog.md)):
+**Kind definitions** — a Kind says what *determines* a predicate's truth (the determination defined in the [Grammar of Logic term sheet](../../11-grammar-of-logic/blog.md)):
 
 | Kind | Definition | Example here |
 |---|---|---|

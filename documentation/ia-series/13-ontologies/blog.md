@@ -1,3 +1,11 @@
+---
+title: "[IA Series 13/n] Ontologies, Doctrine, and Ubiquitous Language"
+summary: "Ontology is the map, doctrine is the strategy. The Agent Design Process gains a living ontology layer — facts as justifiably held beliefs, the world vs the agent ontology, and the infra discovery agent building belief one sensed node at a time."
+status: "draft"
+type: "post"
+categories: "ia-series, ontology"
+---
+
 # [IA Series 13/n] Ontologies, Doctrine, and Ubiquitous Language
 
 *This is an addition to the original term sheet. The core terminology is unchanged; the **[Agent Design Process](https://matt.thompson.gr/2025/05/16/ia-series-n-intelligent-agents.html)** has gained an **Ontology / Vocabulary** layer — a living document you revisit without end, not a numbered step in a sequence.*
@@ -56,7 +64,7 @@ In formal systems or orchestration layers, your ontology is the foundational sta
 
 PEAS? Its a framework and vocabulary that helps define how an intelligent agent perceives and interacts with a given world.
 
-This post is the synthesis of the two grammars in this series: the ontology's predicates are written in the [grammar of logic (Series 11)](../logic/blog.md), and its ubiquitous language is the [grammar of natural language (Series 12)](../natural-language/blog.md) vocabulary the design documents share.
+This post is the synthesis of the two grammars in this series: the ontology's predicates are written in the [grammar of logic (Series 11)](https://matt.thompson.gr/2026/08/13/125930.html), and its ubiquitous language is the [grammar of natural language (Series 12)](https://matt.thompson.gr/2026/08/13/131513.html) vocabulary the design documents share.
 
 ## Facts as justifiably held belief
 
@@ -107,21 +115,7 @@ The infra discovery agent walks an unknown pipeline graph — `commit` → `lint
 
 **The world, as instances:**
 
-```mermaid
-flowchart TD
-    commit --> lint
-    commit --> unit-tests
-    lint --> merge-gate
-    unit-tests --> integration-tests
-    unit-tests --> merge-gate
-    integration-tests --> merge-gate
-    merge-gate --> deploy
-
-    classDef goal fill:#3f7a5c,color:#fff
-    class deploy goal
-
-    legend["goal — the leaf the walk ends at"]:::goal
-```
+![The world, as instances](world-instances.svg)
 
 ### The world ontology
 
@@ -157,48 +151,7 @@ Predicates are the facts of the state — what can be asserted about the world, 
 
 **The world ontology, as a graph:**
 
-```mermaid
-graph LR
-    classDef type fill:#f5f4ef,stroke:#333,stroke-width:1px,color:#111
-    classDef exo stroke:#b85f1e,color:#b85f1e,fill:#fff,stroke-width:2px
-    classDef ctrl stroke:#2f6690,color:#2f6690,fill:#fff,stroke-width:2px
-    classDef der stroke:#3f7a5c,color:#3f7a5c,fill:#fff,stroke-width:2px
-
-    Node(["Node"]):::type
-    Edge(["Edge"]):::type
-    Domain(["Domain"]):::type
-    Status(["Status"]):::type
-
-    NodePred("node(id)"):::exo
-    Notifies("notifies(id, target)"):::exo
-    Requires("requires(id, target)"):::exo
-    Known("known(id)"):::ctrl
-    Visited("visited(id)"):::ctrl
-    Cleared("cleared(id)"):::ctrl
-    Reachable("reachable(from, to)"):::der
-    Leaf("is-leaf(id)"):::der
-
-    Node --> NodePred
-    Edge --> Notifies
-    Edge --> Requires
-    Node --> Known
-    Node --> Visited
-    Node --> Cleared
-    Edge --> Reachable
-    Node --> Leaf
-
-    Node -.connected by.-> Edge
-    Node -.lives in.-> Domain
-    Node -.carries.-> Status
-
-    subgraph LEGEND["Legend"]
-        direction LR
-        LT(["type — an entity"]):::type
-        LE("exogenous"):::exo
-        LC("controllable"):::ctrl
-        LD("derived"):::der
-    end
-```
+![The world ontology, as a graph](world-ontology.svg)
 
 **The formal ontologies — schema.org, RDF(S), and OWL:**
 
@@ -283,26 +236,7 @@ The schema defines the belief state as a JSON-LD object: the `BeliefState` type 
 
 **Building belief, as a sequence:**
 
-```mermaid
-sequenceDiagram
-    participant A as DiscoveryAgent
-    participant W as World
-
-    A->>W: SENSE(commit)
-    W-->>A: notifies: lint, unit-tests
-    A->>A: RECORD known(lint), known(unit-tests)
-    A->>W: WALK(lint)
-    A->>W: SENSE(lint)
-    W-->>A: notifies: merge-gate
-    A->>A: RECORD known(merge-gate), visited(lint)
-    A->>W: WALK(merge-gate)
-    A->>W: SENSE(merge-gate)
-    W-->>A: notifies: deploy
-    A->>A: RECORD known(deploy), visited(merge-gate)
-    A->>W: WALK(deploy)
-    A->>A: SENSE(deploy) — is-leaf
-    A->>A: REPORT(descriptor)
-```
+![Building belief, as a sequence](building-belief.svg)
 
 **An example belief state, from a run:**
 
@@ -335,7 +269,7 @@ A stored belief is not a guaranteed fact — it is justified by the agent's acti
 
 The shared vocabulary, agreed once so the schema above is checkable:
 
-**Kind definitions** — a Kind says what *determines* a predicate's truth (the determination defined in the [Grammar of Logic term sheet](../logic/blog.md)):
+**Kind definitions** — a Kind says what *determines* a predicate's truth (the determination defined in the [Grammar of Logic term sheet](https://matt.thompson.gr/2026/08/13/125930.html)):
 
 | Kind | Definition | Example here |
 |---|---|---|
@@ -395,14 +329,5 @@ The predicate, the triple, and the JSON-LD are the same statement — the gramma
 
 The lifecycle of a single node's belief — from unknown, through known and visited, to cleared or blocked:
 
-```mermaid
-stateDiagram-v2
-    [*] --> Unknown
-    Unknown --> Known : SENSE names it
-    Known --> Visited : agent arrives
-    Visited --> Cleared : all requires cleared
-    Visited --> Blocked : requires unmet
-    Blocked --> Cleared : requires later clear
-    Cleared --> [*]
-```
+![The belief state, as a lifecycle](belief-lifecycle.svg)
 

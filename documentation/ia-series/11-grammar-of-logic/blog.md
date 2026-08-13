@@ -1,3 +1,10 @@
+---
+title: "[IA Series 11/n] The Grammar of Logic — A Term Sheet"
+status: "draft"
+type: "post"
+categories: "ia-series, logic"
+---
+
 # [IA Series 11/n] The Grammar of Logic — A Term Sheet
 
 *This is a term sheet for the grammar of logic, in the same spirit as the original [Intelligent Agents Term Sheet](https://matt.thompson.gr/2025/05/16/ia-series-n-intelligent-agents.html). Most terms come from Russell and Norvig's 'Artificial Intelligence: A Modern Approach' (Chapters 7-8) and the standard literature on formal logic.*

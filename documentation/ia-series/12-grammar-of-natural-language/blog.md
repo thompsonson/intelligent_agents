@@ -1,6 +1,13 @@
+---
+title: "[IA Series 12/n] The Grammar of Natural Language — A Term Sheet"
+status: "draft"
+type: "post"
+categories: "ia-series, natural-language"
+---
+
 # [IA Series 12/n] The Grammar of Natural Language — A Term Sheet
 
-*This is a term sheet for the grammar of natural language, in the same spirit as the [Intelligent Agents Term Sheet](https://matt.thompson.gr/2025/05/16/ia-series-n-intelligent-agents.html) and the [Grammar of Logic](../logic/blog.md). The core terms come from the standard linguistics literature and Russell and Norvig's 'Artificial Intelligence: A Modern Approach' (Chapter 23).*
+*This is a term sheet for the grammar of natural language, in the same spirit as the [Intelligent Agents Term Sheet](https://matt.thompson.gr/2025/05/16/ia-series-n-intelligent-agents.html) and the [Grammar of Logic](https://matt.thompson.gr/2026/08/13/125930.html). The core terms come from the standard linguistics literature and Russell and Norvig's 'Artificial Intelligence: A Modern Approach' (Chapter 23).*
 
 ## Introduction
 
