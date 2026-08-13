@@ -126,42 +126,6 @@ flowchart TD
 
 **The belief state** — the point of this example. The world ontology is what gives the agent something to *hold belief about*: the minimal loop's world was the conversation, and there was nothing to model. Here the agent's belief is a real model of the world, built incrementally — `known` (heard of), `visited` (been there), `cleared` (requirements met) grow one sense at a time as the agent walks. This is the schema's controllable side doing real work.
 
-**The belief state, as a lifecycle:**
-
-```mermaid
-stateDiagram-v2
-    [*] --> Unknown
-    Unknown --> Known : SENSE names it
-    Known --> Visited : agent arrives
-    Visited --> Cleared : all requires cleared
-    Visited --> Blocked : requires unmet
-    Blocked --> Cleared : requires later clear
-    Cleared --> [*]
-```
-
-**Building belief, as a sequence:**
-
-```mermaid
-sequenceDiagram
-    participant A as DiscoveryAgent
-    participant W as World
-
-    A->>W: SENSE(commit)
-    W-->>A: notifies: lint, unit-tests
-    A->>A: RECORD known(lint), known(unit-tests)
-    A->>W: WALK(lint)
-    A->>W: SENSE(lint)
-    W-->>A: notifies: merge-gate
-    A->>A: RECORD known(merge-gate), visited(lint)
-    A->>W: WALK(merge-gate)
-    A->>W: SENSE(merge-gate)
-    W-->>A: notifies: deploy
-    A->>A: RECORD known(deploy), visited(merge-gate)
-    A->>W: WALK(deploy)
-    A->>A: SENSE(deploy) — is-leaf
-    A->>A: REPORT(descriptor)
-```
-
 **The world ontology, as a graph:**
 
 ```mermaid
@@ -205,6 +169,42 @@ graph LR
         LC("controllable"):::ctrl
         LD("derived"):::der
     end
+```
+
+**The belief state, as a lifecycle:**
+
+```mermaid
+stateDiagram-v2
+    [*] --> Unknown
+    Unknown --> Known : SENSE names it
+    Known --> Visited : agent arrives
+    Visited --> Cleared : all requires cleared
+    Visited --> Blocked : requires unmet
+    Blocked --> Cleared : requires later clear
+    Cleared --> [*]
+```
+
+**Building belief, as a sequence:**
+
+```mermaid
+sequenceDiagram
+    participant A as DiscoveryAgent
+    participant W as World
+
+    A->>W: SENSE(commit)
+    W-->>A: notifies: lint, unit-tests
+    A->>A: RECORD known(lint), known(unit-tests)
+    A->>W: WALK(lint)
+    A->>W: SENSE(lint)
+    W-->>A: notifies: merge-gate
+    A->>A: RECORD known(merge-gate), visited(lint)
+    A->>W: WALK(merge-gate)
+    A->>W: SENSE(merge-gate)
+    W-->>A: notifies: deploy
+    A->>A: RECORD known(deploy), visited(merge-gate)
+    A->>W: WALK(deploy)
+    A->>A: SENSE(deploy) — is-leaf
+    A->>A: REPORT(descriptor)
 ```
 
 ### The ubiquitous language
