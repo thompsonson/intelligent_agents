@@ -24,23 +24,25 @@ The [previous post](../13-ontologies/blog.md) established the acquisition half: 
 
 That caveat is the whole problem in miniature. The held belief *was* a fact — true at the moment it was sensed. But it is **exogenous**: its truth is set by the world, and the world can change after the sensing. So between one sense and the next, a belief gained by visiting a node can **drift out of sync with the world state** — not because it was a guess, but because the world it was sensed from won't sit still. The world is what the search moves through; the belief is what the search holds. They are different things, and the gap between them is the subject of this post.
 
-## Three layers, not two
+## Four layers, not three
 
 In IA 13 I collapsed two layers I should have kept apart. The discovery agent has:
 
 1. **The world (ontic)** — the actual infra graph: nodes, `notifies`, `requires`. The agent observes it by sensing nodes it reaches, but it never **holds** the world — only copies of it.
 2. **The belief (epistemic)** — the agent's *copies* of the world's facts, folded into `known`/`visited`/`cleared` and the recorded edges. This is a growing, append-only record.
-3. **The declared** — the agent's own commitments (its workflow state), distinct from both.
+3. **The environment** — the LLM's reasoning context and the artifacts it produces — where the LLM lives.
+4. **The declared** — the agent's own commitments (its workflow state), distinct from the others.
 
 | Layer | What it holds | Source |
 |---|---|---|
 | **World** (ontic `W`) | the actual state of the infra estate | mutable; observed through sensing — the agent holds a copy, never the world itself |
-| **Belief** (epistemic `S_env`) | copies of sensed facts + the agent's controllable assertions | append-only; the agent's model |
+| **Belief** (epistemic) | copies of sensed facts + the agent's controllable assertions | append-only; the agent's model |
+| **Environment** (`S_env`) | the LLM's reasoning context and artifacts | where the LLM lives |
 | **Declared** (`S_workflow`) | the agent's own commitments and workflow state | the agent's intent |
 
-One epistemic store, two declared ontologies (the world's `:domain` and the agent's loop), one ontic world behind it. The belief store is not the world, and the agent's declared state is not the belief store.
+One ontic world behind them all. The belief state is the agent's epistemic record of it; the environment is where the LLM lives; the declared is the agent's own commitments. The belief state is not the world, not the LLM's context, and not the declared.
 
-The drift problem lives in the middle layer: **the epistemic copy can diverge from the ontic world**, and nothing in the current vocabulary names that divergence.
+The drift problem lives in the middle layer: **the epistemic copy stored in the belief state can diverge from the ontic world**, and nothing in the current vocabulary names that divergence.
 
 ## The two channels
 
