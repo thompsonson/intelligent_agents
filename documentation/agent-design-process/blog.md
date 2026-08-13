@@ -1,12 +1,12 @@
 # [IA Series 13/n] Ontologies, Doctrine, and Ubiquitous Language
 
-*This is an addition to the original term sheet. The core terminology is unchanged; the **[Agent Design Process](https://matt.thompson.gr/2025/05/16/ia-series-n-intelligent-agents.html)** has gained a Step 0 — Ontology / Vocabulary. The step introduces a living document you revisit.*
+*This is an addition to the original term sheet. The core terminology is unchanged; the **[Agent Design Process](https://matt.thompson.gr/2025/05/16/ia-series-n-intelligent-agents.html)** has gained an **Ontology / Vocabulary** layer — a living document you revisit without end, not a numbered step in a sequence.*
 
 ## Introduction
 
 I've come around to ontology. It speaks to me, my interest in meaning goes back to reading the Thesaurus as a kid, grammar didn't interest me as much, but meaning is fascinating, probably the birth of Context Is All you Need :) 
 
-I'm here building an agent that will navigate through a maze of infrastructure and writing a DSL to express the actions. I was creating a graph of nodes and edges where the nodes have domains, types, and legal actions; the edges connect the nodes to express dependancy.
+I arrived at this point whilst building an agent that navigates through a maze of infrastructure. The agent creates a typical graph of nodes and edges: the nodes are labelled by domains, types, and legal actions, and the edges are labelled to express the relation between the nodes.
 
 This led to this comment in my session with Claude (spelling mistake is kept for honesty!): 
 
@@ -28,9 +28,11 @@ This is getting more useful as a definition - [Formal Ontology from Wikipedia](h
 
 It's a graph of objects with specific relations. Voilà. 
 
-### Context on application of Ontologies
+### Frameworks with ontologies
 
-I've been a big fan of these systems without really understanding the components of them. I'd thought of them as ways of acting in different contexts, and treated it like a skill, apparently common sense once I'd learnt the frameworks.
+In connecting the dots I like to refer to frameworks that help me understand the world I work in. These are frameworks I've actively applied, which I've found to be common sense and to make situations flow. 
+
+In looking at ontology in greater detail, I see that these frameworks themselves have inherent ontologies that define the world and provide approaches to navigate the situation. For a given context I find them excellent for their simplicity and clarity.
 
 * **[Situational Leadership](https://en.wikipedia.org/wiki/Situational_leadership_theory):** The ontology defines the developmental level of the individual (their competence and commitment). The doctrine is the specific leadership style applied to that exact profile.
 * **[Cynefin Framework](https://en.wikipedia.org/wiki/Cynefin_framework):** The ontology defines the state of the environment (Clear, Complicated, Complex, Chaotic). The doctrine dictates how you must alter your decision-making process for that specific state.
@@ -49,7 +51,6 @@ Here is how they stack together in system design:
 
 * **Ontology (The "What"):** Defines what exists. It establishes the vocabulary, entities, boundaries, and relationships in your environment. You have to formally define what a "workload," "trusted zone," or "critical asset" actually is.
 * **Doctrine (The "How"):** Defines how you behave. It establishes the rules, policies, and strategic intent governing those entities (e.g., "critical assets must be isolated from untrusted zones").
-* **Structure (The "With What"):** The actual implementation, tools, or physical architecture used to enforce the doctrine.
 
 In formal systems or orchestration layers, your ontology is the foundational state space and schema (like the definitions in a belief store). Your doctrine provides the deterministic constraints and logic applied to that state.
 
@@ -59,7 +60,7 @@ This post is the synthesis of the two grammars in this series: the ontology's pr
 
 ## Facts as justifiably held belief
 
-A fact, in the philosophically accepted sense, is a justified true belief — the analysis of knowledge that runs from Plato's *Theaetetus* forward: a proposition you hold, that is true, and that you are justified in holding. Everything the world ontology names is exactly that: a belief the agent holds about the world. And **Kind is the justification** — what entitles the agent to hold it.
+A fact, in the philosophically accepted sense, is a [justified true belief](https://en.wikipedia.org/wiki/Justified_true_belief) — the analysis of knowledge that runs from Plato's *Theaetetus* forward: a proposition you hold, that is true, and that you are justified in holding. Everything the world ontology names is exactly that: a belief the agent holds about the world. And **Kind is the justification** — what entitles the agent to hold it.
 
 | Kind | Justified by |
 |---|---|
@@ -79,13 +80,13 @@ What this project contributes is the sharper **synchronous-entailment test** —
 Two consequences worth holding onto:
 
 - **Justification is not truth.** A belief can be well-justified and false — truth is determined relative to a model (the Grammar of Logic's Determination, Series 11), and a model can be wrong. The minimal loop's `"FINAL:"` marker is a belief justified by the very system being measured — an "irrational performance measure" — not by the world.
-- **The belief state is the controllable side.** Which facts the agent holds is justified by its own actions (sensing, recording); the exogenous facts are justified for it by the world. Kind draws that line before the agent's belief state appears later in this post.
+- **The belief state is the controllable side.** Which facts the agent holds is justified by its own actions (sensing, recording); the exogenous facts are justified for it by the world at the point in time the sensing or acting happens. Kind draws that line before the agent's belief state appears later in this post.
 
-## Adding Step 0 — Ontology / Vocabulary - to the Agent Design Process
+## Ontology / Vocabulary — a living layer of the Agent Design Process
 
 In formal systems or orchestration layers, an ontology is the state space and schema (like a graph of infra) that an agent navigates. PEAS assumes you already know the vocabulary for the environment you are building - at least as I learnt it.
 
-So defining your environment is a step that should be done as a first pass before PEAS; then a living document, re-entered whenever a later step exposes a gap. As with DDD, the model should be considered flexible, as you learn more about the domain you update the ontology.
+So defining your environment is a practice that begins before PEAS — a first pass, then a living document, re-entered whenever a later step exposes a gap. As with DDD, the model should be considered flexible: as you learn more about the domain, you update the ontology.
 
 Two artefacts, because they fail differently:
 
@@ -94,13 +95,13 @@ Two artefacts, because they fail differently:
 | **Schema** | The types and predicates of the domain, each classified by its **Kind** — **controllable**, **exogenous**, **static**, or **derived** (the definitions live in the ubiquitous language) | *"I'm missing a predicate"* — the structure can't express something the design needs |
 | **Ubiquitous language** | The shared naming and vocabulary for those types and predicates, agreed so every design document means the same thing by the same word | *"Two docs use the same word for different things"* — the naming drifts and the design reads inconsistently |
 
-Scope it honestly: this is the **world ontology** — the environment the agent navigates and acts in: its entities, predicates, actions, and connections. It is not the **agent ontology**, which uses the PEAS meta-ontology to define the agent loop itself (percept, agent function). Confusing the two is the most common way the step goes wrong.
+Scope it honestly: this is the **world ontology** — the environment the agent navigates and acts in: its entities, predicates, actions, and connections. It is not the **agent ontology**, which uses the PEAS meta-ontology to define the agent loop itself (percept, agent function). Confusing the two is the most common way this goes wrong.
 
-**When to re-enter Step 0:** it is a *normal, expected* loop-back, not a process violation. The clearest signals are in Step 2 (the environment's properties don't fit what Step 0 declared) and Step 3 (a persistent-state variable has no home in the schema). Discovering "I need an ontology" mid-build — usually after the Agent Function step — is how this step tends to be found in practice.
+**When the ontology is re-entered:** it is a *normal, expected* loop-back, not a process violation. The clearest signals are in Step 2 (the environment's properties don't fit what the ontology declared) and Step 3 (a persistent-state variable has no home in the schema). Discovering "I need an ontology" mid-build — usually after the Agent Function step — is how it tends to be found in practice.
 
 ## The Agent Design Process in practice: the infra discovery agent
 
-The infra discovery agent walks an unknown pipeline graph — `commit` → `lint`, `unit-tests` → `integration-tests` → `merge-gate` → `deploy` — building belief one sensed node at a time. The environment holds the whole topology but withholds it: the agent can only query a node it has already reached. Here the world is the point, and Step 0 earns its keep.
+The infra discovery agent walks an unknown pipeline graph — `commit` → `lint`, `unit-tests` → `integration-tests` → `merge-gate` → `deploy` — building belief one sensed node at a time. The environment holds the whole topology but withholds it: the agent can only query a node it has already reached. Here the world is the point, and the ontology earns its keep.
 
 **The world, as instances:**
 
@@ -199,7 +200,7 @@ graph LR
 
 The world ontology above is informal — entities, predicates, actions, and connections, with a Kind for each fact. When the ontology must be shared, queried, or reasoned over by tools, it gets written in a formal ontology language. Three stand out:
 
-- **schema.org** — the practical vocabulary of the web: a large shared set of types and properties (THINGS) that sites use to describe themselves. You *reuse* its types rather than define your own — the ready-made cousin of Step 0's ubiquitous language. Its cost: it's someone else's vocabulary; the terms aren't yours to agree.
+- **schema.org** — the practical vocabulary of the web: a large shared set of types and properties (THINGS) that sites use to describe themselves. You *reuse* its types rather than define your own — the ready-made cousin of the ontology's ubiquitous language. Its cost: it's someone else's vocabulary; the terms aren't yours to agree.
 - **RDF / RDFS** — the triple model: every fact is a `subject predicate object` statement. The post's predicates map straight onto it — `notifies(lint, merge-gate)` is the triple `lint notifies merge-gate`. RDFS layers class and property hierarchies on top (`subClassOf`, `subPropertyOf`).
 - **OWL** — the Web Ontology Language, built on description logic: classes, properties, individuals, and axioms, with a reasoner that *entails* what follows. This is where the post's `derived` predicates meet the Grammar of Logic's entailment (⊨) — OWL axioms are the rules, and the reasoner computes `reachable` and `is-leaf` exactly as the logic sheet's Determination describes. What OWL does not express is **Kind**: nothing in RDF(S)/OWL says whether a fact is exogenous, controllable, static, or derived. That determination axis is this post's addition — the one the formal standards leave to you.
 
@@ -220,7 +221,7 @@ Serialisation is the form a fact takes to be shared; semantics is what determine
 
 The world ontology's facts serialize onto schema.org Action types and properties: `actionStatus` (the lifecycle + guard verdict), `agent` (the acting entity), `object` (the entity acted on), `result` (the verdict), `instrument` (the effector), `target` (the grounded task), `error` (the failure cause).
 
-This is also where the ubiquitous language artefact does real work: schema.org has no `Agent`, `SensedFact`, `WorldState`, or `passed`/`predicate`/`args`/`value`, so the custom terms are scoped to a `dev:` namespace in the JSON-LD context. That is Step 0's UL in action — the terms that don't exist in the shared vocabulary are namespaced into your own, so they never collide with schema.org's.
+This is also where the ubiquitous language artefact does real work: schema.org has no `Agent`, `SensedFact`, `WorldState`, or `passed`/`predicate`/`args`/`value`, so the custom terms are scoped to a `dev:` namespace in the JSON-LD context. That is the ontology's UL in action — the terms that don't exist in the shared vocabulary are namespaced into your own, so they never collide with schema.org's.
 
 Which leaves the post's point standing: the Kind axis is exactly what schema.org cannot express. `reachable` and `is-leaf` are derived facts with no serialization home — their determination must live in the semantics layer, not the audit view. Using schema.org *only* is a decision about which layer carries what, not a claim that the ontology is shallow.
 
@@ -336,7 +337,7 @@ The shared vocabulary, agreed once so the schema above is checkable:
 
 ### The degenerate contrast: the minimal LLM loop
 
-Even the minimal loop needs Step 0 — a schema and a ubiquitous language are still required, and doing them from the start is right. But its world is the conversation: two exogenous facts (`received(prompt)`, `received(response)`), one accumulated state (`context`), and nothing to have belief *about*. Almost everything degenerates to exogenous, and there is no belief state. That is what this example fixes: the infra agent's ontology is the scaffold for a belief the minimal loop cannot hold. (The minimal loop's full walk-through is preserved as a draft for further work on the agent loop — `drafts/minimal-llm-loop.md`.)
+Even the minimal loop needs an ontology — a schema and a ubiquitous language are still required, and doing them from the start is right. But its world is the conversation: two exogenous facts (`received(prompt)`, `received(response)`), one accumulated state (`context`), and nothing to have belief *about*. Almost everything degenerates to exogenous, and there is no belief state. That is what this example fixes: the infra agent's ontology is the scaffold for a belief the minimal loop cannot hold. (The minimal loop's full walk-through is preserved as a draft for further work on the agent loop — `drafts/minimal-llm-loop.md`.)
 
 ### Re-entry stays open
 
