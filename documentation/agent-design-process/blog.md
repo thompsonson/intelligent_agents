@@ -171,6 +171,24 @@ graph LR
     end
 ```
 
+**The formal ontologies — schema.org, RDF(S), and OWL:**
+
+The world ontology above is informal — entities, predicates, actions, and connections, with a Kind for each fact. When the ontology must be shared, queried, or reasoned over by tools, it gets written in a formal ontology language. Three stand out:
+
+- **schema.org** — the practical vocabulary of the web: a large shared set of types and properties (THINGS) that sites use to describe themselves. You *reuse* its types rather than define your own — the ready-made cousin of Step 0's ubiquitous language. Its cost: it's someone else's vocabulary; the terms aren't yours to agree.
+- **RDF / RDFS** — the triple model: every fact is a `subject predicate object` statement. The post's predicates map straight onto it — `notifies(lint, merge-gate)` is the triple `lint notifies merge-gate`. RDFS layers class and property hierarchies on top (`subClassOf`, `subPropertyOf`).
+- **OWL** — the Web Ontology Language, built on description logic: classes, properties, individuals, and axioms, with a reasoner that *entails* what follows. This is where the post's `derived` predicates meet the Grammar of Logic's entailment (⊨) — OWL axioms are the rules, and the reasoner computes `reachable` and `is-leaf` exactly as the logic sheet's Determination describes. What OWL does not express is **Kind**: nothing in RDF(S)/OWL says whether a fact is exogenous, controllable, static, or derived. That determination axis is this post's addition — the one the formal standards leave to you.
+
+**The link to schema.org — the atomicguard decision (ADR D8):**
+
+The world ontology maps onto schema.org the way the repo's atomicguard work already decided: use schema.org **exclusively**, but as the *serialization and audit layer, not the semantics layer* (ADR D8, `docs/design/decisions/dspddl_pddl_alignment.md`). schema.org has no preconditions-over-state, no effects, no derived facts, and no reasoner — so the semantics stay in the planning language (DS-PDDL), and schema.org only renders the record for external consumption: guides, audit trails, interoperability.
+
+The world ontology's facts serialize onto schema.org Action types and properties: `actionStatus` (the lifecycle + guard verdict), `agent` (the acting entity), `object` (the entity acted on), `result` (the verdict), `instrument` (the effector), `target` (the grounded task), `error` (the failure cause).
+
+This is also where the ubiquitous language artefact does real work: schema.org has no `Agent`, `SensedFact`, `WorldState`, or `passed`/`predicate`/`args`/`value`, so the custom terms are scoped to a `dev:` namespace in the JSON-LD context (`src/atomicguard/domain/planning/schemaorg.py`). That is Step 0's UL in action — the terms that don't exist in the shared vocabulary are namespaced into your own, so they never collide with schema.org's.
+
+Which leaves the post's point standing: the Kind axis is exactly what schema.org cannot express. `reachable` and `is-leaf` are derived facts with no serialization home — their determination must live in the semantics layer, not the audit view. Using schema.org *only* is a decision about which layer carries what, not a claim that the ontology is shallow.
+
 **The belief state, as a lifecycle:**
 
 ```mermaid
