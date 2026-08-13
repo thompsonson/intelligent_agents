@@ -72,7 +72,7 @@ These four kinds are not new coinage — each is an established concept:
 
 - **static** predicates are standard in planning ([PDDL](https://en.wikipedia.org/wiki/Planning_Domain_Definition_Language))
 - **exogenous** state variables — "one whose dynamics are independent of the agent's actions" — come from planning under uncertainty ([Chitnis & Lozano-Pérez 2019](https://arxiv.org/abs/1909.13870))
-- **derived** predicates appear in PDDL 2.2 (Edelkamp & Hoffmann 2004), in Datalog's intensional predicates (the [EDB/IDB split](https://en.wikipedia.org/wiki/Datalog)), and in situation calculus's defined fluents ([Reiter 2001](https://en.wikipedia.org/wiki/Situation_calculus))
+- **derived** predicates appear in [PDDL 2.2](https://en.wikipedia.org/wiki/Planning_Domain_Definition_Language) (Edelkamp & Hoffmann 2004), in Datalog's intensional predicates (the [EDB/IDB split](https://en.wikipedia.org/wiki/Datalog)), and in situation calculus's defined fluents ([Reiter 2001](https://en.wikipedia.org/wiki/Situation_calculus))
 
 What this project contributes is the sharper **synchronous-entailment test** — *does the effector's successful return entail the fact?* — which draws the controllable/exogenous boundary without ambiguity, and the decision to tag every predicate with an explicit kind.
 
