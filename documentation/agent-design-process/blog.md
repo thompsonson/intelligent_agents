@@ -92,6 +92,8 @@ flowchart TD
 
     classDef goal fill:#3f7a5c,color:#fff
     class deploy goal
+
+    legend["goal — the leaf the walk ends at"]:::goal
 ```
 
 ### The world ontology
@@ -195,6 +197,14 @@ graph LR
     Node -.connected by.-> Edge
     Node -.lives in.-> Domain
     Node -.carries.-> Status
+
+    subgraph LEGEND["Legend"]
+        direction LR
+        LT(["type — an entity"]):::type
+        LE("exogenous"):::exo
+        LC("controllable"):::ctrl
+        LD("derived"):::der
+    end
 ```
 
 ### The ubiquitous language
