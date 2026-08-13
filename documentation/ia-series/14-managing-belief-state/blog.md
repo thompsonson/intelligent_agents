@@ -2,6 +2,22 @@
 
 *Draft. Following on from [Ontologies, Doctrine, and Ubiquitous Language](../13-ontologies/blog.md), which stored a fact as a belief. This post is about what happens after you hold one — and the vocabulary the agent needs the moment the world won't sit still.*
 
+## Defining the belief state
+
+"Belief state" has two meanings in the literature. In AIMA it is the set of possible states consistent with what the agent has perceived — an epistemic record. In POMDP planning it is a probability distribution over states. This post means the AIMA sense: the belief state is what the agent knows, not a distribution over what might be.
+
+Two terms carry the definition.
+
+**Epistemic** — pertaining to knowledge: what an agent holds as known, as distinct from what is the case. The agent's grip on the world is always epistemic — incomplete, possibly stale, possibly false. The world is **ontic**: whatever it actually is, regardless of what the agent holds.
+
+**Belief state** — the agent's epistemic record: the persistent, entity-indexed store of its held copies of world facts, each carrying provenance (when, how, by what it was obtained) and a Kind (who determines its truth). It is not the world it models, not the agent's declared commitments, and not the loop that reads and writes it.
+
+AIMA already names the store: the **knowledge base** — "the set of sentences an agent holds to be true," from the Grammar of Logic term sheet (IA 11). The belief state is the runtime instance of that KB: the KB is the declarative structure, the belief state its held, versioned form.
+
+Managing it has its own literature. **Belief revision** (Alchourrón, Gärdenfors & Makinson 1985) is the theory of how beliefs change — revision, contraction, expansion. **Truth maintenance** (Doyle 1979; de Kleer 1986) holds beliefs with justifications and retracts them when a justification fails — which is the Kind story: justification is what Kind names, retraction is what the freshness axis must make declarative. The planning tradition that assumes a fully-known initial state — HTN planners among them — needs no belief state, because there is nothing uncertain to hold. The unknown world is where it earns its keep.
+
+The gap the rest of this post is about: **the world is ontic; the belief state is epistemic; and the two can drift apart.**
+
 ## Storing was the easy half
 
 The [previous post](../13-ontologies/blog.md) established the acquisition half: a fact is a justified true belief, and storing it as a belief is **SENSE → RECORD** — the agent senses the world's exogenous predicates (`node`, `notifies`, `requires`) and records them into its own controllable ones (`known`, `visited`, `cleared`). The temporal caveat was already there: *a fact was true at the point in time it was sensed, or the action was taken.*
