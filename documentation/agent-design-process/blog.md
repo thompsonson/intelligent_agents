@@ -141,14 +141,14 @@ graph LR
 
 The shared vocabulary, agreed once so the schema above is checkable:
 
-**Kind definitions:**
+**Kind definitions** — a Kind says what *determines* a predicate's truth (the determination defined in the [Grammar of Logic term sheet](../logic/blog.md)):
 
 | Kind | Definition | Example here |
 |---|---|---|
-| **controllable** | Set by the agent's own action | `context` |
-| **exogenous** | Sensed from the world, outside the agent's control | `received(prompt)`, `received(response)` |
-| **static** | Fixed for the task lifetime | — (none yet) |
-| **derived** | Computed from other predicates, never directly set | `answer(response)`, `is_final(response)` |
+| **controllable** | Determined by the agent's own action | `context` |
+| **exogenous** | Determined by the world, outside the agent's control | `received(prompt)`, `received(response)` |
+| **static** | Determined at setup — fixed for the task lifetime | — (none yet) |
+| **derived** | Determined by the system — computed from other predicates, never directly set | `answer(response)`, `is_final(response)` |
 
 **Term definitions — one agreed meaning each:**
 

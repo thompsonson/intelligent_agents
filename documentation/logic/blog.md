@@ -68,6 +68,7 @@ Everything else is not a sentence of the language — no matter how plausible it
 
 - **Interpretation**: An assignment of meaning to a language — a domain plus a mapping that names the constants, predicates, and functions in it.
 - **Model**: An interpretation that makes a given sentence (or set of sentences) true.
+- **Determination**: A sentence has no intrinsic truth. The grammar determines what is well-formed; truth is determined relative to an interpretation, and which interpretation is intended is *attributed* — chosen by a human modeling the world, not discovered. No truth without a model; no model without an attributed interpretation.
 - **Domain (universe)**: The set of objects an interpretation ranges over.
 - **Truth value**: True or false — what a sentence receives relative to an interpretation.
 - **Truth table**: A complete enumeration of a connective's truth behaviour for all combinations of its arguments.
