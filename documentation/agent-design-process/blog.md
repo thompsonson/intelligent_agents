@@ -189,6 +189,33 @@ This is also where the ubiquitous language artefact does real work: schema.org h
 
 Which leaves the post's point standing: the Kind axis is exactly what schema.org cannot express. `reachable` and `is-leaf` are derived facts with no serialization home — their determination must live in the semantics layer, not the audit view. Using schema.org *only* is a decision about which layer carries what, not a claim that the ontology is shallow.
 
+**The world ontology, as JSON-LD — the audit record:**
+
+```json
+{
+  "@context": {
+    "@vocab": "https://schema.org/",
+    "dev": "https://dev.example.org/",
+    "Agent": { "@id": "dev:Agent", "@subClassOf": "https://schema.org/Organization" },
+    "Node": "dev:Node",
+    "SensedFact": "dev:SensedFact",
+    "notifies": "dev:notifies",
+    "requires": "dev:requires"
+  },
+  "@type": "Action",
+  "actionStatus": "CompletedActionStatus",
+  "agent": { "@type": "Agent", "@id": "dev:discovery-agent" },
+  "object": { "@type": "Node", "@id": "dev:merge-gate" },
+  "result": {
+    "@type": "SensedFact",
+    "notifies": "dev:deploy",
+    "requires": "dev:lint, dev:integration-tests"
+  }
+}
+```
+
+The serialization carries the facts — there is no Kind field. How each fact is determined stays in the semantics layer, exactly as ADR D8 says.
+
 **The belief state, as a lifecycle:**
 
 ```mermaid
@@ -225,6 +252,29 @@ sequenceDiagram
     A->>A: REPORT(descriptor)
 ```
 
+**The belief state, as JSON-LD:**
+
+```json
+{
+  "@context": {
+    "@vocab": "https://schema.org/",
+    "dev": "https://dev.example.org/",
+    "BeliefState": "dev:BeliefState",
+    "known": "dev:known",
+    "visited": "dev:visited",
+    "cleared": "dev:cleared",
+    "blocked": "dev:blocked"
+  },
+  "@type": "BeliefState",
+  "known": ["dev:commit", "dev:lint", "dev:unit-tests", "dev:integration-tests", "dev:merge-gate", "dev:deploy"],
+  "visited": ["dev:commit", "dev:lint", "dev:merge-gate", "dev:deploy"],
+  "cleared": ["dev:commit", "dev:lint", "dev:unit-tests", "dev:integration-tests", "dev:merge-gate"],
+  "blocked": []
+}
+```
+
+This serializes the lifecycle's states (`known`/`visited`/`cleared`/`blocked`) as the belief object.
+
 ### The ubiquitous language
 
 The shared vocabulary, agreed once so the schema above is checkable:
@@ -256,4 +306,32 @@ Even the minimal loop needs Step 0 — a schema and a ubiquitous language are st
 ### Re-entry stays open
 
 The vocabulary was right from the start — nothing here needs re-entering yet. That is the point of doing it properly: when the design grows, re-entry is a deliberate change you make, not a defect you discover.
+
+## Appendix — a predicate as RDF triple and JSON-LD
+
+The world ontology's predicates are atomic sentences of the grammar of logic (Series 11). A single fact, shown three ways:
+
+`notifies(lint, merge-gate)`
+
+as an RDF triple:
+
+```text
+<https://dev.example.org/lint>  dev:notifies  <https://dev.example.org/merge-gate>
+```
+
+and the same fact as compact JSON-LD:
+
+```json
+{
+  "@context": {
+    "@vocab": "https://schema.org/",
+    "dev": "https://dev.example.org/",
+    "notifies": "dev:notifies"
+  },
+  "@id": "dev:lint",
+  "notifies": "dev:merge-gate"
+}
+```
+
+The predicate, the triple, and the JSON-LD are the same statement — the grammar determines the shape, the serialization chooses the form.
 
