@@ -22,7 +22,7 @@ The gap the rest of this post is about: **the world is ontic; the belief state i
 
 The [previous post](../13-ontologies/blog.md) established the acquisition half: a fact is a justified true belief, and storing it as a belief is **SENSE → RECORD** — the agent senses the world's exogenous predicates (`node`, `notifies`, `requires`) and records them into its own controllable ones (`known`, `visited`, `cleared`). The temporal caveat was already there: *a fact was true at the point in time it was sensed, or the action was taken.*
 
-That caveat is the whole problem in miniature. Between one sense and the next, the held belief is a *prediction*, not a fact — and a belief gained by visiting a node can go **out of sync with the world state**. The world is what the search moves through; the belief is what the search holds. They are different things, and the gap between them is the subject of this post.
+That caveat is the whole problem in miniature. The held belief *was* a fact — true at the moment it was sensed. But it is **exogenous**: its truth is set by the world, and the world can change after the sensing. So between one sense and the next, a belief gained by visiting a node can **drift out of sync with the world state** — not because it was a guess, but because the world it was sensed from won't sit still. The world is what the search moves through; the belief is what the search holds. They are different things, and the gap between them is the subject of this post.
 
 ## Three layers, not two
 
