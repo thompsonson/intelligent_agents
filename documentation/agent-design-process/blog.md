@@ -86,9 +86,9 @@ Two consequences worth holding onto:
 
 ## Ontology / Vocabulary — a living layer of the Agent Design Process
 
-In formal systems or orchestration layers, an ontology is the state space and schema (like a graph of infra) that an agent navigates. PEAS assumes you already know the vocabulary for the environment you are building - at least as I learnt it.
+In formal systems or orchestration layers, an ontology is the state space and schema (like a graph of infra) that an agent navigates. As I've been learning about PEAS I didn't think the vocabulary for the environment was important past defining a ubiquitous language. I saw it as a maze to be solved but hadn't looked at the composition of that maze.
 
-So defining your environment is a practice that begins before PEAS — a first pass, then a living document, re-entered whenever a later step exposes a gap. As with DDD, the model should be considered flexible: as you learn more about the domain, you update the ontology.
+So defining your environment is a practice that begins before PEAS — a first pass, then a living document, re-entered whenever a later step exposes a gap. As with DDD, the model — and its use — benefits from being considered flexible, both in terms of correcting mistakes made earlier in the process and adapting to new information.
 
 Two artefacts, because they fail differently:
 
@@ -99,11 +99,11 @@ Two artefacts, because they fail differently:
 
 Scope it honestly: this is the **world ontology** — the environment the agent navigates and acts in: its entities, predicates, actions, and connections. It is not the **agent ontology**, which uses the PEAS framework to define the agent loop itself (percept, agent function). Confusing the two is the crux of the mistake I have made, and clarifying the delineation between them is the point of these posts.
 
-**When the ontology is re-entered:** it is a *normal, expected* loop-back, not a process violation. The clearest signals are in Step 2 (the environment's properties don't fit what the ontology declared) and Step 3 (a persistent-state variable has no home in the schema). Discovering "I need an ontology" mid-build — usually after the Agent Function step — is how it tends to be found in practice.
+**When the ontology is re-entered:** it is a *normal, expected* loop-back, not a process violation. The clearest signals are in Step 2 (the environment's properties don't fit what the ontology declared) and Step 3 (a persistent-state variable has no home in the schema). For me, it surfaced mid-build — "I need an ontology" — as I was drawing the graph of nodes and edges.
 
 ## The Agent Design Process in practice: the infra discovery agent
 
-The infra discovery agent walks an unknown pipeline graph — `commit` → `lint`, `unit-tests` → `integration-tests` → `merge-gate` → `deploy` — building belief one sensed node at a time. The environment holds the whole topology but withholds it: the agent can only query a node it has already reached. Here the world is the point, and the ontology earns its keep.
+The infra discovery agent walks an unknown pipeline graph — `commit` → `lint`, `unit-tests` → `integration-tests` → `merge-gate` → `deploy` — building belief one sensed node at a time. It builds on the two threads that came before: the search algorithms that solve a maze, and the dual-state agent that separates the workflow state from the environment — where the LLM lives — and from the world, where actions are taken and facts are sensed via effectors. I have been framing infrastructure as a maze where the agent is tasked with finding the exit, so I created a graph for the agent to walk. The fun part is that the graph's details are unknown until the agent walks it. The world holds the whole topology but withholds it: the agent can only query a node it has already reached. Here the world is the point, and the ontology earns its keep.
 
 **The world, as instances:**
 
@@ -361,7 +361,7 @@ Even the minimal loop needs an ontology — a schema and a ubiquitous language a
 
 ### Re-entry stays open
 
-The vocabulary was right from the start — nothing here needs re-entering yet. That is the point of doing it properly: when the design grows, re-entry is a deliberate change you make, not a defect you discover.
+The vocabulary was right from the start — nothing here needs re-entering yet. This work enables learning whilst doing and has the heady intent of "doing it properly" via the link to formalisation. It doesn't have to be perfect; being on the road to formalisation is enough.
 
 ## Appendix — a predicate as RDF triple and JSON-LD
 
