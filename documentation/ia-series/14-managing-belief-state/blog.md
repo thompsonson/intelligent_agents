@@ -125,6 +125,67 @@ The drift falls out of the situations: a fluent sensed at `s₀` can be false at
 
 The management actions are the loop's re-entry into the situations: **RESENSE** performs `sense(n)` again to bring `Knows` up to the current situation; **RECONCILE** folds the fresh sense into the belief; **INVALIDATE** withdraws a `Knows` whose fluent's truth no longer holds. Belief revision and truth maintenance — expressed as knowledge updated across situations.
 
+## The belief store's data
+
+What the belief store actually holds, in the schema.org form IA 13 settled on. A node's record carries its discovered facts and the freshness metadata:
+
+```json
+{
+  "@context": {
+    "@vocab": "https://schema.org/",
+    "dev": "https://dev.example.org/",
+    "Node": "dev:Node",
+    "notifies": "dev:notifies",
+    "sensedAt": "dev:sensedAt",
+    "sensedBy": "dev:sensedBy"
+  },
+  "@type": "Node",
+  "@id": "dev:lint",
+  "notifies": ["dev:merge-gate"],
+  "sensedAt": "2026-08-14T09:30:00Z",
+  "sensedBy": "dev:github-actions-dsa"
+}
+```
+
+The drift appears in the data itself. The world changed — `lint` now notifies `release-notes` too — but the held copy still carries the earlier `sensedAt`. It is out of sync, and only its metadata reveals it:
+
+```json
+{
+  "@type": "Node",
+  "@id": "dev:lint",
+  "notifies": ["dev:merge-gate", "dev:release-notes"],
+  "sensedAt": "2026-08-14T09:30:00Z",
+  "sensedBy": "dev:github-actions-dsa"
+}
+```
+
+RESENSE brings the copy to the present:
+
+```json
+{
+  "@type": "Node",
+  "@id": "dev:lint",
+  "notifies": ["dev:merge-gate", "dev:release-notes"],
+  "sensedAt": "2026-08-14T11:45:00Z",
+  "sensedBy": "dev:github-actions-dsa"
+}
+```
+
+And the belief state as a whole carries the stale marker:
+
+```json
+{
+  "@context": { "@vocab": "https://schema.org/", "dev": "https://dev.example.org/",
+    "BeliefState": "dev:BeliefState", "known": "dev:known", "cleared": "dev:cleared", "stale": "dev:stale" },
+  "@type": "BeliefState",
+  "known": ["dev:commit", "dev:lint", "dev:merge-gate", "dev:deploy"],
+  "cleared": ["dev:commit", "dev:lint", "dev:merge-gate"],
+  "stale": ["dev:lint"]
+}
+```
+
+Facts and metadata serialise; the declared doctrine — how fresh each fact must be — stays out of the record, exactly as IA 13's serialisation decision left it with Kind.
+
 ## Re-entry stays open
 
 The ontology was re-entered the moment the world wouldn't sit still — that was the signal. And writing this has been managing my own belief state: the last post's claim that the belief state was "the controllable side" was a belief I held, and it went out of sync with the world the moment the atomicguard work pointed out the epistemic copies. Justification is not truth; freshness is not Kind; and the belief I hold about my own work needs the same re-sensing I've been describing.
