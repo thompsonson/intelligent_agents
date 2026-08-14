@@ -34,13 +34,13 @@ An agent working an unknown world operates over five layers, each distinct from 
 4. **Repository** — the single persistent store of everything the agent produces and observes: generator artifacts, effector output, guard verdicts, sensed facts.
 5. **Declared** — the agent's own commitments and workflow state.
 
-| Layer | What it holds | Source |
-|---|---|---|
-| **World** (ontic) | the actual infra estate | mutable; observed via sensing — copies only |
-| **Belief** (epistemic) | held copies of world facts — a projection of the repository | append-only; the agent's model |
-| **NL reasoning** | the LLM's reasoning context — where the model thinks | the generator; self-attested |
-| **Repository** | generator artifacts + effector output + guard verdicts + sensed facts | the single evidentiary store |
-| **Declared** | the agent's own commitments and workflow state | the agent's intent |
+| Layer | What it holds | Source | Reasoning |
+|---|---|---|---|
+| **World** (ontic) | the actual infra estate | mutable; observed via sensing — copies only | — (it *is*; not reasoned) |
+| **Belief** (epistemic) | held copies of world facts — a projection of the repository | append-only; the agent's model | symbolic — atoms, predicates, the derived closure (the grammar of logic, IA 11) |
+| **NL reasoning** | the LLM's reasoning context — where the model thinks | the generator; self-attested | statistical — the model's neural, distributional process (IA 12) |
+| **Repository** | generator artifacts + effector output + guard verdicts + sensed facts | the single evidentiary store | — (an evidentiary store, not a reasoner) |
+| **Declared** | the agent's own commitments and workflow state | the agent's intent | symbolic — the agent's stated commitments |
 
 The relationships that matter:
 
@@ -52,20 +52,18 @@ One ontic world behind them all. The belief state is the projection the agent re
 
 The drift problem lives in the middle layer: **the epistemic copy stored in the belief state can diverge from the ontic world**, and nothing in the current vocabulary names that divergence.
 
-## The two channels
+## Two channels
 
-Not all beliefs are sensed the same way, and the difference decides how you manage them.
+Beliefs arrive through two channels, and the channel decides what can go wrong with them.
 
-| Channel | The atom is about | Can a blocking sense verify it? |
-|---|---|---|
-| **World** | the ontic state (`ci-green`, `node-exists`) | yes — `gh run watch` returns ground truth |
-| **Generator** | the model's own reasoning (the LLM's answer) | no — only the *artifact* can be checked, not the reasoning |
+| Channel | Source | What can go wrong | Managed by |
+|---|---|---|---|
+| **Sensed** | the world — a node's `notifies`, `requires` | the copy goes stale | re-sensing (the freshness axis) |
+| **Reported** | the model's reasoning — `"FINAL:"` | the reasoning is self-attested | confidence (a different mechanism) |
 
-The world channel is the case ADR D4 got right: a blocking sensing effector collapses temporal uncertainty into a sensed fact, and re-sensing before each action keeps the plan over a fresh snapshot. Belief distributions are wasted machinery there.
+The sensed channel is the one this post manages: the belief state reasons symbolically (IA 11), and re-sensing keeps its copies in sync with the world.
 
-The generator channel is different: the LLM's reasoning is *self-attested by the same stochastic process being measured* — the `"FINAL:"` problem from the earlier post. No post-guard can observe the truth of the reasoning, only the artifact. Here a **confidence weight is the honest representation** — not a distribution over world states, but a property of the reasoning artifact. The repo already built it: the self-reflection agent's entropy.
-
-So the management split is: **D4-style re-sensing for the world channel, a confidence layer for the generator channel** — the one thing blocking sensing cannot absorb.
+The reported channel is the boundary: the model reasons statistically (IA 12), and a self-attested belief cannot be re-sensed against the world — only judged. That judgement is a different kind of management, its own subject; here it marks where the freshness axis stops.
 
 ## Kind is justification, not freshness
 
