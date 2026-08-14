@@ -108,6 +108,46 @@ stateDiagram-v2
 
 The additions are the management overlay: **Stale** is a belief whose bound is hit or whose world may have moved; **RESENSE** re-observes it and reconciles the copy; **INVALIDATE** withdraws a belief whose justification no longer holds. The lifecycle no longer only grows — it is kept in sync.
 
+### The agent ontology, in PDDL
+
+The management actions are agent ontology — the loop's own machinery. It can be declared in PDDL too, following the dev repo's v1 experiment (the loop as a PDDL finite-state controller): a definitional layer that `:extends` the world ontology, whose control-actions are the agent's own stages, not the world's.
+
+```lisp
+(:definition agent-loop
+    :extends world-ontology
+
+    ;; the management flow: one stage at a time
+    :predicates (at-stage ?s - stage :kind static)
+
+    ;; a fresh sense is an exogenous one-shot percept; staleness is the
+    ;; agent's own belief-layer fact (controllable)
+    :predicates ((has-fresh-sense ?copy - copy :kind exogenous)
+                 (stale ?copy                 :kind controllable))
+
+    ;; the management actions, as control-actions
+    (:action resense
+        :parameters (?copy - copy)
+        :precondition (and (at-stage resense) (stale ?copy))
+        :effect (and (not (stale ?copy))
+                     (not (at-stage resense))
+                     (at-stage reconcile)))
+
+    (:action reconcile
+        :parameters (?copy - copy)
+        :precondition (and (at-stage reconcile) (has-fresh-sense ?copy))
+        :effect (and (not (has-fresh-sense ?copy))
+                     (not (at-stage reconcile))
+                     (at-stage next)))
+
+    (:action invalidate
+        :parameters (?copy - copy)
+        :precondition (and (at-stage invalidate) (stale ?copy))
+        :effect (and (not (at-stage invalidate))
+                     (at-stage settled))))
+```
+
+The management actions become control-actions; the freshness facts become predicates (`stale` controllable, the fresh sense exogenous); `at-stage` tracks the flow. This is the v1 experiment's move: the agent ontology — the loop and its management — declared as data, layered on the world ontology. Whether declaring the loop this way buys more than it costs is the question v1 flagged; here it shows the management actions have a declarative home.
+
 ## Worked example: a `:predicate` extension
 
 The concrete shape, in the DS-PDDL flavour of the atomicguard work — staleness bounds declared beside `:kind`:
