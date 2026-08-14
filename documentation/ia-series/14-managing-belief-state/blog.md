@@ -171,18 +171,30 @@ RESENSE brings the copy to the present:
 }
 ```
 
-And the belief state as a whole carries the stale marker:
+And the belief state as a whole — it stores the controllable atoms, and only them:
 
 ```json
 {
   "@context": { "@vocab": "https://schema.org/", "dev": "https://dev.example.org/",
-    "BeliefState": "dev:BeliefState", "known": "dev:known", "cleared": "dev:cleared", "stale": "dev:stale" },
+    "BeliefState": "dev:BeliefState", "known": "dev:known", "cleared": "dev:cleared" },
   "@type": "BeliefState",
   "known": ["dev:commit", "dev:lint", "dev:merge-gate", "dev:deploy"],
-  "cleared": ["dev:commit", "dev:lint", "dev:merge-gate"],
+  "cleared": ["dev:commit", "dev:lint", "dev:merge-gate"]
+}
+```
+
+`stale` never appears here. It is a **derived view over the copies**, computed from their metadata by the same rule as a derived predicate — a copy is stale when its `sensedAt` lies beyond its declared bound or its `stale_on` signal fired:
+
+```json
+{
+  "@context": { "@vocab": "https://schema.org/", "dev": "https://dev.example.org/",
+    "StaleView": "dev:StaleView", "stale": "dev:stale" },
+  "@type": "StaleView",
   "stale": ["dev:lint"]
 }
 ```
+
+`lint`'s record carries a `sensedAt` beyond its declared bound, so the view reports it. Storing `stale` beside `known` and `cleared` would be stale-as-atom — the very thing the closed-world argument rules out.
 
 Facts and metadata serialise; the declared doctrine — how fresh each fact must be — stays out of the record, exactly as IA 13's serialisation decision left it with Kind.
 
@@ -252,4 +264,4 @@ function INFRA-DISCOVERY-AGENT(percept) returns an action
             return REPORT(descriptor)
 ```
 
-The function is pure in the AIMA sense: it is the ideal mapping, defined over the declared vocabulary — the world ontology's sensed facts and the agent ontology's management actions — with the belief state and the doctrine as its persistent state. Nothing here is new machinery; it is the lifecycle's overlay and the acquisition half written as one loop.
+The function is pure in the AIMA sense: it is the ideal mapping, defined over the declared vocabulary — the world ontology's sensed facts and the agent ontology's management actions — with the belief state and the doctrine as its persistent state. None of the actions is new machinery: SENSE and RECORD are the acquisition half; RESENSE is re-observation; RECONCILE is belief revision; INVALIDATE is truth-maintenance retraction. The one new piece is the doctrine itself — the declared staleness bounds that upgrade always-re-sense into an explicit per-predicate contract. That small, well-scoped declaration is what the whole post has been about: existing machinery given names, and one new contract that makes re-sensing declarative.
