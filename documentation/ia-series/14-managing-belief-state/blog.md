@@ -97,6 +97,8 @@ With a declared bound and recorded metadata, the loop's job is reconciliation:
 - **RECONCILE(id)** — compare the recorded belief against the fresh sense and update
 - **INVALIDATE(id)** — mark a belief stale without yet knowing the truth
 
+These are belief revision and truth maintenance made operational — the theory named in this post's opening, given verbs. RESENSE is the re-observation that supplies new information, the re-sensing stance of planning under uncertainty; RECONCILE is **belief revision** — accommodating new information, even when it contradicts what is held ([Alchourrón, Gärdenfors & Makinson 1985](https://en.wikipedia.org/wiki/Belief_revision)); INVALIDATE is **contraction** — withdrawing a belief whose justification no longer holds, the retraction a truth-maintenance system performs ([Doyle 1979](https://en.wikipedia.org/wiki/Truth_maintenance_system); [de Kleer 1986](https://en.wikipedia.org/wiki/Assumption-based_truth_maintenance)).
+
 These are the actions the earlier post's "when the ontology is re-entered" predicted: the vocabulary the agent needs the moment the world won't sit still.
 
 ## Worked example: a `:predicate` extension
