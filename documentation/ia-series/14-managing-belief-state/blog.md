@@ -86,7 +86,7 @@ These are the actions the earlier post's "when the ontology is re-entered" predi
 
 ### The lifecycle, extended
 
-[IA 13's appendix](../13-ontologies/blog.md) drew the acquisition lifecycle: *unknown → known → visited → cleared or blocked.* Its one revision edge — *blocked → cleared, when requires later clear* — was management without the vocabulary. The freshness axis supplies what the diagram lacked: a held belief can go **stale** when its bound is hit or the world moves, and the management actions are the missing transitions.
+[IA 13's appendix](../13-ontologies/blog.md) drew the acquisition lifecycle: *unknown → known → visited → cleared or blocked.* Its one revision edge — *blocked → cleared, when requires later clear* — was management without the vocabulary.
 
 ```mermaid
 stateDiagram-v2
@@ -97,16 +97,20 @@ stateDiagram-v2
     Visited --> Blocked : requires unmet
     Blocked --> Cleared : requires later clear
     Cleared --> [*]
+```
 
+To it, the freshness axis adds the management overlay:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Known
     Known --> Stale : bound hit / world moved
-    Cleared --> Stale : bound hit / world moved
     Stale --> Known : RESENSE — reconciled
-    Known --> Invalidated : INVALIDATE
     Stale --> Invalidated : INVALIDATE
     Invalidated --> [*]
 ```
 
-The additions are the management overlay: **Stale** is a belief whose bound is hit or whose world may have moved; **RESENSE** re-observes it and reconciles the copy; **INVALIDATE** withdraws a belief whose justification no longer holds. The lifecycle no longer only grows — it is kept in sync.
+The overlay's additions are the management machinery: **Stale** is a held belief whose bound is hit or whose world may have moved; **RESENSE** re-observes it and reconciles the copy; **INVALIDATE** withdraws a belief whose justification no longer holds. The lifecycle no longer only grows — it is kept in sync.
 
 ## Discovery-driven belief, formally
 
