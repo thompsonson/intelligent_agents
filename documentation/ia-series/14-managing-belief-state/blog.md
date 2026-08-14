@@ -66,7 +66,7 @@ There are three questions hiding inside "freshness," and they don't all have the
 
 The sharp claim is the middle row. A bound like *"`ci-green` is fresh for N minutes"* is itself a fact about the world (how fast it changes) — static or derived — so declaring it in the ontology is world content, not a loop concern. This is IA 13's own framing made concrete: **`:kind` is the justification axis; a staleness bound is the freshness doctrine on the same map.** And D4's "always re-sense" turns out to be the degenerate case — no declared bounds, re-sense everything. The doctrine upgrades it to *"re-sense when the declared bound is hit,"* without touching what an atom is.
 
-One rule the doctrine must handle: **derived predicates inherit freshness.** `reachable`, `is-leaf` (and the earlier post's `cleared`) are computed from base atoms — their staleness is a function of their dependencies', not an independent bound. A derived head's freshness bound is the **minimum** (most conservative) of its body's bounds — if any base belief goes stale, everything derived from it is stale — and stale signals **OR-compose** across the body. A derived head may override `:fresh-for` only when re-sensing the aggregate is cheaper than re-sensing its parts. **Consistency is downstream of sync.**
+One rule the doctrine must handle: **derived predicates inherit freshness.** `reachable`, `is-leaf` (and the earlier post's `cleared`) are computed from base atoms — their staleness is a function of their dependencies', not an independent bound. A derived head's freshness bound is the **minimum** (most conservative) of its body's bounds — if any base belief goes stale, everything derived from it is stale — and stale signals **OR-compose** across the body. A derived head may override its declared bound only when re-sensing the aggregate is cheaper than re-sensing its parts. **Consistency is downstream of sync.**
 
 The whole axis in one line: **the ontology declares how fresh each fact must be; the metadata records how fresh it actually is; the loop reconciles the gap.**
 
@@ -108,90 +108,18 @@ stateDiagram-v2
 
 The additions are the management overlay: **Stale** is a belief whose bound is hit or whose world may have moved; **RESENSE** re-observes it and reconciles the copy; **INVALIDATE** withdraws a belief whose justification no longer holds. The lifecycle no longer only grows — it is kept in sync.
 
-### The world ontology, in PDDL
+## Discovery-driven belief, formally
 
-The world ontology — what the agent discovers — is the standard `:domain`: types and predicates, each with a `:kind`. The freshness doctrine from the worked example declares how fast each fact changes.
-
-```lisp
-(:domain world-ontology
-    :types node edge - object
-
-    :predicates ((node-exists ?n - node              :kind exogenous)
-                 (notifies   ?a - node ?b - node     :kind exogenous)
-                 (requires   ?a - node ?b - node     :kind exogenous)
-                 (reachable  ?a - node ?b - node     :kind derived)
-                 (is-leaf    ?n - node               :kind derived)
-                 (ci-green   ?n - node               :kind exogenous
-                                            :fresh-for "5m"))
-```
-
-Types, exogenous and derived facts, and the declared freshness doctrine — the world as the agent discovers it, nothing of the agent's own machinery in sight. The agent-loop definition below `:extends` it.
-
-### The agent ontology, in PDDL
-
-The management actions are agent ontology — the loop's own machinery. It can be declared in PDDL too, following the dev repo's v1 experiment (the loop as a PDDL finite-state controller): a definitional layer that `:extends` the world ontology, whose control-actions are the agent's own stages, not the world's.
-
-```lisp
-(:definition agent-loop
-    :extends world-ontology
-
-    ;; the management flow: one stage at a time
-    :predicates (at-stage ?s - stage :kind static)
-
-    ;; a fresh sense is an exogenous one-shot percept; staleness is the
-    ;; agent's own belief-layer fact (controllable)
-    :predicates ((has-fresh-sense ?copy - copy :kind exogenous)
-                 (stale ?copy                 :kind controllable))
-
-    ;; the management actions, as control-actions
-    (:action resense
-        :parameters (?copy - copy)
-        :precondition (and (at-stage resense) (stale ?copy))
-        :effect (and (not (stale ?copy))
-                     (not (at-stage resense))
-                     (at-stage reconcile)))
-
-    (:action reconcile
-        :parameters (?copy - copy)
-        :precondition (and (at-stage reconcile) (has-fresh-sense ?copy))
-        :effect (and (not (has-fresh-sense ?copy))
-                     (not (at-stage reconcile))
-                     (at-stage next)))
-
-    (:action invalidate
-        :parameters (?copy - copy)
-        :precondition (and (at-stage invalidate) (stale ?copy))
-        :effect (and (not (at-stage invalidate))
-                     (at-stage settled))))
-```
-
-The management actions become control-actions; the freshness facts become predicates (`stale` controllable, the fresh sense exogenous); `at-stage` tracks the flow. This is the v1 experiment's move: the agent ontology — the loop and its management — declared as data, layered on the world ontology. Whether declaring the loop this way buys more than it costs is the question v1 flagged; here it shows the management actions have a declarative home.
-
-## Worked example: a `:predicate` extension
-
-The concrete shape, in the DS-PDDL flavour of the atomicguard work — staleness bounds declared beside `:kind`:
+The world's facts are fluents — `NodeExists(n, s)`, `Notifies(a, b, s)` — whose truth varies over situations. `sense(n)` is a sensing action; after it, the agent **Knows** what it sensed ([Scherl & Levesque 1993](https://en.wikipedia.org/wiki/Situation_calculus), the knowledge formalism for the situation calculus). The belief state *is* the set of fluents the agent Knows in the current situation — populated by discovery, action by action:
 
 ```
-:predicates ((branch-exists ?b - branch         :kind static        :stale-on <never>)
-             (pr-open ?p - pr                   :kind controllable  :stale-on <effect-retract>)
-             (ci-run ?c - commit ?p - pr        :kind exogenous     :fresh-for "5m")
-             (ci-green ?c - commit ?p - pr      :kind exogenous     :fresh-for "5m")
-             (merge-ready ?p - pr               :kind exogenous     :fresh-for "1m"))
+Do(sense(n), s)  →  Knows(NodeExists(n), Do(sense(n), s))
+                 →  Knows(Notifies(a, b), Do(sense(n), s))
 ```
 
-- `:fresh-for N` — a wall-clock bound: the copy is trustworthy for N; re-sense when the bound is hit
-- `:stale-on <signal>` — an event bound: the copy is stale the moment a named signal fires (a reverse effector returns, an `:effect` retracts it, a downstream invalidation fires)
-- omitted — D4's default: always re-sense
+The drift falls out of the situations: a fluent sensed at `s₀` can be false at `s′ > s₀` — the world moved between situations. The belief state holds knowledge *about a past situation*; re-sensing updates it to the present. That is the freshness doctrine's role: it names how quickly each fluent can change across situations, declared beside the fluent's Kind. Derived fluents inherit the **minimum** of their bodies' bounds; stale signals **OR-compose**.
 
-And derived heads **compose** rather than declare:
-
-```
-(:derived (checks-green ?p)
-    (forall (?c - commit) (imply (ci-run ?c ?p) (ci-green ?c ?p))))
-;; freshness(checks-green) = min over the body's bounds; stale signals OR-compose
-```
-
-The bound lives in the declared ontology; the metadata (`sensed_at`, `effector`, `verdict`) threads the existing guard-result and DAG-timestamp structures, and the declared-state document's `updated_at`. No new atoms, no change to the world model's semantics, D4's closed-world stance intact.
+The management actions are the loop's re-entry into the situations: **RESENSE** performs `sense(n)` again to bring `Knows` up to the current situation; **RECONCILE** folds the fresh sense into the belief; **INVALIDATE** withdraws a `Knows` whose fluent's truth no longer holds. Belief revision and truth maintenance — expressed as knowledge updated across situations.
 
 ## Re-entry stays open
 
