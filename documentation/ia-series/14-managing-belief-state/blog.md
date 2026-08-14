@@ -28,12 +28,6 @@ That caveat is the whole problem in miniature. The held belief *was* a fact — 
 
 An agent working an unknown world operates over five layers, each distinct from the others.
 
-1. **World** (ontic) — the actual infra graph. Observed via sensing; never held — only copies.
-2. **Belief** (epistemic) — held copies of world facts — a projection of the repository.
-3. **NL reasoning** — the LLM's reasoning context, where the model thinks — self-attested.
-4. **Repository** — the single persistent store of everything the agent produces and observes: generator artifacts, effector output, guard verdicts, sensed facts.
-5. **Declared** — the agent's own commitments and workflow state.
-
 A generalization of the **Dual-State Architecture** in [Managing the Stochastic (Thompson 2025)](https://arxiv.org/abs/2512.20660v1): that paper split the agent's state between deterministic workflow control and the stochastic environment where the LLM lives — the LLM treated as a component of the environment, not the decision-maker. These five layers keep that boundary — NL reasoning is the environment's stochastic generation, Declared the deterministic workflow control — and add the world, the belief state, and the repository the dual-state framing left implicit.
 
 | Layer | What it holds | Source | Reasoning |
