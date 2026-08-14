@@ -89,6 +89,8 @@ One rule the doctrine must handle: **derived predicates inherit freshness.** `re
 
 The whole axis in one line: **the ontology declares how fresh each fact must be; the metadata records how fresh it actually is; the loop reconciles the gap.**
 
+[IA 13 ended by deciding what schema.org carries](../13-ontologies/blog.md): facts and their form, never semantics — no Kind, no preconditions, no derived. The freshness axis inherits the same split. A copy's metadata — when it was sensed, by what, with what verdict — is a fact *about the copy*, and it serialises: the belief state's JSON-LD gains `sensed_at` and `sensed_by`. The declared bound — *ci-green is fresh for five minutes* — is doctrine, and like `:kind` it stays in the semantics layer. Schema.org carries the record; the ontology declares how fresh it must be.
+
 ## The management actions
 
 With a declared bound and recorded metadata, the loop's job is reconciliation:
@@ -100,6 +102,30 @@ With a declared bound and recorded metadata, the loop's job is reconciliation:
 These are belief revision and truth maintenance made operational — the theory named in this post's opening, given verbs. RESENSE is the re-observation that supplies new information, the re-sensing stance of planning under uncertainty; RECONCILE is **belief revision** — accommodating new information, even when it contradicts what is held ([Alchourrón, Gärdenfors & Makinson 1985](https://en.wikipedia.org/wiki/Belief_revision)); INVALIDATE is **contraction** — withdrawing a belief whose justification no longer holds, the retraction a truth-maintenance system performs ([Doyle 1979](https://en.wikipedia.org/wiki/Truth_maintenance_system); [de Kleer 1986](https://en.wikipedia.org/wiki/Assumption-based_truth_maintenance)).
 
 These are the actions the earlier post's "when the ontology is re-entered" predicted: the vocabulary the agent needs the moment the world won't sit still.
+
+### The lifecycle, extended
+
+[IA 13's appendix](../13-ontologies/blog.md) drew the acquisition lifecycle: *unknown → known → visited → cleared or blocked.* Its one revision edge — *blocked → cleared, when requires later clear* — was management without the vocabulary. The freshness axis supplies what the diagram lacked: a held belief can go **stale** when its bound is hit or the world moves, and the management actions are the missing transitions.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Unknown
+    Unknown --> Known : SENSE names it
+    Known --> Visited : agent arrives
+    Visited --> Cleared : all requires cleared
+    Visited --> Blocked : requires unmet
+    Blocked --> Cleared : requires later clear
+    Cleared --> [*]
+
+    Known --> Stale : bound hit / world moved
+    Cleared --> Stale : bound hit / world moved
+    Stale --> Known : RESENSE — reconciled
+    Known --> Invalidated : INVALIDATE
+    Stale --> Invalidated : INVALIDATE
+    Invalidated --> [*]
+```
+
+The additions are the management overlay: **Stale** is a belief whose bound is hit or whose world may have moved; **RESENSE** re-observes it and reconciles the copy; **INVALIDATE** withdraws a belief whose justification no longer holds. The lifecycle no longer only grows — it is kept in sync.
 
 ## Worked example: a `:predicate` extension
 
