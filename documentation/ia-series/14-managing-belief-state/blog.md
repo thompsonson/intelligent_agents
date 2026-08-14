@@ -24,23 +24,31 @@ The [previous post](../13-ontologies/blog.md) established the acquisition half: 
 
 That caveat is the whole problem in miniature. The held belief *was* a fact — true at the moment it was sensed. But it is **exogenous**: its truth is set by the world, and the world can change after the sensing. So between one sense and the next, a belief gained by visiting a node can **drift out of sync with the world state** — not because it was a guess, but because the world it was sensed from won't sit still. The world is what the search moves through; the belief is what the search holds. They are different things, and the gap between them is the subject of this post.
 
-## Four layers, not three
+## Five layers
 
-In IA 13 I collapsed two layers I should have kept apart. The discovery agent has:
+An agent working an unknown world operates over five layers, each distinct from the others.
 
-1. **The world (ontic)** — the actual infra graph: nodes, `notifies`, `requires`. The agent observes it by sensing nodes it reaches, but it never **holds** the world — only copies of it.
-2. **The belief (epistemic)** — the agent's *copies* of the world's facts, folded into `known`/`visited`/`cleared` and the recorded edges. This is a growing, append-only record.
-3. **The environment** — the LLM's reasoning context and the artifacts it produces — where the LLM lives.
-4. **The declared** — the agent's own commitments (its workflow state), distinct from the others.
+1. **World** (ontic) — the actual infra graph. Observed via sensing; never held — only copies.
+2. **Belief** (epistemic) — held copies of world facts — a projection of the repository.
+3. **NL reasoning** — the LLM's reasoning context, where the model thinks — self-attested.
+4. **Repository** — the single persistent store of everything the agent produces and observes: generator artifacts, effector output, guard verdicts, sensed facts.
+5. **Declared** — the agent's own commitments and workflow state.
 
 | Layer | What it holds | Source |
 |---|---|---|
-| **World** (ontic `W`) | the actual state of the infra estate | mutable; observed through sensing — the agent holds a copy, never the world itself |
-| **Belief** (epistemic) | copies of sensed facts + the agent's controllable assertions | append-only; the agent's model |
-| **Environment** (`S_env`) | the LLM's reasoning context and artifacts | where the LLM lives |
-| **Declared** (`S_workflow`) | the agent's own commitments and workflow state | the agent's intent |
+| **World** (ontic) | the actual infra estate | mutable; observed via sensing — copies only |
+| **Belief** (epistemic) | held copies of world facts — a projection of the repository | append-only; the agent's model |
+| **NL reasoning** | the LLM's reasoning context — where the model thinks | the generator; self-attested |
+| **Repository** | generator artifacts + effector output + guard verdicts + sensed facts | the single evidentiary store |
+| **Declared** | the agent's own commitments and workflow state | the agent's intent |
 
-One ontic world behind them all. The belief state is the agent's epistemic record of it; the environment is where the LLM lives; the declared is the agent's own commitments. The belief state is not the world, not the LLM's context, and not the declared.
+The relationships that matter:
+
+- The belief state **reads from the repository** — it is a projection of it, not a parallel store. The repository holds the evidentiary record; the belief state is the view the agent reasons over.
+- **Belief and Declared are two projections of the same repository**: the belief state is the repository projected onto the world model; the declared is the same repository projected onto the workflow's requirements — plus the agent's own commitments.
+- The NL reasoning is self-attested and ephemeral; the repository is durable and verified.
+
+One ontic world behind them all. The belief state is the projection the agent reasons over; the NL reasoning is where the model thinks; the repository is the single store everything reads from; the declared is the agent's own commitments.
 
 The drift problem lives in the middle layer: **the epistemic copy stored in the belief state can diverge from the ontic world**, and nothing in the current vocabulary names that divergence.
 
