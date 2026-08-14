@@ -18,35 +18,20 @@ Managing it has its own literature. **Belief revision** (Alchourrón, Gärdenfor
 
 The gap the rest of this post is about: **the world is ontic; the belief state is epistemic; and the two can drift apart.**
 
+## World ontology and agent ontology
+
+[IA 13 drew the split](../13-ontologies/blog.md): the **world ontology** is the environment the agent navigates and acts in; the **agent ontology** is how the agent loop is defined. The belief state sits at their meeting point.
+
+- **What the agent discovers** — the world's facts (`node`, `notifies`, `requires`) and the declared freshness bounds — is **world ontology**: facts about the environment, exogenous or derived.
+- **The belief-state lifecycle** — `known`, `visited`, `cleared`, `stale`, and the management actions — is **agent ontology**: the agent's own epistemic machinery, like the loop itself.
+
+The belief state *holds* world-ontology facts; the agent-ontology lifecycle *manages* them. That is the meeting point — and the reason the gap between the held copy and the world is this post's subject. (The full layer model, including the repository the belief state reads from, is the subject of the next post.)
+
 ## Storing was the easy half
 
 The [previous post](../13-ontologies/blog.md) established the acquisition half: a fact is a justified true belief, and storing it as a belief is **SENSE → RECORD** — the agent senses the world's exogenous predicates (`node`, `notifies`, `requires`) and records them into its own controllable ones (`known`, `visited`, `cleared`). The temporal caveat was already there: *a fact was true at the point in time it was sensed, or the action was taken.*
 
 That caveat is the whole problem in miniature. The held belief *was* a fact — true at the moment it was sensed. But it is **exogenous**: its truth is set by the world, and the world can change after the sensing. So between one sense and the next, a belief gained by visiting a node can **drift out of sync with the world state** — not because it was a guess, but because the world it was sensed from won't sit still. The world is what the search moves through; the belief is what the search holds. They are different things, and the gap between them is the subject of this post.
-
-## Five layers
-
-An agent working an unknown world operates over five layers, each distinct from the others.
-
-A generalization of the **Dual-State Architecture** in [Managing the Stochastic (Thompson 2025)](https://arxiv.org/abs/2512.20660v1): that paper split the agent's state between deterministic workflow control and the stochastic environment where the LLM lives — the LLM treated as a component of the environment, not the decision-maker. These five layers keep that boundary — NL reasoning is the environment's stochastic generation, Declared the deterministic workflow control — and add the world, the belief state, and the repository the dual-state framing left implicit.
-
-| Layer | What it holds | Source | Reasoning |
-|---|---|---|---|
-| **World** (ontic) | the actual infra estate | mutable; observed via sensing — copies only | — (it *is*; not reasoned) |
-| **Belief** (epistemic) | held copies of world facts — a projection of the repository | append-only; the agent's model | symbolic — atoms, predicates, the derived closure (the grammar of logic, IA 11) |
-| **NL reasoning** | the LLM's reasoning context — where the model thinks | the generator; self-attested | stochastic — the model's generation, a component of the environment (IA 12) |
-| **Repository** | generator artifacts + effector output + guard verdicts + sensed facts — the append-only artifact DAG | the single evidentiary store | — (an evidentiary store, not a reasoner) |
-| **Declared** | the agent's own commitments and workflow state | the agent's intent | symbolic — the agent's stated commitments |
-
-The relationships that matter:
-
-- The belief state **reads from the repository** — it is a projection of it, not a parallel store. The repository holds the evidentiary record; the belief state is the view the agent reasons over. The repository is the artifact DAG; the belief state is its projection — it holds graph-shaped facts (edges, requirements) but is not itself a DAG.
-- **Belief and Declared are two projections of the same repository**: the belief state is the repository projected onto the world model; the declared is the same repository projected onto the workflow's requirements — plus the agent's own commitments.
-- The NL reasoning is self-attested and ephemeral; the repository is durable and verified.
-
-One ontic world behind them all. The belief state is the projection the agent reasons over; the NL reasoning is where the model thinks; the repository is the single store everything reads from; the declared is the agent's own commitments.
-
-The drift problem lives in the middle layer: **the epistemic copy stored in the belief state can diverge from the ontic world**, and nothing in the current vocabulary names that divergence.
 
 ## Two channels
 
