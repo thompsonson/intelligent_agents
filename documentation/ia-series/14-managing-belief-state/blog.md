@@ -108,6 +108,25 @@ stateDiagram-v2
 
 The additions are the management overlay: **Stale** is a belief whose bound is hit or whose world may have moved; **RESENSE** re-observes it and reconciles the copy; **INVALIDATE** withdraws a belief whose justification no longer holds. The lifecycle no longer only grows — it is kept in sync.
 
+### The world ontology, in PDDL
+
+The world ontology — what the agent discovers — is the standard `:domain`: types and predicates, each with a `:kind`. The freshness doctrine from the worked example declares how fast each fact changes.
+
+```lisp
+(:domain world-ontology
+    :types node edge - object
+
+    :predicates ((node-exists ?n - node              :kind exogenous)
+                 (notifies   ?a - node ?b - node     :kind exogenous)
+                 (requires   ?a - node ?b - node     :kind exogenous)
+                 (reachable  ?a - node ?b - node     :kind derived)
+                 (is-leaf    ?n - node               :kind derived)
+                 (ci-green   ?n - node               :kind exogenous
+                                            :fresh-for "5m"))
+```
+
+Types, exogenous and derived facts, and the declared freshness doctrine — the world as the agent discovers it, nothing of the agent's own machinery in sight. The agent-loop definition below `:extends` it.
+
 ### The agent ontology, in PDDL
 
 The management actions are agent ontology — the loop's own machinery. It can be declared in PDDL too, following the dev repo's v1 experiment (the loop as a PDDL finite-state controller): a definitional layer that `:extends` the world ontology, whose control-actions are the agent's own stages, not the world's.
