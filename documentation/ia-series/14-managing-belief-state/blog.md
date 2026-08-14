@@ -189,3 +189,67 @@ Facts and metadata serialise; the declared doctrine — how fresh each fact must
 ## Re-entry stays open
 
 The ontology was re-entered the moment the world wouldn't sit still — that was the signal. And writing this has been managing my own belief state: the last post's claim that the belief state was "the controllable side" was a belief I held, and it went out of sync with the world the moment the atomicguard work pointed out the epistemic copies. Justification is not truth; freshness is not Kind; and the belief I hold about my own work needs the same re-sensing I've been describing.
+
+## A pure agent function for discovery
+
+Everything in this post composes into one function. The AIMA agent function maps any percept sequence to an action; for discovery it is the loop that walks an unknown graph while keeping the belief it builds in sync with the world it walks.
+
+```
+percept_sequence → discovery & reconciliation → descriptor
+```
+
+**Percepts** — what the function receives:
+
+| Percept | Kind | Carries |
+|---|---|---|
+| `NodeExists(n)`, `Notifies(a,b)`, `Requires(a,b)` | exogenous | sensed per node |
+| copy metadata | — | `sensed_at`, `sensed_by`, verdict |
+| `bound_hit(id)` / `stale_on(id)` | signal | the declared bound exceeded / an event bound fired |
+
+**Actions** — discovery and management, grounded in this post's formalisation:
+
+| Action | Grounding |
+|---|---|
+| `SENSE(n)` | `Do(sense(n), s) → Knows(NodeExists(n), Do(sense(n), s))` |
+| `WALK(edge)` / `BACKTRACK` | move through the graph |
+| `RECORD` | the SENSE → RECORD acquisition half |
+| `RESENSE(id)` | re-observation when the declared bound is hit |
+| `RECONCILE(id)` | belief revision — fold the fresh sense into the held copy (AGM) |
+| `INVALIDATE(id)` | contraction — withdraw a belief whose justification fails (TMS) |
+| `REPORT(descriptor)` | terminal — return the discovered descriptor |
+
+**The percept sequence → action mapping:**
+
+| Percept sequence | Action |
+|---|---|
+| `[NodeExists(n)]`, `n` unvisited | `SENSE(n)` — discover its edges |
+| `[Notifies(a,b), Requires(a,b)]` | `RECORD`, then `WALK` to an unvisited target |
+| `[bound_hit(n)]` | `RESENSE(n)` |
+| `[fresh_sense(n) ≠ held(n)]` | `RECONCILE(n)` |
+| `[stale_on(n)]` — a justification failed | `INVALIDATE(n)` |
+| `[frontier empty]` | `REPORT(descriptor)` |
+
+**The ideal agent function:**
+
+```
+function INFRA-DISCOVERY-AGENT(percept) returns an action
+    persistent: belief ← held copies (facts + freshness metadata)
+                doctrine ← declared staleness bounds
+                frontier ← discovered but unvisited ids
+
+    if percept is a sensed node:
+        belief ← RECORD(sensed facts, sensed_at, sensed_by)
+        return WALK to an unvisited target, or BACKTRACK
+    elif percept is a staleness signal:
+        if bound_hit(id):
+            return RESENSE(id)
+        elif stale_on(id):
+            return INVALIDATE(id)
+    elif percept is a fresh sense:
+        if fresh_sense ≠ held:
+            return RECONCILE(id)
+        else:
+            return REPORT(descriptor)
+```
+
+The function is pure in the AIMA sense: it is the ideal mapping, defined over the declared vocabulary — the world ontology's sensed facts and the agent ontology's management actions — with the belief state and the doctrine as its persistent state. Nothing here is new machinery; it is the lifecycle's overlay and the acquisition half written as one loop.
