@@ -34,11 +34,13 @@ An agent working an unknown world operates over five layers, each distinct from 
 4. **Repository** — the single persistent store of everything the agent produces and observes: generator artifacts, effector output, guard verdicts, sensed facts.
 5. **Declared** — the agent's own commitments and workflow state.
 
+A generalization of the **Dual-State Architecture** in [Managing the Stochastic (Thompson 2025)](https://arxiv.org/abs/2512.20660v1): that paper split the agent's state between deterministic workflow control and the stochastic environment where the LLM lives — the LLM treated as a component of the environment, not the decision-maker. These five layers keep that boundary — NL reasoning is the environment's stochastic generation, Declared the deterministic workflow control — and add the world, the belief state, and the repository the dual-state framing left implicit.
+
 | Layer | What it holds | Source | Reasoning |
 |---|---|---|---|
 | **World** (ontic) | the actual infra estate | mutable; observed via sensing — copies only | — (it *is*; not reasoned) |
 | **Belief** (epistemic) | held copies of world facts — a projection of the repository | append-only; the agent's model | symbolic — atoms, predicates, the derived closure (the grammar of logic, IA 11) |
-| **NL reasoning** | the LLM's reasoning context — where the model thinks | the generator; self-attested | statistical — the model's neural, distributional process (IA 12) |
+| **NL reasoning** | the LLM's reasoning context — where the model thinks | the generator; self-attested | stochastic — the model's generation, a component of the environment (IA 12) |
 | **Repository** | generator artifacts + effector output + guard verdicts + sensed facts | the single evidentiary store | — (an evidentiary store, not a reasoner) |
 | **Declared** | the agent's own commitments and workflow state | the agent's intent | symbolic — the agent's stated commitments |
 
@@ -63,7 +65,7 @@ Beliefs arrive through two channels, and the channel decides what can go wrong w
 
 The sensed channel is the one this post manages: the belief state reasons symbolically (IA 11), and re-sensing keeps its copies in sync with the world.
 
-The reported channel is the boundary: the model reasons statistically (IA 12), and a self-attested belief cannot be re-sensed against the world — only judged. That judgement is a different kind of management, its own subject; here it marks where the freshness axis stops.
+The reported channel is the boundary: the model reasons stochastically (IA 12), and a self-attested belief cannot be re-sensed against the world — only judged. That judgement is a different kind of management, its own subject; here it marks where the freshness axis stops.
 
 ## Kind is justification, not freshness
 
