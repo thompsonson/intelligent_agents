@@ -61,7 +61,7 @@ One rule the doctrine must handle: **derived predicates inherit freshness.** `re
 
 The whole axis in one line: **the ontology declares how fresh each fact must be; the metadata records how fresh it actually is; the loop reconciles the gap.**
 
-[IA 13 ended by deciding what schema.org carries](../13-ontologies/blog.md): facts and their form, never semantics — no Kind, no preconditions, no derived. The freshness axis inherits the same split. A copy's metadata — when it was sensed, by what, with what verdict — is a fact *about the copy*, and it serialises: the belief state's JSON-LD gains `sensed_at` and `sensed_by`. The declared bound — *ci-green is fresh for five minutes* — is doctrine, and like `:kind` it stays in the semantics layer. Schema.org carries the record; the ontology declares how fresh it must be.
+[IA 13 ended by deciding what schema.org carries](../13-ontologies/blog.md): facts and their form, never semantics — no Kind, no preconditions, no derived. The freshness axis inherits the same split. A copy's metadata — when it was sensed, by what, with what verdict — is a fact *about the copy*, and it serialises: the belief state's JSON-LD gains `sensedAt` and `sensedBy`. The declared bound — *ci-green is fresh for five minutes* — is doctrine, and like `:kind` it stays in the semantics layer. Schema.org carries the record; the ontology declares how fresh it must be.
 
 ## The management actions
 
@@ -70,6 +70,8 @@ With a declared bound and recorded metadata, the loop's job is reconciliation:
 - **RESENSE(id)** — re-query a node when its bound is hit or a signal fires, to detect drift
 - **RECONCILE(id)** — compare the recorded belief against the fresh sense and update
 - **INVALIDATE(id)** — mark a belief stale without yet knowing the truth
+
+Two triggers mark a copy stale. **`bound_hit`** is wall-clock: the declared `:fresh-for` interval has elapsed since `sensedAt`. **`stale_on`** is event-based: a named signal fired — a reverse effector returned, an effect retracted the copy, a downstream invalidation cascaded. The bound says *when*; the signal says *something happened that invalidates this copy now*.
 
 These are belief revision and truth maintenance made operational — the theory named in this post's opening, given verbs. RESENSE is the re-observation that supplies new information, the re-sensing stance of planning under uncertainty; RECONCILE is **belief revision** — accommodating new information, even when it contradicts what is held ([Alchourrón, Gärdenfors & Makinson 1985](https://en.wikipedia.org/wiki/Belief_revision)); INVALIDATE is **contraction** — withdrawing a belief whose justification no longer holds, the retraction a truth-maintenance system performs ([Doyle 1979](https://en.wikipedia.org/wiki/Truth_maintenance_system); [de Kleer 1986](https://en.wikipedia.org/wiki/Assumption-based_truth_maintenance)).
 
@@ -94,7 +96,6 @@ To it, the freshness axis adds the management overlay:
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Known
     Known --> Stale : bound hit / world moved
     Stale --> Known : RESENSE — reconciled
     Stale --> Invalidated : INVALIDATE
@@ -202,7 +203,7 @@ percept_sequence → discovery & reconciliation → descriptor
 | Percept | Kind | Carries |
 |---|---|---|
 | `NodeExists(n)`, `Notifies(a,b)`, `Requires(a,b)` | exogenous | sensed per node |
-| copy metadata | — | `sensed_at`, `sensed_by`, verdict |
+| copy metadata | — | `sensedAt`, `sensedBy`, verdict |
 | `bound_hit(id)` / `stale_on(id)` | signal | the declared bound exceeded / an event bound fired |
 
 **Actions** — discovery and management, grounded in this post's formalisation:
@@ -237,7 +238,7 @@ function INFRA-DISCOVERY-AGENT(percept) returns an action
                 frontier ← discovered but unvisited ids
 
     if percept is a sensed node:
-        belief ← RECORD(sensed facts, sensed_at, sensed_by)
+        belief ← RECORD(sensed facts, sensedAt, sensedBy)
         return WALK to an unvisited target, or BACKTRACK
     elif percept is a staleness signal:
         if bound_hit(id):
