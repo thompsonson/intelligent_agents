@@ -33,18 +33,9 @@ The [previous post](../13-ontologies/blog.md) established the acquisition half: 
 
 That caveat is the whole problem in miniature. The held belief *was* a fact — true at the moment it was sensed. But it is **exogenous**: its truth is set by the world, and the world can change after the sensing. So between one sense and the next, a belief gained by visiting a node can **drift out of sync with the world state** — not because it was a guess, but because the world it was sensed from won't sit still. The world is what the search moves through; the belief is what the search holds. They are different things, and the gap between them is the subject of this post.
 
-## Two channels
+## The sensed channel
 
-Beliefs arrive through two channels, and the channel decides what can go wrong with them.
-
-| Channel | Source | What can go wrong | Managed by |
-|---|---|---|---|
-| **Sensed** | the world — a node's `notifies`, `requires` | the copy goes stale | re-sensing (the freshness axis) |
-| **Reported** | the model's reasoning — `"FINAL:"` | the reasoning is self-attested | confidence (a different mechanism) |
-
-The sensed channel is the one this post manages: the belief state reasons symbolically (IA 11), and re-sensing keeps its copies in sync with the world.
-
-The reported channel is the boundary: the model reasons stochastically (IA 12), and a self-attested belief cannot be re-sensed against the world — only judged. That judgement is a different kind of management, its own subject; here it marks where the freshness axis stops.
+The belief state's facts arrive by sensing the world — a node's `notifies` and `requires`. This is the channel this post manages: the belief state reasons symbolically (IA 11), and re-sensing keeps its copies in sync with the world.
 
 ## Kind is justification, not freshness
 
