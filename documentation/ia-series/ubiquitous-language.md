@@ -86,6 +86,24 @@ Every predicate's truth is determined one of four ways — the classification th
 | **static** | true at setup, never changed by any action or sensing | `domain` |
 | **derived** | computed by the state model, never asserted — entailed from other predicates | `reachable`, `is-leaf` |
 
+## Canonical references
+
+The living-extract format follows the standard treatment of ubiquitous language in domain-driven design, extended to agent systems.
+
+**The canon:**
+
+- **Eric Evans**, *Domain-Driven Design* (2003) — the origin of the term: a common, rigorous language between developers and domain experts, based on the domain model; rigorous because software cannot cope with ambiguity; evolving as understanding grows.
+- **Martin Fowler**, *[Ubiquitous Language](https://martinfowler.com/bliki/UbiquitousLanguage.html)* — the canonical reference treatment; the language is tested in conversation with domain experts, and the model evolves with it.
+- **Vaughn Vernon**, *DDD Distilled* / *Implementing Domain-Driven Design* — the practical canon; the living-glossary framing.
+
+**For agents specifically:**
+
+- **Peleg-Pelc, Kaminka & Goldberg**, *[Agentic Context Description Language (ACDL)](https://ar5iv.labs.arxiv.org/html/2605.01920)* (CAIS '26) — a formal shared language for agent context structure and dynamics; the canonical "shared language" for the agent case.
+- **Russ Miles**, *[Domain Driven Agent Design](https://engineeringagents.substack.com/p/domain-driven-agent-design)* (2025) — UL is what unifies prompts, ontologies, and agent actions within bounded contexts; matches this series' use.
+- **Slava Dubrov**, *[DDD for AI Agents: Contexts and Rules](https://slavadubrov.github.io/blog/2025/10/20/domain-driven-design-ai-agents/)* (2026) — "a schema validates the shape of a model proposal; the domain enforces its meaning"; UL as the single source of truth against the drift of copies across prompts/tools/API/db. Anchors IA 13's serialisation-not-semantics split and this document's source-of-truth note.
+- **James Croft**, *[Applying DDD to Multi-Agent AI Systems](https://www.jamescroft.co.uk/applying-domain-driven-design-principles-to-multi-agent-ai-systems/)* (2026) — agents as bounded contexts; UL per context; orchestration patterns.
+- **Agent-skill canon** — the `ubiquitous-language` agent skills ([TerminalSkills](https://terminalskills.io/skills/ubiquitous-language), [awesome-agent-skills](https://github.com/CodeAlive-AI/awesome-agent-skills/blob/main/skills/ubiquitous-language/README.md)): agents extract a glossary from conversation, flag ambiguities, and grow it by **Reuse → Compose → Qualify → Ask** before minting a new term; the AI proposes definitions but waits for human approval ([Schleicher](https://www.danielschleicher.com/software/engineering,/ai,/spec-driven/development/2026/01/04/removing-ambiguity-with-spec-driven-development.html), 2026).
+
 ## Re-entry stays open
 
 A living document. When a later post names a term with no agreed meaning here — or two docs use the same word for different things — the language is re-entered. Normal and expected, not a process violation.
