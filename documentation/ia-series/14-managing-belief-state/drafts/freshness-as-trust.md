@@ -37,3 +37,24 @@ The post's sentence framing the declared bound as world content should be revisi
 - Doyle AITR-581 §1.7.2.5 — reasoned deliberation over reasons vs scalar utility; a trust bound is a declared, revisable *reason*, not a scalar.
 - Atomicguard `masters_project_plan.md:59` — the logprobs "confident and wrong" rejection: a scalar confidence with no external check is the failure mode; trust-as-declared-reason avoids collapsing to a scalar.
 - `drafts/stochastic-reasoning-kind.md` — the reserved Kind; confidence as decision signal, never truth-maker.
+
+## Promise Theory threads (for later)
+
+Draft material for a later post, surfaced by the atomicguard review (via the Mark Burgess correspondence). Promise Theory gives two primitives that map one-to-one onto the freshness-axis machinery, plus a reframe worth digging into.
+
+- **The reframe:** the belief state is the record of promises sensed and verified, not a model of the world. The consumer bears responsibility for verifying that a promise was fulfilled.
+- **Primitives → axes:**
+  - **promise / assessment** (observer-declared bound, `:fresh-for N`) — the world ontology's freshness doctrine;
+  - **verification** (binary guard verdict) — the agent ontology's check.
+- **Fixed-point formulation (the strongest link):** a belief is at its fixed point when re-sensing returns the same copy (verified); `:fresh-for N` is how far a copy may drift before re-sense; a failed re-sense leaves the belief fixed — INVALIDATE-not-changed. (Burgess fixed-point equations; CFEngine idempotence.)
+- **The Burgess caveat (a decision for later):** Promise Theory uses *assessment* by observers, not *verification* — a promise is not a guarantee (Burgess 2015); promise-keeping is subjective and per-observer, verification is binary and objective. Open question for the doctrine: adopt the per-observer assessment framing (truer to PT, strengthens the world-ontology side) or keep the declared bound without the per-observer caveat (simpler)?
+- **Coherence vs calibration:** coherent beliefs can be systematically wrong (De Finetti); coherence was solved, calibration never — the guard is the external check. Bears on the reserved stochastic-reasoning Kind: reported-channel beliefs can be coherent-but-wrong; no internal mechanism calibrates them.
+
+**Notes in lestash:**
+- [12688 — "Please also add promise theory"](https://pop-mini.monkey-ladon.ts.net:8444/api/items/12688) — own note; adding PT to the rational-agents definitions.
+- [12689 — Promise Theory concepts (autonomous agents, voluntary cooperation)](https://pop-mini.monkey-ladon.ts.net:8444/api/items/12689) — the primitive set.
+- [14267 — whether Burgess specifies promise/verification in different state spaces](https://pop-mini.monkey-ladon.ts.net:8444/api/items/14267) — he does not; the assessment-vs-verification caveat.
+- [20852 — "trying to be faithful to Mark Burgess"; promises not guarantees](https://pop-mini.monkey-ladon.ts.net:8444/api/items/20852) — own note; the promise ≠ guarantee line.
+- [24920 — Mark Burgess's LinkedIn post: PT "must be at the core of LLM-based..."](https://pop-mini.monkey-ladon.ts.net:8444/api/items/24920) — the direct Burgess exchange.
+
+**Atomicguard files to dig into later** (atomicguard provided file paths, not note links): `docs/design/notes/mark_burgess_correspondence.md` (fixed-point equations; assessment-vs-verification; autonomy as causal independence), `docs/design/notes/system_characteristics.md` (Stability Invariant = fixed point), `docs/design/notes/dual_state_conversation_nov2025.md` (guard-as-sensing-action), `docs/theory/domain_definitions.md` (consumer bears responsibility for verification), `docs/masters_report.md` (R as observable state), `docs/theory/notation/human_guards_notation.md` (guard-is-promise).
