@@ -35,7 +35,23 @@ Doyle's own thread, first-person:
 
 Doyle gives the **justification + retraction + reasoned-deliberation machinery** — the retraction half of the freshness axis — but **not the temporal staleness bound** (`:fresh-for` / `:stale-on`). His framework is about pedigree, not *when to re-sense*. The temporal side comes from the situation-calculus-with-knowledge line (Scherl & Levesque 1993) and planning-under-uncertainty's re-sensing stance, not from AITR-581. IA 14's attributions should stay on that line: Doyle anchors INVALIDATE and the "justification is what Kind names" claim; he is not the source of the doctrine.
 
-## 5. Reference note
+## 5. Notes in lestash
+
+Threads in the personal knowledge base that trace the same reconciliation — what Doyle actually offers vs the rational-agent definitions:
+
+- [14224 — "What does Jon Doyle or Woodbridge and Jennings offer?"](https://pop-mini.monkey-ladon.ts.net:8444/api/items/14224) — the thread's opening question (own note).
+- [14226 — "I found his PhD paper and ideas for Rational Psychology informative"](https://pop-mini.monkey-ladon.ts.net:8444/api/items/14226) — own note.
+- [14227 — Doyle positioned against the framework definition](https://pop-mini.monkey-ladon.ts.net:8444/api/items/14227) — first (over-attributed) synthesis: Doyle as decision criteria under resource bounds.
+- [14228 — "Jon Doyle really defined the rationality of it?"](https://pop-mini.monkey-ladon.ts.net:8444/api/items/14228) — the challenge (own note).
+- [14229 — what Doyle actually contributed](https://pop-mini.monkey-ladon.ts.net:8444/api/items/14229) — the correction: architecture of rational thought, not the definition of rational decisions.
+- [20881 — "No, I overstated. Doyle worked on reason maintenance and belief revision"](https://pop-mini.monkey-ladon.ts.net:8444/api/items/20881) — the user's own correction; bounded rationality is Simon, not Doyle (own note).
+- [20882 — the reframed synthesis](https://pop-mini.monkey-ladon.ts.net:8444/api/items/20882) — Doyle tracked into reason maintenance / belief revision for guard-dependency tracking.
+- [2300 — "Definitions — Rational Psychology"](https://pop-mini.monkey-ladon.ts.net:8444/api/items/2300) — the term-sheet artifact (own note).
+- [7828 — Russell & Norvig referencing Doyle's Rational Psychology](https://pop-mini.monkey-ladon.ts.net:8444/api/items/7828) — the AIMA citation thread (own note).
+
+The through-line in these notes matches this draft's §4: Doyle supplies the *reason-maintenance / belief-revision machinery*, not the rationality criterion (that's Simon/decision theory).
+
+## 6. Reference note
 
 - Primary source: DSpace@MIT handle `1721.1/6883` (AITR-581), PDF `AITR-581.pdf`. Text verified against the Internet Archive bitsavers copy.
 - Mechanism chapters behind the §1.7 links: §3.4 States of Belief, §3.5–3.6 Justifications, §3.11 Defeasible Reasons and Dialectical Argumentation, §5 Deliberation, §6 Deliberate Changes of Mental Life.
