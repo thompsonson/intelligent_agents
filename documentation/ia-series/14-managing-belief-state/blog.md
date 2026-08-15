@@ -189,10 +189,6 @@ And the belief state as a whole — it stores the controllable atoms, and only t
 
 Facts and metadata serialise; the declared doctrine — how fresh each fact must be — stays out of the record, exactly as IA 13's serialisation decision left it with Kind.
 
-## Re-entry stays open
-
-The ontology was re-entered the moment the world wouldn't sit still — that was the signal. And writing this has been managing my own belief state: the last post's claim that the belief state was "the controllable side" was a belief I held, and it went out of sync with the world the moment the atomicguard work pointed out the epistemic copies. Justification is not truth; freshness is not Kind; and the belief I hold about my own work needs the same re-sensing I've been describing.
-
 ## A pure agent function for discovery
 
 Everything in this post composes into one function. The AIMA agent function maps any percept sequence to an action; for discovery it is the loop that walks an unknown graph while keeping the belief it builds in sync with the world it walks.
@@ -256,3 +252,7 @@ function INFRA-DISCOVERY-AGENT(percept) returns an action
 ```
 
 The function is pure in the AIMA sense: it is the ideal mapping, defined over the declared vocabulary — the world ontology's sensed facts and the agent ontology's management actions — with the belief state and the doctrine as its persistent state. Nothing here is new machinery: the actions are belief revision (AGM 1985), truth maintenance (Doyle 1979; de Kleer 1986), re-sensing (planning under uncertainty), and knowledge in the situation calculus (Scherl & Levesque 1993), all given names and composed into one loop.
+
+## Re-entry stays open
+
+The ontology was re-entered the moment the world wouldn't sit still — that was the signal. And writing this has been managing my own belief state: the last post's claim that the belief state was "the controllable side" was a belief I held, and it went out of sync with the world the moment the atomicguard work pointed out the epistemic copies. Justification is not truth; freshness is not Kind; and the belief I hold about my own work needs the same re-sensing I've been describing.
