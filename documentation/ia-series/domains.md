@@ -2,6 +2,8 @@
 
 *Living document. The shared areas the series' vocabulary is organised into. Definitions and boundaries; the agreed meaning of each term lives in the [ubiquitous language](ubiquitous-language.md).*
 
+*Source of truth: the posts remain authoritative for the domains they establish. This document is the living extract — when a post redraws a domain boundary, update it here so the two don't drift apart silently.*
+
 ## The domain set
 
 The domains are the areas of the agent architecture the series names. They are distinct because they fail differently and are managed by different machinery.

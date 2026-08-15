@@ -2,6 +2,8 @@
 
 *Living document. The shared naming and vocabulary for the series' [domains](domains.md), agreed so every design document means the same thing by the same word. Two artefacts fail differently: the domains decide **where a term belongs**; this document fixes **what each term means**.*
 
+*Source of truth: the posts remain authoritative for the terms they establish. This document is the living extract — when a post changes a term, update it here so the two don't drift apart silently.*
+
 ## The grammars (substrate — referenced, not absorbed)
 
 The domains are written in two languages, each given its own term sheet:
