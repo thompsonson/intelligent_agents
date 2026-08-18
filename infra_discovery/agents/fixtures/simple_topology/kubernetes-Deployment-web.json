@@ -1,0 +1,14 @@
+{
+  "name": "web",
+  "namespace": "default",
+  "replicas": 3,
+  "ready_replicas": 3,
+  "status": "Progressing",
+  "edges": [
+    {
+      "from": ["kubernetes", "ReplicaSet", "web-rs"],
+      "type": "managed-by",
+      "evidence": "metadata.ownerReferences via Deployment controller"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "status": "RUNNING",
+  "replicas": 4,
+  "edges": [
+    {
+      "to": [
+        "external",
+        "database",
+        "postgres"
+      ],
+      "type": "depends-on-external",
+      "evidence": "CLOUDSQL_CONNECTION_NAME env var"
+    },
+    {
+      "to": [
+        "kubernetes",
+        "Deployment",
+        "api"
+      ],
+      "type": "enabled-by",
+      "evidence": "ingress from K8s namespace (F-001 reverse)"
+    }
+  ]
+}

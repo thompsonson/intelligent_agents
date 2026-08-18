@@ -1,0 +1,14 @@
+{
+  "status": "success",
+  "edges": [
+    {
+      "to": [
+        "kubernetes",
+        "Deployment",
+        "api"
+      ],
+      "type": "applies-to",
+      "evidence": "step: kubectl apply -f deployment.yaml"
+    }
+  ]
+}

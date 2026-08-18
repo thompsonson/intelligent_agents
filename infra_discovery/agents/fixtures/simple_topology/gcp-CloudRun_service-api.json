@@ -1,0 +1,14 @@
+{
+  "name": "api",
+  "status": "ACTIVE",
+  "ingress_traffic": "INGRESS_TRAFFIC_ALL",
+  "uri": "https://api-xxx.run.app",
+  "region": "us-central1",
+  "edges": [
+    {
+      "from": ["github_actions", "job", "deploy"],
+      "type": "deployed-by",
+      "evidence": "deployment-manager.googleapis.com annotation"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "web-rs",
+  "namespace": "default",
+  "replicas": 3,
+  "ready_replicas": 3,
+  "status": "Active",
+  "edges": []
+}

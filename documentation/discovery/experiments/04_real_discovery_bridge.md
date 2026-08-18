@@ -52,6 +52,7 @@ Same 15 frames, same shape as experiment 3's GIF — the point being made *is* t
 
 ## Related documents
 
-- [`../atomicguard-bridge/environment_design.md`](../atomicguard-bridge/environment_design.md) — the node-ownership resolution, the "small steps" scope, and the sense-time-not-construction-time validation tradeoff this experiment's fixtures exercise.
+- [`../atomicguard-bridge/environment_design.md`](../atomicguard-bridge/environment_design.md) — the environment-properties table, the node-ownership resolution, and the sense-time-not-construction-time validation tradeoff this experiment's fixtures exercise.
+- [`../atomicguard-bridge/scenario.md`](../atomicguard-bridge/scenario.md) / [`algorithm_fit.md`](../atomicguard-bridge/algorithm_fit.md) — the fixture-backed topology, the "does `DiscoveryAgent`'s algorithm still fit" argument this experiment's own over-sensing bug is evidence for, and DSA selection kept explicitly open.
 - [`03_pipeline_fanout_and_joins.md`](03_pipeline_fanout_and_joins.md) — the plain-`DiscoveryEnvironment` run this experiment matches move for move.
 - [`../../task-graph/atomicguard-variant/environment_design.md`](../../task-graph/atomicguard-variant/environment_design.md) — where `check_invariant()`'s `rmax=0` "free sensor via `DualStateAgent`" pattern, reused here for `sense_edges()`, was first established.
