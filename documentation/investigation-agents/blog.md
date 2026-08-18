@@ -1,6 +1,6 @@
-# [IA Series 14/n] Investigation Agents: One World, Two Agent Ontologies
+# Investigation Agents: One World, Two Agent Ontologies
 
-*This extends [IA Series 13](../agent-design-process/blog.md)'s ontology work to a two-role architecture: an orchestrator and a set of worker agents, sharing one world ontology but each running its own agent ontology on top of it. The worked example generalizes a pattern from semantic investigation workflows I run day to day — stripped to its shape, not its specifics.*
+*Draft — not a numbered series post. A worked ontology for investigation/conflict-management agents, generalised from `docs/agents/investigation` on the manta-deploy repo (no product-specific detail retained). It extends [IA Series 13](../ia-series/13-ontologies/blog.md)'s ontology work to a two-role architecture: an orchestrator and a set of worker agents, sharing one world ontology but each running its own agent ontology on top of it.*
 
 ## Introduction
 
@@ -93,7 +93,7 @@ graph LR
     end
 ```
 
-Read the Kind column again and the design decision falls out of it rather than being asserted: `finding` is exogenous, not controllable, even though the orchestrator's own `DISPATCH` action is what causes it to arrive. Dispatching doesn't entail the claim — the same synchronous-entailment test from [Series 13](../agent-design-process/blog.md#facts-as-justifiably-held-belief) that separates a Deployment's own state from a discovery agent's belief about it applies here identically: a worker returning is an effector's successful return, but the *content* of what it returned is not thereby made true. That gap is not a detail — it's the whole reason `verified(finding)` exists as its own derived predicate instead of findings being trusted on arrival.
+Read the Kind column again and the design decision falls out of it rather than being asserted: `finding` is exogenous, not controllable, even though the orchestrator's own `DISPATCH` action is what causes it to arrive. Dispatching doesn't entail the claim — the same synchronous-entailment test from [Series 13](../ia-series/13-ontologies/blog.md#facts-as-justifiably-held-belief) that separates a Deployment's own state from a discovery agent's belief about it applies here identically: a worker returning is an effector's successful return, but the *content* of what it returned is not thereby made true. That gap is not a detail — it's the whole reason `verified(finding)` exists as its own derived predicate instead of findings being trusted on arrival.
 
 ## The neuro-symbolic seam
 
@@ -127,7 +127,7 @@ flowchart TD
     Check -- "yes, still insufficient" --> Escalate[["ESCALATE(reason)"]]:::action
 ```
 
-**A worker's agent function** — stateless per task, the same degenerate shape the minimal LLM loop had in [Series 13](../agent-design-process/blog.md#the-degenerate-contrast-the-minimal-llm-loop): almost everything it touches is exogenous to *it*, because the task itself arrived from outside and nothing it does persists past the one claim it returns.
+**A worker's agent function** — stateless per task, the same degenerate shape the minimal LLM loop had in [Series 13](../ia-series/13-ontologies/blog.md#the-degenerate-contrast-the-minimal-llm-loop): almost everything it touches is exogenous to *it*, because the task itself arrived from outside and nothing it does persists past the one claim it returns.
 
 ```mermaid
 flowchart TD
@@ -173,7 +173,7 @@ Step 3 is the case a purely semantic version of this loop can't produce: without
 ## Honest caveats
 
 - **`SELECT-NEXT`'s priority is still unsolved here** — same open status as the infra discovery agent's own `SCORE`. Nothing above says whether to run all worker kinds in parallel, or pick the cheapest first, or the one most likely to be decisive.
-- **`sufficient(investigation)` is named, not defined** — the same honesty [Series 13](../agent-design-process/blog.md) already extended to `is_final(response)` and `DECIDABLE`. A real implementation needs a concrete rule (a minimum count of verified findings, a confidence threshold, one finding of a specific kind), and that rule belongs in the agent ontology, not the world ontology — it's a fact about how *this* orchestrator decides, not a fact about investigations in general.
+- **`sufficient(investigation)` is named, not defined** — the same honesty [Series 13](../ia-series/13-ontologies/blog.md) already extended to `is_final(response)` and `DECIDABLE`. A real implementation needs a concrete rule (a minimum count of verified findings, a confidence threshold, one finding of a specific kind), and that rule belongs in the agent ontology, not the world ontology — it's a fact about how *this* orchestrator decides, not a fact about investigations in general.
 - **Conflicting findings aren't modeled.** Two verified findings that support different, mutually exclusive hypotheses are a real case this ontology doesn't yet have a predicate for. Worth a return pass once it actually happens, not invented speculatively now.
 
 ## Re-entry stays open
