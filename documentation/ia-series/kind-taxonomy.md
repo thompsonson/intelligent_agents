@@ -12,7 +12,7 @@ categories: "ia-series, ontology, belief-state"
 justification axis introduced in [IA 13](../13-ontologies/blog.md). This appendix is the
 canonical version of the Kind set, promoted here from the synthesis in
 `thompsonson/atomicguard` ([PR #383](https://github.com/thompsonson/atomicguard/pull/383),
-`docs/design/notes/kind_taxonomy.md`, commit `07cec24`). It reconciles four threads that
+`docs/design/notes/kind_taxonomy.md`, commit `77f3b05`). It reconciles four threads that
 developed the axis separately — IA 13/14, `dev`#124, `investigation-agents` OQ-001, AtomicGuard
 D3 — into one set. The DS-PDDL `:kind` enum in AtomicGuard encodes this set; the `dev` fleet
 consumes it instead of re-deriving Kinds in `dev-agent-ontology.md` §6.*
@@ -67,8 +67,8 @@ Two points carry from the decision record:
 | `derived` | monotonic entailment over other atoms | recompute; inherits min of bodies' bounds | PDDL 2.2; Datalog IDB; situation calculus |
 | `imputed` | the model's **trained prior** — a statistical, inductive justification (weakest on the axis); carries an uncertainty annotation (DST Bel/Pl, logprob) as metadata | `:scope ap-attempt` — quarantined; guard passes → `verified`, else discarded | statistics ("imputed value"); the stochastic-parrot / Stochastic Illusion thread |
 | `verified` | a deterministic guard checking a claim against the world | re-run the guard; `:fresh-for` | Thompson, *Dual-State Architecture* ([arXiv:2512.20660](https://arxiv.org/abs/2512.20660)); `investigation-agents` OQ-001 option (c); the [RV] gap |
-| `intent` *(held, not world)* | the human's expressed **will** — the assigned goal | `:scope episode` | `dev`-fleet ontology §2 |
-| `granted` *(held, not world)* | the human's **authority** — what the agent may do | `:expires-at` — declared scope + lifetime | `dev`-fleet `approved`, `tokenGranted` |
+| `intent` *(held, not world)* | the human's expressed **will** — the assigned goal | `:scope episode` | **net-new** — motivated by `dev`-fleet §2 TORPID language, not sourced as a Kind |
+| `granted` *(held, not world)* | the human's **authority** — what the agent may do | `:expires-at` — declared scope + lifetime | `dev`#124 §6 prose (its §5.2 table classifies `approved`/`tokenGranted` as `controllable` — source is inconsistent) |
 | `attested` *(held, not world)* | the human's **epistemic vouching** — a state of affairs asserted on the human's authority | none declared — holds until withdrawn | this synthesis (split from `dev`#124's broadened `attested`) |
 | `peer-asserted` | another agent's claim | unverified until the consumer self-promotes it | Promise Theory (Burgess) — a promise is not a guarantee |
 
@@ -165,14 +165,23 @@ A wait-guard does **not** produce a `verified` fact — it is a synchronisation 
 deterministic world-check. It *admits* a `granted` / `attested` / `intent` fact whose Kind is
 unchanged; the human, not the guard, is the justification.
 
-**`intent`** — the human's **assigned goal**, held by the agent and reasoned from. Comes *from* Ψ;
-`intent` is its Kind once held (TORPID: "form intentions from the given goal"). The agent never
-invents it. Bound: the episode; a re-issued goal is a new episode.
+**`intent`** — the human's **assigned goal**, held by the agent and reasoned from. Comes *from* Ψ.
+The agent never invents it. Bound: the episode; a re-issued goal is a new episode.
+
+**Net-new to this synthesis** — no source capture defines an `intent` Kind. It is *motivated* by
+TORPID's "form intentions from the given goal" (`dev`-fleet §2), which is deliberation-loop
+language, not a predicate Kind. Included because §0 (broad) puts the held goal in scope and its
+truth-maker (the human's will) is distinct from the other nine.
 
 **`granted`** — a human authorises **what the agent may do**. `approved(request)`,
 `tokenGranted(agent, token)`, a role elevation. Bound: declared scope + lifetime — use an
 `:expires-at` field, not `:fresh-for` (the freshness axis does not apply to an authority grant).
-`dev`#124 folded this into a broadened `attested`; here it is split out and narrowed.
+**Provenance note:** `dev`#124's §6 *narrative* broadens `attested` to cover the human
+approval/token case (`approved`, `tokenGranted` "justified by the issuing authority… never
+exogenous"); but `dev`#124's own §5.2 predicate table still classifies `tokenGranted` / `approved`
+as **`controllable`** and `role` / `secretRef` as `static` — the source is **internally
+inconsistent** (§6 prose evolved past its §5.2 table). This taxonomy reconciles against the §6
+position and splits it out as `granted`.
 
 **`attested`** — a human asserts **a state of affairs**, on their own epistemic authority: signs
 off a release, vouches "this output is correct." Trust-based; holds until withdrawn.
@@ -213,7 +222,9 @@ guarantee"; the consumer bears responsibility for verification).
 - **`historical` / `event`** — *not needed.* A past-instant fact is `exogenous` with
   `:stale-on never`.
 - **`stipulated` / `contractual`** — *not needed yet.* A negotiated cross-party agreement is
-  `static`; revisit only if renegotiation becomes frequent.
+  closest to `granted` (declared authority/consent, `:expires-at`) rather than `static` (designer
+  stipulation at setup); it is filed here as "not needed" only because renegotiation (`dev`'s
+  D-004) is rare. If it becomes frequent, model it as `granted`, not a new Kind.
 - **Channel-based names** (`sensed`, `reported`) — *rejected.* They reintroduce the transport axis
   IA 14 explicitly removed.
 - **`stochastic`** as the name for `imputed` — *rejected.* Off-axis (names the process, not the
@@ -263,7 +274,7 @@ Two guard shapes matter here: a **deterministic world-checker** (produces `verif
 |---|---|---|
 | **IA 13** | four Kinds: `controllable`, `exogenous`, `static`, `derived` | kept, refined — `controllable` → `enacted`; the four are the "world & logic" group |
 | **IA 14 / `stochastic-reasoning-kind` draft** | a fifth Kind `attested`/`self-attested` **reserved**, for the model's `"FINAL:"` | resolved: the model's output is `imputed` — a real, justification-bearing Kind (the trained prior, quantified as an uncertainty annotation), quarantined by policy; the guard passes it to `verified`, or it is discarded within the attempt |
-| **`dev`#124** | `attested` **promoted to live** and broadened to model reasoning **or** human approval/token | split: human authority → `granted`, human fact-vouching → `attested`; the model case → `imputed`. dev#124's broadening is rejected |
+| **`dev`#124** | §6 *narrative* promotes `attested` to live and broadens it to model reasoning **or** human approval/token — but §5.2's predicate table still says `controllable` for `approved`/`tokenGranted` (**internally inconsistent**) | reconcile against §6: split into `granted` (human authority) / `attested` (human fact-vouch) / `intent` (goal — net-new); model case → `imputed`. The §5.2 `controllable` classification is noted, not adopted |
 | **`investigation-agents` OQ-001** | guard-verified state: `derived` vs. agent-assessment vs. its own determination | option (c): its own Kind, `verified`. `MergeGate` stays `derived` (a composition); its inputs are `verified` |
 | **AtomicGuard D3** | "the generator channel stays out of the predicate-Kind system" | **reading (a)** — D3 means "stays out of the *load-bearing* system," not "out of the belief state." Generator output enters as `imputed` (with an uncertainty annotation); the `:scope ap-attempt` bound + no-precondition/no-downstream constraint keep it off every load-bearing path; the guard is the sole bridge to `verified` |
 
@@ -299,6 +310,16 @@ Two guard shapes matter here: a **deterministic world-checker** (produces `verif
    IA-series term-sheet; AtomicGuard keeps the DS-PDDL `:kind` enum that encodes it; the `dev`
    fleet consumes both instead of re-deriving Kinds in `dev-agent-ontology.md` §6.
 
+**Addendum — source-fidelity review (2nd review of the atomicguard doc @ `07cec24`, fixed in
+`77f3b05`, mirrored here):** two provenance claims corrected — (a) `dev`#124's `attested`
+broadening is not clean: its §6 prose broadens `attested` to human approval/token, but its §5.2
+predicate table still classifies `approved`/`tokenGranted` as `controllable` (§2 `granted`, the §2
+table, and the §6 row now say this explicitly — the source is internally inconsistent, reconciled
+against §6, noted not adopted); (b) `intent` has **no verbatim anchor** — no source defines an
+`intent` Kind; it is **net-new** synthesis, motivated by TORPID's "form intentions from the given
+goal" (deliberation-loop language, not a predicate Kind). Minor: a negotiated cross-party agreement
+is nearer `granted` than `static` (§3).
+
 ## §8. Sources
 
 The synthesis was developed against verbatim captures frozen in
@@ -306,12 +327,12 @@ The synthesis was developed against verbatim captures frozen in
 
 - [`ia13-ontologies-doctrine__blog.md`](https://github.com/thompsonson/atomicguard/blob/main/docs/design/notes/sources/ia13-ontologies-doctrine__blog.md) — the four Kinds and the justification axis
 - [`ia14-draft__stochastic-reasoning-kind.md`](https://github.com/thompsonson/atomicguard/blob/main/docs/design/notes/sources/ia14-draft__stochastic-reasoning-kind.md) — the reserved fifth Kind, now resolved as `imputed`
-- [`dev124__dev-agent-ontology.md`](https://github.com/thompsonson/atomicguard/blob/main/docs/design/notes/sources/dev124__dev-agent-ontology.md) §6 — the broadened `attested`, now split
+- [`dev124__dev-agent-ontology.md`](https://github.com/thompsonson/atomicguard/blob/main/docs/design/notes/sources/dev124__dev-agent-ontology.md) — §6 prose broadens `attested` (model or human approval/token); §5.2 table still says `controllable` for those — internally inconsistent; reconciled against §6
 - [`invagents__open-questions.md`](https://github.com/thompsonson/atomicguard/blob/main/docs/design/notes/sources/invagents__open-questions.md) — OQ-001, resolved as `verified`
 - [`invagents__schema.md`](https://github.com/thompsonson/atomicguard/blob/main/docs/design/notes/sources/invagents__schema.md) — `MergeGate`-as-`derived` framing
 
 The synthesis record itself is `atomicguard` → `docs/design/notes/kind_taxonomy.md`
-([PR #383](https://github.com/thompsonson/atomicguard/pull/383), commit `07cec24`), with the
+([PR #383](https://github.com/thompsonson/atomicguard/pull/383), commit `77f3b05`), with the
 frontier record at `docs/design/notes/frontier_question_guard_verified_kind.md`.
 
 **External references:**
