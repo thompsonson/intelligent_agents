@@ -1,25 +1,30 @@
 ---
 title: "Kind taxonomy — what determines the truth of a held belief"
-summary: "The IA-series Kind taxonomy as the canonical term-sheet. A Kind classifies a held belief by what justifies it. Ten Kinds across world, logic, model, human, and inter-agent justification — reconciling IA 13/14, the dev fleet, investigation-agents, and AtomicGuard D3 into one set."
-status: "canonical"
+summary: "The IA-series Kind taxonomy — research reproduction of the canonical term-sheet. A Kind classifies a held belief by what justifies it. Ten Kinds across world, logic, model, human, and inter-agent justification — reconciling IA 13/14, the dev fleet, investigation-agents, and AtomicGuard D3 into one set."
+status: "research"
 type: "term-sheet"
 categories: "ia-series, ontology, belief-state"
 ---
 
 # Kind taxonomy — what determines the truth of a held belief
 
-*Term-sheet. A **Kind** classifies a belief by **what justifies the agent in holding it** — the
-justification axis introduced in [IA 13](../13-ontologies/blog.md). This appendix is the
-canonical version of the Kind set, promoted here from the synthesis in
-`thompsonson/atomicguard` ([PR #383](https://github.com/thompsonson/atomicguard/pull/383),
-`docs/design/notes/kind_taxonomy.md`, commit `77f3b05`). It reconciles four threads that
-developed the axis separately — IA 13/14, `dev`#124, `investigation-agents` OQ-001, AtomicGuard
-D3 — into one set. The DS-PDDL `:kind` enum in AtomicGuard encodes this set; the `dev` fleet
-consumes it instead of re-deriving Kinds in `dev-agent-ontology.md` §6.*
+*Research-series reproduction. A **Kind** classifies a belief by **what justifies the agent in
+holding it** — the justification axis introduced in
+[IA 13](../13-ontologies/blog.md). This appendix is the **research copy** of the Kind set;
+the **canonical version lives in `thompsonson/atomicguard`** →
+[`docs/design/notes/kind_taxonomy.md`](https://github.com/thompsonson/atomicguard/blob/docs/frontier-question/docs/design/notes/kind_taxonomy.md)
+([PR #383](https://github.com/thompsonson/atomicguard/pull/383)) — bypassing this copy for
+anything load-bearing or versioned. It reconciles four threads that developed the axis
+separately — IA 13/14, `dev`#124, `investigation-agents` OQ-001, AtomicGuard D3 — into one
+set. The DS-PDDL `:kind` enum in AtomicGuard encodes this set; the `dev` fleet consumes it
+instead of re-deriving Kinds in `dev-agent-ontology.md` §6. This is the IA-series origin of
+the thread; it is not a second canonical.*
 
 **Status of every earlier item is decided.** §0 (scope) and §7.2 (the D3 reading) were decided
 (broad; reading (a)) on 2026-08-31; §7.3, §7.4, §7.5, §7.6 are resolved in this term-sheet
-(§7 — decision log); §7.7 (canonical home) is this document.
+(§7 — decision log); §7.7 (canonical home) was initially assigned to this document on
+2026-08-31 and **reversed the same day** — the canonical home is `atomicguard`
+(§7 item 7); this copy is the research-series reproduction.
 
 ## §0. Scope — everything the agent holds
 
@@ -306,9 +311,13 @@ Two guard shapes matter here: a **deterministic world-checker** (produces `verif
    would break the set's completeness (a peer claim must land somewhere). The *enum staging* is a
    port concern: the AtomicGuard DS-PDDL `:kind` enum may add it later when a peer channel is
    deployed; the concept layer includes it now.
-7. **Canonical home — DONE: this document.** Promoted to `thompsonson/intelligent_agents` as an
-   IA-series term-sheet; AtomicGuard keeps the DS-PDDL `:kind` enum that encodes it; the `dev`
-   fleet consumes both instead of re-deriving Kinds in `dev-agent-ontology.md` §6.
+7. **Canonical home — REVERSED (2026-08-31): `atomicguard`, not this repo.** Originally
+   assigned here as an IA-series term-sheet; that was a mislabelling — this repo is the
+   research origin, not a canonical source. The canonical term-sheet is `thompsonson/atomicguard`
+   → `docs/design/notes/kind_taxonomy.md` ([PR #383](https://github.com/thompsonson/atomicguard/pull/383));
+   AtomicGuard keeps the DS-PDDL `:kind` enum that encodes the set; the `dev` fleet consumes it
+   instead of re-deriving Kinds in `dev-agent-ontology.md` §6. This document remains the
+   research-series reproduction and points at the canonical.
 
 **Addendum — source-fidelity review (2nd review of the atomicguard doc @ `07cec24`, fixed in
 `77f3b05`, mirrored here):** two provenance claims corrected — (a) `dev`#124's `attested`
@@ -332,8 +341,9 @@ The synthesis was developed against verbatim captures frozen in
 - [`invagents__schema.md`](https://github.com/thompsonson/atomicguard/blob/main/docs/design/notes/sources/invagents__schema.md) — `MergeGate`-as-`derived` framing
 
 The synthesis record itself is `atomicguard` → `docs/design/notes/kind_taxonomy.md`
-([PR #383](https://github.com/thompsonson/atomicguard/pull/383), commit `77f3b05`), with the
-frontier record at `docs/design/notes/frontier_question_guard_verified_kind.md`.
+([PR #383](https://github.com/thompsonson/atomicguard/pull/383), commit `77f3b05`) — which is
+also the **canonical term-sheet** — with the frontier record at
+`docs/design/notes/frontier_question_guard_verified_kind.md`.
 
 **External references:**
 
