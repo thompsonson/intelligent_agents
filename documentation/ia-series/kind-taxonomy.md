@@ -33,6 +33,12 @@ the thread; it is not a second canonical.*
 `attested` stay in the set, tagged *(held, not world)*. The set is **10**: `static`, `exogenous`,
 `enacted`, `derived`, `imputed`, `verified`, `intent`, `granted`, `attested`, `peer-asserted`.
 
+> **Identity split (2026-08-31).** The belief-state thread proceeds as the **9** other Kinds —
+> `granted` is the Identity axis, not a Belief State Kind: its truth-maker justifies an
+> *authorization* (what the agent may do), not a held world-belief. Separated to `identity.md` in
+> atomicguard. Formal treatment: [`belief-state-kinds.md`](belief-state-kinds.md). The 10-Kind set
+> stands as the comprehensive term-sheet; this is a scoping, not a renumbering.
+
 Two points carry from the decision record:
 
 - **The three "human" Kinds are not one family.** `granted` / `attested` are tracked
