@@ -23,7 +23,7 @@ state space **D**:
 | Modality | Fact (a belief) | Norm (in D) |
 |---|---|---|
 | Permission | `exogenous` — "the store indicated a grant for AP‑X at T" | permission entry |
-| Obligation | `intent` — **OPEN** (see §2) "goal G assigned at T" | obligation entry |
+| Obligation | `intent` — "the assigned task is G" (§2) | obligation entry |
 | Prohibition | `exogenous` — "the store indicated a deny for AP‑X at T" | interdicted/deny entry |
 
 `granted` does not exit as an exception — **the belief-of-a-norm never was a Kind.** It stays out by
@@ -31,29 +31,41 @@ state space **D**:
 belief. **The comprehensive set == the belief-state set == 9 Kinds**: `static · exogenous · enacted ·
 derived · imputed · verified · intent · attested · peer-asserted`.
 
-## The clean fourfold (+ one OPEN)
+## The fivefold (decided 2026-08-31, atomicguard)
 
-Atomicguard's relocation of authority events keeps the model unambiguous:
+The fourfold plus `intent`. The relocation of authority events keeps the model unambiguous; the goal
+commitment is the fifth, structurally distinct line:
 
 - **norms in force** → non-belief entries in **D** (may / must / must-not; scope; lifetime; revocation)
 - **facts about D** → **`exogenous`** atoms ("the store said permitted / forbade / granted at T"),
   pulled at the pre-gate or pushed via interruption — a sensor interrupt is still sensing. Evidential
   only; freshness-bounded (`:stale-on`).
+- **the agent's held goal commitment** → **`intent`** — justified by commissioning / Ψ (the goal
+  channel, a component of the problem space `P = <Ψ, π, Γ>`); **`:scope episode`**; changed only by a
+  `RECEIVE` (a new commissioning event), *never* by staleness. There is **no goal store to sense** —
+  the goal is given once and held, not re-polled.
 - **a human vouches a world state of affairs** → **`attested`** (reserved for world facts, not norm
   events)
 - **the agent acted** → **`enacted`** ("AP ran at T, effects E")
 
-**OPEN — where does `intent` sit?** The fivefold candidate adds a fifth line — *goal→`intent`* —
-because `intent`'s content is the **goal itself** (a commitment the agent holds and reasons from: the
-TORPID "form intentions" lineage), arriving through the goal/command channel Ψ, not D. The collapsing
-alternative — the goal-assignment is merely a sensed authority event → `exogenous`, `intent` absorbed —
-is coherent but sacrifices the goal-belief's epistemic role and shrinks the set. **This note leaves
-`intent` OPEN; it goes to atomicguard to weigh.** If the fivefold holds, the set stays 9 and
-obligation anchors on `intent`.
+**Why `intent` is `intent`, not `exogenous`** (atomicguard's reasoning, adopted): permission's fact-side
+is `exogenous` because the agent literally senses the permission from D — "the store said permitted at
+T" is the output of a sense operation against a register the authority owns. **The goal has no owning
+register.** Absorbing `intent` into `exogenous` would be the same category error as leaving `granted`
+in the beliefs, reversed — treating a *constitutive held commitment* as a *transient sensed
+observation*. The asymmetry is correct: **permission and prohibition anchor on sensed events; obligation
+anchors on the held `intent`** — permissions are external and sensed; the goal is constitutive and held.
+
+The split keeps it parallel to everything else: the **norm** "must pursue G / must not halt" is the
+obligation entry in D; the **fact** "the agent's assigned task is G" is the held belief `intent`.
+And alongside the held `intent`, an audit atom may be kept — "the human assigned G at T" (sensed /
+logged, exogenous-adjacent) — giving the goal its own three records: the *assignment event* (history) ·
+the *held `intent`* (what preconditions read) · the *enacted* steps toward it.
 
 ## D as a fourth, sensed space
 
-`S = S_workflow × S_env × W × D`. D has W's profile **on the agent's side**: external (the human
+`S = S_workflow × S_env × W × D` (candidate `S_stochastic` rename — see Cascade). D has W's profile **on
+the agent's side**: external (the human
 owns it), **partially observable**, **non-monotonic** (a grant can vanish between checks). Two
 asymmetries, stated so the model is not over-symmetrised:
 
@@ -110,7 +122,7 @@ effector APs that mutate W, escalation-relevant steps. Read-only APs discard the
   workflow state — a norm change cannot invalidate a fact.
 - **Wait-guard splits by what it waits for:** norm (*"may I?"*) → blocks on **D** until the entry is
   in force; yields **no Kind**. Fact-vouch (*"is this right?"*) → yields **`attested`**. Goal
-  assignment → yields **`intent`** (per §2, OPEN).
+  assignment → yields **`intent`** (§2 — the held goal commitment).
 
 ## Worked pre-gate walk-through
 
@@ -146,6 +158,9 @@ norm.
 - dev-fleet ontology §5.2: `approved` / `tokenGranted` → `exogenous` senses of the authority channel
   (dissolves the §6/§5.2 inconsistency — §5.2's "not a *belief* Kind" instinct was half right).
 - DS-PDDL `:kind` enum → the 9; the authorization layer owns D.
+- **Notation sweep (proposed by atomicguard, executed separately):** rename DSA's `S_env` →
+  `S_stochastic` (reframing the dual as deterministic vs stochastic) — target
+  `S = S_workflow × S_stochastic × W × D`. Not part of this design's activation; listed for the sweep.
 
 ## References
 
