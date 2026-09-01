@@ -143,19 +143,92 @@ verified* (`exogenous` or `verified`). It is never auto-promoted by trust. There
 `peer-validated`**: trusting a peer's execution is itself an assessment, and Promise Theory rules out
 silently inheriting a peer's faults — *a promise is not a guarantee*.
 
+## The Kinds through the lenses
+
+*Each lens reads the same set differently, and the lens says what the table is for — the IA 13
+practice of reading the taxonomy through justification, determination, and belief, extended across the
+nine.*
+
+### Lens 1 — justification: what entitles holding it
+
+| Kind | Justified by |
+|---|---|
+| `static` | the designer's stipulation, at setup |
+| `exogenous` | the world, as sensed |
+| `enacted` | the agent's own action, at a time |
+| `derived` | monotonic entailment over other atoms |
+| `imputed` | the model's trained prior — a statistical, inductive justification, the weakest on the axis |
+| `verified` | a deterministic guard checked the claim against the world |
+| `intent` | the human's will — the assigned goal |
+| `attested` | a human vouches for a state of affairs |
+| `peer-asserted` | another agent's claim — unverified until the consumer checks |
+
+### Lens 2 — determination: the entailment test
+
+*IA 13's sharp contribution — "does the effector's successful return entail the fact?" — run across
+all nine. "n/a" marks a Kind the test does not even ask: nothing the agent runs makes it so, or it is
+not world-sensed.*
+
+| Kind | Determined by | Successful-return entails it? | Example |
+|---|---|---|---|
+| `static` | the designer | — (no action) | `domain(x)` |
+| `exogenous` | the world | **no** — the fact can change after the action returns | `node(id)`, `ci-run(c)` |
+| `enacted` | the agent's action | **yes** — a successful return makes it so | `occupies(agent, wt)`, `visited(node)` |
+| `derived` | entailment | n/a — computed, never sensed | `reachable(a,b)`, `MergeGate` |
+| `imputed` | the model's trained prior | **no** — and re-running yields a *different* value | `"FINAL:"`, "merge-ready" |
+| `verified` | a deterministic guard vs. the world | n/a — the guard *is* the check | `a_guard` / `a_guard_eff` passing |
+| `intent` | the human's will | n/a — assigned, not acted | "optimize the merge path" |
+| `attested` | the human's vouch | n/a — authority, not re-sensable | "release signed off" |
+| `peer-asserted` | another agent's claim | n/a until the consumer re-senses or guards | a peer's "CI green" |
+
+### Lens 3 — belief: entry, re-check, retirement
+
+*The holdability view — how the fact becomes a held belief, how it can be re-checked, and how it
+leaves.*
+
+| Kind | How it enters belief | Re-check operator | How it leaves |
+|---|---|---|---|
+| `static` | at setup | none — immutable | never |
+| `exogenous` | sensing | re-sense; `:fresh-for N` | goes stale (`:stale-on <signal>`) |
+| `enacted` | acting | none by time — held; provenance `enactedAt` | retracted by `e_undo` / cascade |
+| `derived` | computed | recompute; min of bodies' bounds | stale when any body is |
+| `imputed` | model output, within one attempt | none — re-running yields a different value | guard passes → `verified`, or discarded at attempt end |
+| `verified` | a guard passes | re-run the guard; `:fresh-for N` | INVALIDATE on failed re-run / cascade |
+| `intent` | assigned by the human | within the episode | episode ends; a re-issued goal is a new episode |
+| `attested` | the human vouches | none declared | withdrawn by the human (INVALIDATE) |
+| `peer-asserted` | another agent's claim | consumer re-senses or guards | promoted (`exogenous`/`verified`) or never trusted |
+
+### Lens 4 — strength: confidence and the load-bearing rule
+
+*The arc made a table — how strong the justification is, what uncertainty it carries, and what may
+depend on it. This is where `imputed` is read honestly: weakest justification, uncertain, and
+deliberately not load-bearing until a guard earns it a stronger Kind.*
+
+| Kind | Justification strength | Uncertainty carried | What may depend on it |
+|---|---|---|---|
+| `static` | maximal — stipulated | none | anything, for the task's life |
+| `exogenous` | high — world, as sensed | drift until re-sensed | anything, while fresh (`:fresh-for`) |
+| `enacted` | high — the agent made it so | none, by construction | anything, while unretracted |
+| `derived` | high — entailment | inherits bodies' bounds | anything, while the bodies are fresh |
+| `imputed` | **weakest — trained prior** | DST Bel/Pl + logprob annotation (metadata) | **nothing — quarantined**; only a guard may promote it |
+| `verified` | earned — guard vs. world | none beyond `:fresh-for` | anything, while fresh |
+| `intent` | human's will | none, at goal level | reasoning within the episode |
+| `attested` | human's authority | none declared | anything, until withdrawn |
+| `peer-asserted` | another agent's | untrusted until the consumer verifies | nothing, until self-promoted |
+
 ## Lifecycle and bounds
 
-| Kind | Bound mechanism |
-|---|---|
-| `static` | none — immutable |
-| `exogenous` | `:fresh-for N` (wall-clock) / `:stale-on <signal>` |
-| `enacted` | none by time; retracted by `e_undo` / cascade invalidation |
-| `derived` | composed — min of bodies' bounds; stale OR-composes |
-| `imputed` | `:scope ap-attempt` — guard passes → `verified`, else discarded (+ an uncertainty annotation on the copy) |
-| `verified` | `:fresh-for N` — re-run the guard |
-| `intent` | `:scope episode` |
-| `attested` | none declared — until withdrawn |
-| `peer-asserted` | unverified until self-promoted |
+| Kind | Bound mechanism | Bound family |
+|---|---|---|
+| `static` | none — immutable | none |
+| `exogenous` | `:fresh-for N` (wall-clock) / `:stale-on <signal>` | re-sensable |
+| `enacted` | none by time; retracted by `e_undo` / cascade invalidation | none |
+| `derived` | composed — min of bodies' bounds; stale OR-composes | re-sensable (by composition) |
+| `imputed` | `:scope ap-attempt` — guard passes → `verified`, else discarded (+ an uncertainty annotation on the copy) | declared-authority |
+| `verified` | `:fresh-for N` — re-run the guard | re-sensable |
+| `intent` | `:scope episode` | declared-authority |
+| `attested` | none declared — until withdrawn | none |
+| `peer-asserted` | unverified until self-promoted | none |
 
 Three bound *families*: **re-sensable** (`:fresh-for` — `exogenous`, `verified`, `derived` by
 composition), **declared-authority** (`:scope` — `imputed`, `intent`), **none** (`static`, `enacted`,
