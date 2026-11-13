@@ -7,7 +7,7 @@ ifneq (,$(wildcard ./.env))
     export
 endif
 
-.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live minimal-llm-loop benchmark-gsm8k benchmark-gsm8k-reflection test-task-graph test-maze-solver test-path-maintenance test-discovery
+.PHONY: help install test test-verbose test-coverage clean lint format check-env litellm-install litellm-start litellm-stop litellm-logs litellm-status litellm-clean litellm-test litellm-models setup-all setup-env test-integration test-agent-live minimal-llm-loop benchmark-gsm8k benchmark-gsm8k-reflection test-task-graph test-maze-solver test-path-maintenance test-discovery typedb-start typedb-stop discovery-typedb-example
 
 # Default target
 help:
@@ -18,6 +18,10 @@ help:
 	@echo "  test-maze-solver - Run maze_solver tests (see documentation/path-maintenance/)"
 	@echo "  test-path-maintenance - Run path_maintenance tests (see documentation/path-maintenance/graph-topology/)"
 	@echo "  test-discovery - Run discovery tests (see documentation/discovery/)"
+	@echo "                   The TypeDB belief-store tests run only when a server is up"
+	@echo "  typedb-start   - Start a local TypeDB 3.14.2 server in Docker"
+	@echo "  typedb-stop    - Stop it (the typedb-data volume is kept)"
+	@echo "  discovery-typedb-example - Walk the IA 13 pipeline with beliefs in TypeDB"
 	@echo "  test-verbose  - Run tests with verbose output"
 	@echo "  test-coverage - Run tests with coverage report"
 	@echo "  test-integration - Run integration tests with env vars"
@@ -69,6 +73,8 @@ install: .venv
 	uv pip install gradio
 	@echo "Installing structured logprobs for token-level confidence..."
 	uv pip install structured-logprobs
+	@echo "Installing the TypeDB driver for the discovery belief store..."
+	uv pip install typedb-driver==3.14.0
 
 # Run tests
 test:
@@ -125,6 +131,20 @@ test-path-maintenance:
 test-discovery:
 	@echo "Running discovery tests..."
 	uv run pytest discovery/tests/ -v
+
+# TypeDB as the discovery belief store (see documentation/discovery/typedb-belief-store/)
+TYPEDB_IMAGE ?= typedb/typedb:3.14.2
+
+typedb-start:
+	@docker start typedb 2>/dev/null || docker run -d --name typedb \
+		-v typedb-data:/var/lib/typedb/data \
+		-p 127.0.0.1:1729:1729 -p 127.0.0.1:8000:8000 $(TYPEDB_IMAGE)
+
+typedb-stop:
+	docker stop typedb
+
+discovery-typedb-example:
+	uv run python -m discovery.typedb.example --gated
 
 # Enhanced agent demo with token confidence
 demo-enhanced:

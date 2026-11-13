@@ -1,0 +1,90 @@
+# The infra discovery agent's world ontology, from IA Series 13
+# (documentation/ia-series/13-ontologies/blog.md), as a TypeDB schema.
+#
+# Every fact carries its Kind. TypeQL already uses "kind" for entity,
+# relation and attribute, so here it is `fact-kind`. Each predicate pins
+# its own Kind with @values on the ownership, so TypeDB refuses, say, a
+# `notifies` recorded as controllable.
+
+define
+
+  # ---- Kind, and when and by what a fact was sensed or recorded ---------
+  attribute fact-kind, value string
+    @values("controllable", "exogenous", "static", "derived");
+  attribute node-id, value string;
+  attribute domain-name, value string;
+  attribute sensed-at, value datetime;   # UTC
+  attribute sensed-by, value string;
+  attribute recorded-at, value datetime; # UTC
+
+  # ---- static: true at setup, never changed ------------------------------
+  entity domain,
+    owns domain-name @key,
+    owns fact-kind @card(1) @values("static");
+
+  # ---- exogenous: sensed from the world ----------------------------------
+  # node(id). A node heard of through another node's edges exists here
+  # before it is sensed itself; sensed-at is set once it is.
+  entity node,
+    owns node-id @key,
+    owns fact-kind @card(1) @values("exogenous"),
+    owns sensed-at @card(0..1),
+    owns sensed-by @card(0..1);
+
+  # notifies(id, target): the push edge - who this node tells.
+  relation notifies,
+    relates source,
+    relates target,
+    owns fact-kind @card(1) @values("exogenous"),
+    owns sensed-at @card(1),
+    owns sensed-by @card(1);
+
+  # requires(id, target): the pull edge - what this node needs.
+  relation requires,
+    relates dependent,
+    relates dependency,
+    owns fact-kind @card(1) @values("exogenous"),
+    owns sensed-at @card(1),
+    owns sensed-by @card(1);
+
+  node plays notifies:source, plays notifies:target,
+    plays requires:dependent, plays requires:dependency;
+
+  # ---- controllable: the agent's own belief ------------------------------
+  relation known,      # the agent has heard of this id
+    relates subject,
+    owns fact-kind @card(1) @values("controllable"),
+    owns recorded-at @card(1);
+  relation visited,    # the agent has been there
+    relates subject,
+    owns fact-kind @card(1) @values("controllable"),
+    owns recorded-at @card(1);
+  relation cleared,    # the node's requirements are met
+    relates subject,
+    owns fact-kind @card(1) @values("controllable"),
+    owns recorded-at @card(1);
+
+  node plays known:subject, plays visited:subject, plays cleared:subject;
+
+  # ---- derived: computed when asked, never stored ------------------------
+  # reachable(from, to): a path over already-sensed notifies edges.
+  fun reachable($from: node) -> { node }:
+    match
+      { $e isa notifies, links (source: $from, target: $to); } or
+      { $e isa notifies, links (source: $from, target: $mid);
+        let $to in reachable($mid); };
+    return { $to };
+
+  # is-leaf(id): sensed, and no notifies - a structural goal or dead end.
+  fun is-leaf() -> { node }:
+    match
+      $n isa node, has sensed-at $t;
+      not { $e isa notifies, links (source: $n); };
+    return { $n };
+
+  # blocked(id): visited but not cleared - its requirements are not met.
+  fun blocked() -> { node }:
+    match
+      $v isa visited, links (subject: $n);
+      not { $c isa cleared, links (subject: $n); };
+    return { $n };
